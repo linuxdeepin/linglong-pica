@@ -1,0 +1,19 @@
+---
+sdk:
+  base:
+    -
+      type: iso
+      ref: https://cdimage.uniontech.com/daily-iso/image-snipe/unstable/20220628/uniontechos-desktop-23-professional-2000-amd64-20220628-105046.iso
+      hash: 7e608086182e5cfe402e305487311c0fd60f2a3825c4aefe53eab3daa365cccf
+    - 
+      type: ostree
+      ref: org.deepin.Runtime/20/x86_64
+      hash:
+      remote: http://10.20.54.2:8888/repo/
+  extra:
+    repo:
+      - "deb [trusted=yes] http://pools.uniontech.com/desktop-professional/ eagle main contrib non-free"
+    package:
+      - libicu63
+    command:
+      - "apt update"
