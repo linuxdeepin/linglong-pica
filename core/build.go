@@ -18,6 +18,152 @@ func init() {
 	logger = InitLog()
 }
 
+type BinFormatReactor struct {
+	SearchPath      string   // search dir
+	PathFilter      []string // filter with Search result
+	ElfLDDPath      map[string]uint
+	ElfNeedPath     map[string]uint
+	DynExcludeList  string // so libary exclude list
+	CheckWithChroot bool   // check with chroot
+	CheckWithStrace bool   // check with strace
+	StraceBinPath   string // strace command bin path with chroot
+	CheckWithLdd    bool   // check with ldd
+	CheckWithLtrace bool   // check with ltrace
+}
+
+func (ts *BinFormatReactor) New(searchPath string) BinFormatReactor {
+	ts.SearchPath = searchPath
+	return *ts
+}
+
+func Filter(vs []string, f func(string) bool) []string {
+	vsf := make([]string, 0)
+	for _, v := range vs {
+		if f(v) && len(v) > 0 {
+			vsf = append(vsf, v)
+		}
+	}
+	return vsf
+}
+
+func FilterMap(vs map[string]uint, f func(string) bool) string {
+	for v, _ := range vs {
+		if f(v) && len(v) > 0 {
+			return v
+		}
+	}
+	return ""
+}
+
+/*!
+ * @brief FixElfLDDPath
+ * @param exclude []string 排除的文件的列表
+ * @return true
+ */
+func (ts *BinFormatReactor) FixElfLDDPath(exclude []string) bool {
+
+	for _, exStr := range exclude {
+		if len(exStr) > 0 {
+			filterKey := FilterMap(ts.ElfLDDPath, func(str string) bool {
+				return strings.HasPrefix(str, exStr)
+			})
+
+			if len(filterKey) > 0 {
+				delete(ts.ElfLDDPath, filterKey)
+			}
+		}
+	}
+	return true
+}
+
+/*!
+ * @brief GetElfList
+ * @param exclude string 排除的目录
+ * @return 返回elf列表
+ */
+func (ts *BinFormatReactor) GetElfList(exclude string) []string {
+	logger.Debug("get find elf miss depends: ", ts.SearchPath)
+	elf_binary_path, err := GetElfWithPath(ts.SearchPath)
+	if err != nil {
+		logger.Debugf("get elf with path failed! %s", err)
+		return nil
+	}
+
+	if len(elf_binary_path) > 0 {
+		if len(exclude) == 0 {
+			return elf_binary_path
+		}
+		filterResut := Filter(elf_binary_path, func(str string) bool {
+			return strings.HasPrefix(str, exclude)
+		})
+		for _, v := range filterResut {
+			ts.ElfLDDPath[v] = 1
+		}
+
+		return filterResut
+	}
+
+	return nil
+}
+
+type ElfLDDShellTemplate struct {
+	ELFNameString    string
+	OutputNameString string
+	Verbose          bool
+}
+
+const TMPL_ELF_LDD = `#!/bin/bash
+ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq > {{.OutputNameString}}
+`
+
+/*!
+ * @brief RenderElfWithLDD
+ * @param output output file
+ * @param save save file
+ * @return bool, error
+ */
+func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) {
+
+	// init template
+	logger.Debug("render elf with ldd : ", ts.SearchPath)
+	tpl, err := template.New("elfldd").Parse(TMPL_ELF_LDD)
+
+	if err != nil {
+		logger.Fatalf("parse deb shell template failed! ", err)
+		return false, nil
+	}
+
+	elfLDDShell := ElfLDDShellTemplate{"", output, false}
+
+	for elfStr, _ := range ts.ElfLDDPath {
+
+		elfLDDShell.ELFNameString += elfStr
+		elfLDDShell.ELFNameString += " "
+	}
+
+	// create save file
+	logger.Debug("create save file: ", save)
+	saveFd, ret := os.Create(save)
+	if ret != nil {
+		logger.Fatalf("save to %s failed!", save)
+		return false, nil
+	}
+	defer saveFd.Close()
+
+	// render template
+	logger.Debug("render template: ", elfLDDShell)
+	tpl.Execute(saveFd, elfLDDShell)
+
+	return true, nil
+}
+
+// func (ts *BinFormatReactor) GetElfWithLDD(exclude string) []string {
+// 	if len(ts.ElfLDDPath) > 0 {
+
+// 	}
+// 	return nil
+// }
+
 func GetElfNeedWithLDD(elfSearchDir string) (string, error) {
 	logger.Debug("get elf need with ldd: ", elfSearchDir)
 	return "", nil
@@ -51,11 +197,7 @@ func ChrootExecShell(chroot, shell, datadir string) (bool, string, error) {
 	CreateDir(shellChroot)
 	defer func() { os.RemoveAll(shellChroot) }()
 
-	// copy shell to chroot
-	// fixme: recommand to used io.Copy()
-	// if _, msg, err := ExecAndWait(10, "cp", "-v", shell, shellChroot); err != nil {
-	// 	logger.Fatalf("copy %s to %s failed! ", shell, shellChroot, err, msg)
-	// }
+	// mount shell to chroot
 	logger.Debug("copy shell to chroot: ", shell, shellChroot)
 	if _, msg, err := ExecAndWait(10, "mount", "-B", GetFilePPath(shell), shellChroot); err != nil {
 		logger.Fatalf("mount %s to %s failed! ", shell, shellChroot, err, msg)

@@ -17,9 +17,11 @@ along with ts program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	. "ll-pica/core"
 	. "ll-pica/core/comm"
@@ -612,14 +614,87 @@ Convert:
 			return
 		}
 
+		var binReactor BinFormatReactor
+
+		// fixme(heysion) set files directory
+		binReactor.SearchPath = configInfo.Basedir
+
 		// copy deb data
-		// logger.Fatal("exit!!!")
-		GetFindElfMissDepends(configInfo.Basedir)
+		// fixme(heysion): todo
+
+		// find all elf file with path
+		// FilerList := ("libc.so","lib.so")
+
+		// get elf binary  need exclude with self path
+
+		binReactor.GetElfList(binReactor.SearchPath + "/lib")
+
+		excludeSoList := []string{"ld-linux-aarch64.so",
+			"ld-linux-armhf.so",
+			"ld-linux-x86-64.so",
+			"ld-linux.so",
+			"ld64.so",
+			"libc.so",
+			"libdl.so",
+			"libgcc_s.so",
+			"libm.so",
+			"libstdc++.so"}
+		logger.Debugf("exclude so list:", excludeSoList)
+
+		//binReactor.FixElfLDDPath(binReactor.SearchPath + "bin/lib")
+		//
+		// GetFindElfMissDepends(configInfo.Basedir + "/lib")
+		elfLDDLog := configInfo.DebWorkdir + "/elfldd.log"
+		elfLDDShell := configInfo.DebWorkdir + "/elfldd.sh"
+
+		logger.Debugf("out: %s , sh: %s", elfLDDLog, elfLDDShell)
+
+		binReactor.RenderElfWithLDD(elfLDDLog, elfLDDShell)
+
+		// // mount shell to chroot
+		// logger.Debug("set output in chroot: elfldd.log")
+		// if _, msg, err := ExecAndWait(10, "mount", "-B", configInfo.DebWorkdir+"/elfldd.log", configInfo.Rootfsdir+configInfo.DebWorkdir+"/elfldd.log"); err != nil {
+		// 	logger.Fatalf("mount %s to %s failed! ", configInfo.Rootfsdir+configInfo.DebWorkdir+"/elfldd.log", err, msg)
+		// }
+
+		// chroot
+		if ret, msg, err := ChrootExecShell(configInfo.Rootfsdir, elfLDDShell, configInfo.DebWorkdir); !ret {
+			logger.Fatal("chroot exec shell failed:", msg, err)
+			return
+		}
+
+		// read elfldd.log
+		logger.Debug("read elfldd.log")
+		if elfLDDLogFile, err := os.Open(elfLDDLog); err != nil {
+			logger.Fatal("open elfldd.log failed:", err)
+			//elfLDDLogFile.Close()
+		} else {
+			defer elfLDDLogFile.Close()
+
+			LogFileItor := bufio.NewScanner(elfLDDLogFile)
+			LogFileItor.Split(bufio.ScanLines)
+			var ReadLine string
+			for LogFileItor.Scan() {
+				ReadLine = LogFileItor.Text()
+				if len(ReadLine) > 0 && func() bool {
+					for _, v := range excludeSoList {
+						if strings.HasSuffix(ReadLine, v) {
+							return false
+						}
+					}
+					return true
+				}() {
+					logger.Debugf("%s", ReadLine)
+					binReactor.ElfNeedPath[ReadLine] = 1
+				}
+			}
+
+		}
 
 		// fix library
-		if msg, ret := GetElfNeedWithLDD("/bin/bash"); ret != nil {
-			logger.Debug("get elf need failed: ", msg)
-		}
+		// if msg, ret := GetElfNeedWithLDD("/bin/bash"); ret != nil {
+		// 	logger.Debug("get elf need failed: ", msg)
+		// }
 
 		// fix desktop
 		// FixDesktop()
@@ -629,6 +704,7 @@ Convert:
 		// umount
 
 		// build uab
+		// ll-builder export --local
 
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
