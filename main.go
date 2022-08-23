@@ -1,19 +1,12 @@
 /*
-Copyright © 2022 Heysion Y heysion@deepin.com
-
-ts program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-ts program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with ts program. If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ *
+ * Author: Heysion Y. <heysion@deepin.com>
+ *
+ * Maintainer: Heysion Y. <heysion@deepin.com>
+ *
+ * SPDX-License-Identifier: GNU General Public License v3.0 or later
+ */
 package main
 
 import (
@@ -154,7 +147,7 @@ func (ts Mounts) DoUmountAOnce() []error {
 	logger.Debug("mount list: ", len(ts.Mounts))
 	var errs []error
 	if len(ts.Mounts) == 0 {
-		return errs
+		return nil
 	}
 
 	idx := 0
@@ -622,6 +615,9 @@ Convert:
 		// copy deb data
 		// fixme(heysion): todo
 
+		// fixme(jianqiang)
+		// make new directory that need to be created for linglong files stucturesk
+
 		// find all elf file with path
 		// FilerList := ("libc.so","lib.so")
 
@@ -663,6 +659,12 @@ Convert:
 			return
 		}
 
+		// check result with chroot exec shell
+		if ret, err := CheckFileExits(elfLDDLog); !ret {
+			logger.Fatal("chroot exec shell failed:", ret, err)
+			return
+		}
+
 		// read elfldd.log
 		logger.Debug("read elfldd.log")
 		if elfLDDLogFile, err := os.Open(elfLDDLog); err != nil {
@@ -678,9 +680,7 @@ Convert:
 				ReadLine = LogFileItor.Text()
 				if len(ReadLine) > 0 && func() bool {
 					for _, v := range excludeSoList {
-						if strings.HasSuffix(ReadLine, v) {
-							return false
-						}
+						return !strings.HasSuffix(ReadLine, v)
 					}
 					return true
 				}() {
@@ -690,6 +690,8 @@ Convert:
 			}
 
 		}
+
+		logger.Debugf("found %d elf need objects", len(binReactor.ElfNeedPath))
 
 		// fix library
 		// if msg, ret := GetElfNeedWithLDD("/bin/bash"); ret != nil {

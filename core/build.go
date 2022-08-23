@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ *
+ * Author: Heysion Y. <heysion@deepin.com>
+ *
+ * Maintainer: Heysion Y. <heysion@deepin.com>
+ *
+ * SPDX-License-Identifier: GNU General Public License v3.0 or later
+ */
 package core
 
 import (
@@ -31,28 +40,30 @@ type BinFormatReactor struct {
 	CheckWithLtrace bool   // check with ltrace
 }
 
-func (ts *BinFormatReactor) New(searchPath string) BinFormatReactor {
-	ts.SearchPath = searchPath
-	return *ts
-}
+// func (ts *BinFormatReactor) New(searchPath string) BinFormatReactor {
+// 	ts.SearchPath = searchPath
+// 	return *ts
+// }
 
 func Filter(vs []string, f func(string) bool) []string {
-	vsf := make([]string, 0)
+	retVal := make([]string, 0)
 	for _, v := range vs {
 		if f(v) && len(v) > 0 {
-			vsf = append(vsf, v)
+			retVal = append(retVal, v)
 		}
 	}
-	return vsf
+	return retVal
 }
 
-func FilterMap(vs map[string]uint, f func(string) bool) string {
-	for v, _ := range vs {
+func FilterMap(vs map[string]uint, f func(string) bool) []string {
+	retVal := make([]string, 0)
+	for v := range vs {
 		if f(v) && len(v) > 0 {
-			return v
+			retVal = append(retVal, v)
 		}
+		continue
 	}
-	return ""
+	return retVal
 }
 
 /*!
@@ -64,12 +75,14 @@ func (ts *BinFormatReactor) FixElfLDDPath(exclude []string) bool {
 
 	for _, exStr := range exclude {
 		if len(exStr) > 0 {
-			filterKey := FilterMap(ts.ElfLDDPath, func(str string) bool {
+			deleteKeyList := FilterMap(ts.ElfLDDPath, func(str string) bool {
 				return strings.HasPrefix(str, exStr)
 			})
 
-			if len(filterKey) > 0 {
-				delete(ts.ElfLDDPath, filterKey)
+			if len(deleteKeyList) > 0 {
+				for _, v := range deleteKeyList {
+					delete(ts.ElfLDDPath, v)
+				}
 			}
 		}
 	}
@@ -81,29 +94,33 @@ func (ts *BinFormatReactor) FixElfLDDPath(exclude []string) bool {
  * @param exclude string 排除的目录
  * @return 返回elf列表
  */
-func (ts *BinFormatReactor) GetElfList(exclude string) []string {
-	logger.Debug("get find elf miss depends: ", ts.SearchPath)
+func (ts *BinFormatReactor) GetElfList(exclude string) bool {
+	logger.Debugf("get find elf miss depends: ", ts.SearchPath, "exclude: ", exclude)
 	elf_binary_path, err := GetElfWithPath(ts.SearchPath)
 	if err != nil {
 		logger.Debugf("get elf with path failed! %s", err)
-		return nil
+		return false
 	}
 
 	if len(elf_binary_path) > 0 {
 		if len(exclude) == 0 {
-			return elf_binary_path
+			return false
 		}
 		filterResut := Filter(elf_binary_path, func(str string) bool {
-			return strings.HasPrefix(str, exclude)
+			return !strings.HasPrefix(str, exclude)
 		})
+		if len(filterResut) > 0 && ts.ElfLDDPath == nil {
+			ts.ElfLDDPath = make(map[string]uint)
+		}
+		//logger.Debugf("filter resut: ", filterResut)
 		for _, v := range filterResut {
 			ts.ElfLDDPath[v] = 1
 		}
 
-		return filterResut
+		return true
 	}
 
-	return nil
+	return false
 }
 
 type ElfLDDShellTemplate struct {
@@ -113,7 +130,9 @@ type ElfLDDShellTemplate struct {
 }
 
 const TMPL_ELF_LDD = `#!/bin/bash
+set -x
 ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq > {{.OutputNameString}}
+ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq > tt.log
 `
 
 /*!
@@ -135,7 +154,7 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 
 	elfLDDShell := ElfLDDShellTemplate{"", output, false}
 
-	for elfStr, _ := range ts.ElfLDDPath {
+	for elfStr := range ts.ElfLDDPath {
 
 		elfLDDShell.ELFNameString += elfStr
 		elfLDDShell.ELFNameString += " "
@@ -151,7 +170,7 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 	defer saveFd.Close()
 
 	// render template
-	logger.Debug("render template: ", elfLDDShell)
+	// logger.Debug("render template: ", elfLDDShell)
 	tpl.Execute(saveFd, elfLDDShell)
 
 	return true, nil
