@@ -27,30 +27,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// app config with runtime
-type Config struct {
-	Verbose           bool   `yaml:"verbose"`
-	Config            string `yaml:"config"`
-	Workdir           string `yaml:"workdir"`
-	Basedir           string `yaml:"basedir"`
-	IsInited          bool   `yaml:"inited"`
-	Cache             bool   `yaml:"cache"`
-	CachePath         string `yaml:"cache-path"`
-	DebWorkdir        string `yaml:"debdir"`
-	debPath           string
-	IsRuntimeFetch    bool   `yaml:"runtime-fetched"`
-	IsRuntimeCheckout bool   `yaml:"runtime-checkedout"`
-	RuntimeOstreeDir  string `yaml:"runtime-ostreedir"`
-	RuntimeBasedir    string `yaml:"runtime-basedir"`
-	IsIsoDownload     bool   `yaml:"iso-downloaded"`
-	IsoPath           string `yaml:"iso-path"`
-	IsoMountDir       string `yaml:"iso-mount-dir"`
-	IsIsoChecked      bool   `yaml:"iso-checked"`
-	Rootfsdir         string `yaml:"rootfsdir"`
-	MountsItem        Mounts `yaml:"mounts"`
-	yamlconfig        string
-}
-
 // type BaseSdk struct {
 // 	Sdk map[string]dataset `yaml:"sdk"`
 // }
@@ -63,126 +39,7 @@ type Config struct {
 // 	Remote string `yaml:"remote"`
 // }
 
-type MountItem struct {
-	MountPoint string `yaml:"mountpoint"`
-	Source     string `yaml:"source"`
-	Type       string `yaml:"type"`
-	IsRbind    bool   `yaml:"bind"`
-}
-
-type Mounts struct {
-	Mounts map[string]MountItem `yaml:"mounts"`
-}
-
-var configInfo Config
-var transInfo Config
 var logger *zap.SugaredLogger
-
-var debConf DebConfig
-
-func (ts Mounts) DoMountALL() []error {
-
-	logger.Debug("mount list: ", len(ts.Mounts))
-	var errs []error
-	if len(ts.Mounts) == 0 {
-		return errs
-	}
-
-	var msg string
-	var err error
-
-	for _, item := range ts.Mounts {
-
-		logger.Debugf("mount: ", item.MountPoint, item.Source, item.Type, item.IsRbind)
-		if IsRbind := item.IsRbind; IsRbind {
-
-			// sudo mount --rbind /tmp/ /mnt/workdir/rootfs/tmp/
-			_, msg, err = ExecAndWait(10, "mount", "--rbind", item.Source, item.MountPoint)
-			if err != nil {
-				logger.Warnf("mount bind failed: ", msg, err)
-				errs = append(errs, err)
-			}
-
-			// sudo mount --make-rslave /mnt/workdir/rootfs/tmp/
-			_, msg, err = ExecAndWait(10, "mount", "--make-rslave", item.MountPoint)
-			if err != nil {
-				logger.Warnf("mount bind rslave failed: ", msg, err)
-				errs = append(errs, err)
-			}
-
-		} else {
-			_, msg, err = ExecAndWait(10, "mount", "-t", item.Type, item.Source, item.MountPoint)
-			if err != nil {
-				logger.Warnf("mount failed: ", msg, err)
-				errs = append(errs, err)
-			}
-		}
-
-	}
-	return errs
-}
-
-func (ts Mounts) DoUmountALL() []error {
-	logger.Debug("mount list: ", len(ts.Mounts))
-	var errs []error
-	if len(ts.Mounts) == 0 {
-		return errs
-	}
-
-	for _, item := range ts.Mounts {
-		logger.Debugf("umount: ", item.MountPoint)
-		_, msg, err := ExecAndWait(10, "umount", item.MountPoint)
-		if err != nil {
-			logger.Warnf("umount failed: ", msg, err)
-			errs = append(errs, err)
-		} else {
-			delete(ts.Mounts, item.MountPoint)
-		}
-
-	}
-	return errs
-}
-
-func (ts Mounts) DoUmountAOnce() []error {
-	return nil
-	logger.Debug("mount list: ", len(ts.Mounts))
-	var errs []error
-	if len(ts.Mounts) == 0 {
-		return nil
-	}
-
-	idx := 0
-UMOUNT_ONCE:
-	_, msg, err := ExecAndWait(10, "umount", "-R", configInfo.Rootfsdir)
-	if err == nil {
-		idx++
-		if idx < 10 {
-			goto UMOUNT_ONCE
-		}
-	} else {
-		logger.Warnf("umount success: ", msg, err)
-		errs = append(errs, nil)
-	}
-	for _, item := range ts.Mounts {
-		logger.Debugf("umount: ", item.MountPoint)
-		delete(ts.Mounts, item.MountPoint)
-
-	}
-	return errs
-}
-
-func (ts *Mounts) FillMountRules() {
-
-	logger.Debug("mount list: ", len(ts.Mounts))
-	ts.Mounts[configInfo.Rootfsdir+"/dev/"] = MountItem{configInfo.Rootfsdir + "/dev/", "/dev/", "tmpfs", true}
-	ts.Mounts[configInfo.Rootfsdir+"/sys/"] = MountItem{configInfo.Rootfsdir + "/sys/", "/sys/", "sysfs", true}
-	ts.Mounts[configInfo.Rootfsdir+"/tmp/"] = MountItem{configInfo.Rootfsdir + "/tmp/", "/tmp/", "tmpfs", true}
-	ts.Mounts[configInfo.Rootfsdir+"/etc/resolv.conf"] = MountItem{configInfo.Rootfsdir + "/etc/resolv.conf", "/etc/resolv.conf", "tmpfs", true}
-
-	ts.Mounts[configInfo.Rootfsdir+"/proc/"] = MountItem{configInfo.Rootfsdir + "/proc/", "none", "proc", false}
-
-	logger.Debug("mount list: ", len(ts.Mounts))
-}
 
 // var RootfsMountList Mounts
 
@@ -194,14 +51,14 @@ func SetOverlayfs(lower string, upper string, workdir string) error {
 	logger.Debug("SetOverlayfs :", lower, upper, workdir)
 	// mount lower dir to upper dir
 	//mount -t overlay overlay -o lowerdir=$WORK_DIR/lower,upperdir=$WORK_DIR/upper,workdir=$WORK_DIR/work $WORK_DIR/merged
-	tempDir := configInfo.Workdir + "/temp"
+	tempDir := ConfigInfo.Workdir + "/temp"
 	err := os.Mkdir(tempDir, 0755)
 	if os.IsNotExist(err) {
 		logger.Error("mkdir failed: ", err)
 		return err
 	}
 	msg := fmt.Sprintf("lowerdir=%s:%s,upperdir=%s,workdir=%s", upper, lower, workdir, tempDir)
-	_, msg, err = ExecAndWait(10, "mount", "-t", "overlay", "overlay", "-o", msg, configInfo.Rootfsdir)
+	_, msg, err = ExecAndWait(10, "mount", "-t", "overlay", "overlay", "-o", msg, ConfigInfo.Rootfsdir)
 	if err != nil {
 		logger.Error("mount overlayfs failed: ", msg, err)
 	}
@@ -223,10 +80,10 @@ var initCmd = &cobra.Command{
 	Short: "init sdk runtime env",
 	Long:  `init sdk runtime env with iso and runtime .`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		logger.Debug("begin process cache: ", configInfo.Cache)
-		configCache := fmt.Sprintf("%s/cache.yaml", configInfo.Workdir)
-		runtimeDir := fmt.Sprintf("%s/runtime", configInfo.Workdir)
-		isoDir := fmt.Sprintf("%s/iso", configInfo.Workdir)
+		logger.Debug("begin process cache: ", ConfigInfo.Cache)
+		configCache := fmt.Sprintf("%s/cache.yaml", ConfigInfo.Workdir)
+		runtimeDir := fmt.Sprintf("%s/runtime", ConfigInfo.Workdir)
+		isoDir := fmt.Sprintf("%s/iso", ConfigInfo.Workdir)
 
 		ClearRuntime := func() {
 			logger.Debug("begin clear runtime")
@@ -251,7 +108,7 @@ var initCmd = &cobra.Command{
 			}
 		}
 
-		if _, err := os.Stat(configCache); !os.IsNotExist(err) && configInfo.Cache {
+		if _, err := os.Stat(configCache); !os.IsNotExist(err) && ConfigInfo.Cache {
 			// load cache.yaml
 			logger.Debugf("load: %s", configCache)
 			cacheFd, err := ioutil.ReadFile(configCache)
@@ -259,15 +116,15 @@ var initCmd = &cobra.Command{
 				logger.Warnf("read error: %s", err)
 				return
 			}
-			err = yaml.Unmarshal(cacheFd, &configInfo)
+			err = yaml.Unmarshal(cacheFd, &ConfigInfo)
 			if err != nil {
 				logger.Warnf("unmarshal error: %s", err)
 				return
 			}
 			logger.Debugf("load cache.yaml success: %s", configCache)
 
-			logger.Debug("clear runtime: ", configInfo.IsRuntimeFetch)
-			if !configInfo.IsRuntimeFetch {
+			logger.Debug("clear runtime: ", ConfigInfo.IsRuntimeFetch)
+			if !ConfigInfo.IsRuntimeFetch {
 				ClearRuntime()
 			}
 
@@ -276,8 +133,8 @@ var initCmd = &cobra.Command{
 				logger.Info("create runtime dir error: ", err)
 			}
 
-			logger.Debug("clear iso: ", configInfo.IsIsoDownload)
-			if !configInfo.IsIsoDownload {
+			logger.Debug("clear iso: ", ConfigInfo.IsIsoDownload)
+			if !ConfigInfo.IsIsoDownload {
 				ClearIso()
 			}
 
@@ -289,8 +146,8 @@ var initCmd = &cobra.Command{
 			return // Config Cache exist
 		} else {
 			logger.Debug("Config Cache not exist")
-			if !configInfo.IsRuntimeCheckout {
-				err := os.RemoveAll(configInfo.RuntimeBasedir)
+			if !ConfigInfo.IsRuntimeCheckout {
+				err := os.RemoveAll(ConfigInfo.RuntimeBasedir)
 				if err != nil {
 					logger.Errorf("remove error", err)
 				}
@@ -301,11 +158,11 @@ var initCmd = &cobra.Command{
 
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		logger.Debug("begin run: ", configInfo.Config)
-		if configInfo.Config != "" {
-			yamlFile, err := ioutil.ReadFile(configInfo.Config)
+		logger.Debug("begin run: ", ConfigInfo.Config)
+		if ConfigInfo.Config != "" {
+			yamlFile, err := ioutil.ReadFile(ConfigInfo.Config)
 			if err != nil {
-				logger.Errorf("get %s error: %v", configInfo.Config, err)
+				logger.Errorf("get %s error: %v", ConfigInfo.Config, err)
 				return
 			}
 			err = yaml.Unmarshal(yamlFile, &SdkConf)
@@ -318,24 +175,24 @@ var initCmd = &cobra.Command{
 			logger.Debugf("get %d %s", idx, context)
 			switch context.Type {
 			case "ostree":
-				if !configInfo.IsRuntimeFetch {
+				if !ConfigInfo.IsRuntimeFetch {
 					logger.Debug("ostree init")
-					configInfo.RuntimeOstreeDir = fmt.Sprintf("%s/runtime", configInfo.Workdir)
-					if ret := SdkConf.SdkInfo.Base[idx].InitOstree(configInfo.RuntimeOstreeDir); !ret {
+					ConfigInfo.RuntimeOstreeDir = fmt.Sprintf("%s/runtime", ConfigInfo.Workdir)
+					if ret := SdkConf.SdkInfo.Base[idx].InitOstree(ConfigInfo.RuntimeOstreeDir); !ret {
 						logger.Error("init ostree failed")
-						configInfo.IsRuntimeFetch = false
+						ConfigInfo.IsRuntimeFetch = false
 						return
 					} else {
-						configInfo.IsRuntimeFetch = true
+						ConfigInfo.IsRuntimeFetch = true
 					}
 
-					configInfo.RuntimeBasedir = fmt.Sprintf("%s/runtimedir", configInfo.Workdir)
-					if ret := SdkConf.SdkInfo.Base[idx].CheckoutOstree(configInfo.RuntimeBasedir); !ret {
+					ConfigInfo.RuntimeBasedir = fmt.Sprintf("%s/runtimedir", ConfigInfo.Workdir)
+					if ret := SdkConf.SdkInfo.Base[idx].CheckoutOstree(ConfigInfo.RuntimeBasedir); !ret {
 						logger.Error("checkout ostree failed")
-						configInfo.IsRuntimeCheckout = false
+						ConfigInfo.IsRuntimeCheckout = false
 						return
 					} else {
-						configInfo.IsRuntimeCheckout = true
+						ConfigInfo.IsRuntimeCheckout = true
 					}
 
 				}
@@ -343,29 +200,29 @@ var initCmd = &cobra.Command{
 
 			case "iso":
 
-				if !configInfo.IsIsoDownload {
+				if !ConfigInfo.IsIsoDownload {
 					logger.Debug("iso download")
 
-					configInfo.IsoPath = fmt.Sprintf("%s/iso/base.iso", configInfo.Workdir)
+					ConfigInfo.IsoPath = fmt.Sprintf("%s/iso/base.iso", ConfigInfo.Workdir)
 
-					if ret := SdkConf.SdkInfo.Base[idx].FetchIsoFile(configInfo.Workdir, configInfo.IsoPath); !ret {
-						configInfo.IsIsoDownload = false
+					if ret := SdkConf.SdkInfo.Base[idx].FetchIsoFile(ConfigInfo.Workdir, ConfigInfo.IsoPath); !ret {
+						ConfigInfo.IsIsoDownload = false
 						logger.Errorf("download iso failed")
 						return
 					} else {
-						configInfo.IsIsoDownload = true
+						ConfigInfo.IsIsoDownload = true
 					}
 					logger.Debug("iso download success")
 				}
 
-				if !configInfo.IsIsoChecked {
+				if !ConfigInfo.IsIsoChecked {
 					logger.Debug("iso check hash")
 					if ret := SdkConf.SdkInfo.Base[idx].CheckIsoHash(); !ret {
-						configInfo.IsIsoChecked = false
+						ConfigInfo.IsIsoChecked = false
 						logger.Errorf("check iso hash failed")
 						return
 					} else {
-						configInfo.IsIsoChecked = true
+						ConfigInfo.IsIsoChecked = true
 					}
 					logger.Debug("iso check hash success")
 				}
@@ -373,8 +230,8 @@ var initCmd = &cobra.Command{
 			}
 		}
 
-		configInfo.Basedir = fmt.Sprintf("%s/basedir", configInfo.Workdir)
-		logger.Debug("set basedir: ", configInfo.Basedir)
+		ConfigInfo.Basedir = fmt.Sprintf("%s/basedir", ConfigInfo.Workdir)
+		logger.Debug("set basedir: ", ConfigInfo.Basedir)
 
 		// extra
 		logger.Debug("extra init")
@@ -385,46 +242,46 @@ var initCmd = &cobra.Command{
 		logger.Debug("end init")
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
-		logger.Debugf("config :%+v", configInfo)
-		yamlData, err := yaml.Marshal(&configInfo)
+		logger.Debugf("config :%+v", ConfigInfo)
+		yamlData, err := yaml.Marshal(&ConfigInfo)
 		if err != nil {
 			logger.Errorf("convert to yaml failed!")
 		}
 		logger.Debugf("write Config Cache: %v", string(yamlData))
-		err = ioutil.WriteFile(fmt.Sprintf("%s/cache.yaml", configInfo.Workdir), yamlData, 0644)
+		err = ioutil.WriteFile(fmt.Sprintf("%s/cache.yaml", ConfigInfo.Workdir), yamlData, 0644)
 		if err != nil {
 			logger.Error("write cache.yaml failed!")
 		}
 
-		logger.Debug("begin mount iso: ", configInfo.IsoPath)
-		configInfo.IsoMountDir = fmt.Sprintf("%s/iso/mount", configInfo.Workdir)
+		logger.Debug("begin mount iso: ", ConfigInfo.IsoPath)
+		ConfigInfo.IsoMountDir = fmt.Sprintf("%s/iso/mount", ConfigInfo.Workdir)
 
-		if ret, _ := CheckFileExits(configInfo.IsoMountDir); !ret {
-			err = os.Mkdir(configInfo.IsoMountDir, 0755)
+		if ret, _ := CheckFileExits(ConfigInfo.IsoMountDir); !ret {
+			err = os.Mkdir(ConfigInfo.IsoMountDir, 0755)
 			if os.IsNotExist(err) {
 				logger.Error("mkdir iso mount dir failed!", err)
 			}
 		}
 
 		var msg string
-		_, msg, err = ExecAndWait(10, "mount", "-o", "loop", configInfo.IsoPath, configInfo.IsoMountDir)
+		_, msg, err = ExecAndWait(10, "mount", "-o", "loop", ConfigInfo.IsoPath, ConfigInfo.IsoMountDir)
 		if err != nil {
 			logger.Error("mount iso failed!", msg, err)
 		}
 		UmountIsoDir := func() {
-			ExecAndWait(10, "umount", configInfo.IsoMountDir)
+			ExecAndWait(10, "umount", ConfigInfo.IsoMountDir)
 		}
 
 		defer UmountIsoDir()
 
 		// mount squashfs to base dir
 
-		baseDir := fmt.Sprintf("%s/iso/live", configInfo.Workdir)
+		baseDir := fmt.Sprintf("%s/iso/live", ConfigInfo.Workdir)
 		err = os.Mkdir(baseDir, 0755)
 		if os.IsNotExist(err) {
 			logger.Error("mkdir iso mount dir failed!", err)
 		}
-		_, msg, err = ExecAndWait(10, "mount", fmt.Sprintf("%s/live/filesystem.squashfs", configInfo.IsoMountDir), baseDir)
+		_, msg, err = ExecAndWait(10, "mount", fmt.Sprintf("%s/live/filesystem.squashfs", ConfigInfo.IsoMountDir), baseDir)
 		if err != nil {
 			logger.Error("mount squashfs failed!", msg, err)
 		}
@@ -433,38 +290,38 @@ var initCmd = &cobra.Command{
 		}
 		defer UmountSquashfsDir()
 
-		configInfo.Rootfsdir = fmt.Sprintf("%s/rootfs", configInfo.Workdir)
-		err = os.Mkdir(configInfo.Rootfsdir, 0755)
+		ConfigInfo.Rootfsdir = fmt.Sprintf("%s/rootfs", ConfigInfo.Workdir)
+		err = os.Mkdir(ConfigInfo.Rootfsdir, 0755)
 		if os.IsNotExist(err) {
 			logger.Error("mkdir rootfsdir failed!", err)
 		}
 
-		err = os.Mkdir(configInfo.Basedir, 0755)
+		err = os.Mkdir(ConfigInfo.Basedir, 0755)
 
 		if os.IsNotExist(err) {
 			logger.Error("mkdir runtime basedir failed!", err)
 		}
 
 		// mount overlay to base dir
-		SetOverlayfs(baseDir, configInfo.RuntimeBasedir, configInfo.Basedir)
+		SetOverlayfs(baseDir, ConfigInfo.RuntimeBasedir, ConfigInfo.Basedir)
 
-		configInfo.MountsItem.FillMountRules()
+		ConfigInfo.MountsItem.FillMountRules()
 
 		fmt.Printf("Inside rootCmd PostRun with args: %v\n", args)
-		configInfo.IsInited = true
+		ConfigInfo.IsInited = true
 
-		yamlData, err = yaml.Marshal(&configInfo)
+		yamlData, err = yaml.Marshal(&ConfigInfo)
 		if err != nil {
 			logger.Errorf("convert to yaml failed!")
 		}
 		logger.Debugf("write Config Cache: %v", string(yamlData))
-		err = ioutil.WriteFile(fmt.Sprintf("%s/cache.yaml", configInfo.Workdir), yamlData, 0644)
+		err = ioutil.WriteFile(fmt.Sprintf("%s/cache.yaml", ConfigInfo.Workdir), yamlData, 0644)
 		if err != nil {
 			logger.Error("write cache.yaml failed!")
 		}
 
-		configInfo.MountsItem.DoMountALL()
-		configInfo.MountsItem.DoUmountAOnce()
+		ConfigInfo.MountsItem.DoMountALL()
+		ConfigInfo.MountsItem.DoUmountAOnce()
 	},
 }
 
@@ -482,130 +339,130 @@ Convert:
 		// fmt.Printf("Inside rootCmd PersistentPreRun with args: %v\n", args)
 	},
 	PreRun: func(cmd *cobra.Command, args []string) {
-		if transInfo.Verbose {
-			fmt.Println(transInfo.Verbose)
+		if TransInfo.Verbose {
+			fmt.Println(TransInfo.Verbose)
 		}
-		if ret, err := CheckFileExits(transInfo.debPath); err != nil && !ret {
+		if ret, err := CheckFileExits(TransInfo.DebPath); err != nil && !ret {
 			logger.Fatal("check deb file error:", err)
 		}
 
-		logger.Debug("load yaml config", transInfo.yamlconfig)
+		logger.Debug("load yaml config", TransInfo.Yamlconfig)
 
-		if ret, msg := CheckFileExits(transInfo.yamlconfig); !ret {
+		if ret, msg := CheckFileExits(TransInfo.Yamlconfig); !ret {
 			logger.Fatal("can not found: ", msg)
 		} else {
-			logger.Debugf("load: %s", transInfo.yamlconfig)
-			cacheFd, err := ioutil.ReadFile(transInfo.yamlconfig)
+			logger.Debugf("load: %s", TransInfo.Yamlconfig)
+			cacheFd, err := ioutil.ReadFile(TransInfo.Yamlconfig)
 			if err != nil {
 				logger.Fatalf("read error: %s %s", err, msg)
 				return
 			}
 			logger.Debugf("load: %s", cacheFd)
-			err = yaml.Unmarshal(cacheFd, &debConf)
+			err = yaml.Unmarshal(cacheFd, &DebConf)
 			if err != nil {
 				logger.Fatalf("unmarshal error: %s", err)
 				return
 			}
-			logger.Debugf("loaded %+v", debConf)
+			logger.Debugf("loaded %+v", DebConf)
 
 		}
 
-		logger.Debug("load cache.yaml", transInfo.CachePath)
-		transInfo.CachePath = transInfo.Workdir + "/cache.yaml"
+		logger.Debug("load cache.yaml", TransInfo.CachePath)
+		TransInfo.CachePath = TransInfo.Workdir + "/cache.yaml"
 
-		if ret, msg := CheckFileExits(transInfo.CachePath); ret {
+		if ret, msg := CheckFileExits(TransInfo.CachePath); ret {
 			// load cache.yaml
-			logger.Debugf("load cache: %s", transInfo.CachePath)
-			cacheFd, err := ioutil.ReadFile(transInfo.CachePath)
+			logger.Debugf("load cache: %s", TransInfo.CachePath)
+			cacheFd, err := ioutil.ReadFile(TransInfo.CachePath)
 			if err != nil {
 				logger.Warnf("read error: %s %s", err, msg)
 				return
 			}
 
-			err = yaml.Unmarshal(cacheFd, &configInfo)
+			err = yaml.Unmarshal(cacheFd, &ConfigInfo)
 			if err != nil {
 				logger.Warnf("unmarshal error: %s", err)
 				return
 			}
-			logger.Debugf("load config info %v", configInfo)
+			logger.Debugf("load config info %v", ConfigInfo)
 		} else {
 			logger.Fatalf("can not found: %s", msg)
 			return
 		}
 
 		// fmt.Printf("Inside rootCmd PreRun with args: %v\n", args)
-		logger.Debug("mount all", configInfo.MountsItem)
-		configInfo.MountsItem.DoMountALL()
+		logger.Debug("mount all", ConfigInfo.MountsItem)
+		ConfigInfo.MountsItem.DoMountALL()
 
-		logger.Debug("configinfo.rootfsdir", configInfo.Rootfsdir)
+		logger.Debug("configinfo.rootfsdir", ConfigInfo.Rootfsdir)
 
-		configInfo.debPath = transInfo.debPath
-		configInfo.yamlconfig = transInfo.yamlconfig
-		configInfo.Verbose = transInfo.Verbose
-		configInfo.CachePath = transInfo.CachePath
-		// configInfo.Workdir = transInfo.Workdir
-		// configInfo.Rootfsdir = transInfo.Rootfsdir
+		ConfigInfo.DebPath = TransInfo.DebPath
+		ConfigInfo.Yamlconfig = TransInfo.Yamlconfig
+		ConfigInfo.Verbose = TransInfo.Verbose
+		ConfigInfo.CachePath = TransInfo.CachePath
+		// ConfigInfo.Workdir = TransInfo.Workdir
+		// ConfigInfo.Rootfsdir = TransInfo.Rootfsdir
 
-		logger.Debug("configInfo:", configInfo)
-		logger.Debug("transInfo:", transInfo)
-		logger.Debug("debConf:", debConf)
+		logger.Debug("ConfigInfo:", ConfigInfo)
+		logger.Debug("TransInfo:", TransInfo)
+		logger.Debug("DebConf:", DebConf)
 
-		if transInfo.DebWorkdir != "" && configInfo.DebWorkdir == "" {
-			configInfo.DebWorkdir = transInfo.DebWorkdir
+		if TransInfo.DebWorkdir != "" && ConfigInfo.DebWorkdir == "" {
+			ConfigInfo.DebWorkdir = TransInfo.DebWorkdir
 		}
 
-		if configInfo.DebWorkdir == "" {
-			configInfo.DebWorkdir = configInfo.Workdir + "/debdir"
-			if ret, _ := CheckFileExits(configInfo.DebWorkdir); !ret {
-				CreateDir(configInfo.DebWorkdir)
+		if ConfigInfo.DebWorkdir == "" {
+			ConfigInfo.DebWorkdir = ConfigInfo.Workdir + "/debdir"
+			if ret, _ := CheckFileExits(ConfigInfo.DebWorkdir); !ret {
+				CreateDir(ConfigInfo.DebWorkdir)
 			}
 		}
 
-		if ret, err := rfs.MountIso(configInfo.IsoPath, configInfo.Workdir+"/iso/mount"); !ret {
+		if ret, err := rfs.MountIso(ConfigInfo.IsoPath, ConfigInfo.Workdir+"/iso/mount"); !ret {
 			logger.Error("mount iso failed!", err)
 		}
 
-		if ret, err := rfs.MountSquashfs(configInfo.Workdir+"/iso/live", configInfo.Workdir+"/iso/mount/live/filesystem.squashfs"); !ret {
+		if ret, err := rfs.MountSquashfs(ConfigInfo.Workdir+"/iso/live", ConfigInfo.Workdir+"/iso/mount/live/filesystem.squashfs"); !ret {
 			logger.Error("mount iso failed!", err)
 		}
 
 		// mount overlay to base dir
-		logger.Debug("Rootfsdir:", configInfo.Rootfsdir, "runtimeBasedir:", configInfo.RuntimeBasedir, "basedir:", configInfo.Basedir, "workdir:", configInfo.Workdir)
+		logger.Debug("Rootfsdir:", ConfigInfo.Rootfsdir, "runtimeBasedir:", ConfigInfo.RuntimeBasedir, "basedir:", ConfigInfo.Basedir, "workdir:", ConfigInfo.Workdir)
 
-		CreateDir(configInfo.Workdir + "/tmpdir")
+		CreateDir(ConfigInfo.Workdir + "/tmpdir")
 
-		if ret, err := rfs.MountRfsWithOverlayfs(configInfo.Basedir, configInfo.Rootfsdir, configInfo.RuntimeBasedir, configInfo.Workdir+"/tmpdir", configInfo.Workdir+"/iso/live"); !ret {
+		if ret, err := rfs.MountRfsWithOverlayfs(ConfigInfo.Basedir, ConfigInfo.Rootfsdir, ConfigInfo.RuntimeBasedir, ConfigInfo.Workdir+"/tmpdir", ConfigInfo.Workdir+"/iso/live"); !ret {
 			logger.Error("mount iso failed!", err)
 		}
-		//  umount configInfo.Rootfsdir
+		//  umount ConfigInfo.Rootfsdir
 
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// fmt.Printf("Inside rootCmd Run with args: %v\n", args)
 
 		// check enter deb file
-		logger.Debug("check debPath:", configInfo.debPath)
-		if ret, msg := CheckFileExits(configInfo.debPath); !ret {
+		logger.Debug("check DebPath:", ConfigInfo.DebPath)
+		if ret, msg := CheckFileExits(ConfigInfo.DebPath); !ret {
 			logger.Fatal("can not found: ", msg)
 		}
 
 		// fetch deb file
 		// DebConfig
-		logger.Debugf("debConfig deb:%v", debConf.FileElement.Deb)
-		for idx, _ := range debConf.FileElement.Deb {
+		logger.Debugf("debConfig deb:%v", DebConf.FileElement.Deb)
+		for idx, _ := range DebConf.FileElement.Deb {
 			// fetch deb file
-			debConf.FileElement.Deb[idx].FetchDebFile(configInfo.DebWorkdir)
-			logger.Debugf("fetch deb path:[%d] %s", idx, debConf.FileElement.Deb[idx].Path)
+			DebConf.FileElement.Deb[idx].FetchDebFile(ConfigInfo.DebWorkdir)
+			logger.Debugf("fetch deb path:[%d] %s", idx, DebConf.FileElement.Deb[idx].Path)
 			// check deb hash
-			debConf.FileElement.Deb[idx].CheckDebHash()
+			DebConf.FileElement.Deb[idx].CheckDebHash()
 		}
 
 		// render DebConfig to template save to pica.sh
-		logger.Debugf("render berfore %s:", debConf.FileElement.Deb)
-		RenderDebConfig(debConf, configInfo.DebWorkdir+"/pica.sh")
+		logger.Debugf("render berfore %s:", DebConf.FileElement.Deb)
+		RenderDebConfig(DebConf, ConfigInfo.DebWorkdir+"/pica.sh")
 
 		// chroot
-		if ret, msg, err := ChrootExecShell(configInfo.Rootfsdir, configInfo.DebWorkdir+"/pica.sh", configInfo.DebWorkdir); !ret {
+		if ret, msg, err := ChrootExecShell(ConfigInfo.Rootfsdir, ConfigInfo.DebWorkdir+"/pica.sh", ConfigInfo.DebWorkdir); !ret {
 			logger.Fatal("chroot exec shell failed:", msg, err)
 			return
 		}
@@ -613,13 +470,17 @@ Convert:
 		var binReactor BinFormatReactor
 
 		// fixme(heysion) set files directory
-		binReactor.SearchPath = configInfo.Basedir
+		binReactor.SearchPath = ConfigInfo.Basedir
 
 		// copy deb data
 		// fixme(heysion): todo
 
 		// fixme(jianqiang)
 		// make new directory that need to be created for linglong files stucturesk
+		// 定义拷贝的目标目录
+		ConfigInfo.ExportDir = ConfigInfo.Workdir + "/export"
+		// 导出export目录
+		ConfigInfo.Export()
 
 		// find all elf file with path
 		// FilerList := ("libc.so","lib.so")
@@ -642,9 +503,9 @@ Convert:
 
 		//binReactor.FixElfLDDPath(binReactor.SearchPath + "bin/lib")
 		//
-		// GetFindElfMissDepends(configInfo.Basedir + "/lib")
-		elfLDDLog := configInfo.DebWorkdir + "/elfldd.log"
-		elfLDDShell := configInfo.DebWorkdir + "/elfldd.sh"
+		// GetFindElfMissDepends(ConfigInfo.Basedir + "/lib")
+		elfLDDLog := ConfigInfo.DebWorkdir + "/elfldd.log"
+		elfLDDShell := ConfigInfo.DebWorkdir + "/elfldd.sh"
 
 		logger.Debugf("out: %s , sh: %s", elfLDDLog, elfLDDShell)
 
@@ -652,12 +513,12 @@ Convert:
 
 		// // mount shell to chroot
 		// logger.Debug("set output in chroot: elfldd.log")
-		// if _, msg, err := ExecAndWait(10, "mount", "-B", configInfo.DebWorkdir+"/elfldd.log", configInfo.Rootfsdir+configInfo.DebWorkdir+"/elfldd.log"); err != nil {
-		// 	logger.Fatalf("mount %s to %s failed! ", configInfo.Rootfsdir+configInfo.DebWorkdir+"/elfldd.log", err, msg)
+		// if _, msg, err := ExecAndWait(10, "mount", "-B", ConfigInfo.DebWorkdir+"/elfldd.log", ConfigInfo.Rootfsdir+ConfigInfo.DebWorkdir+"/elfldd.log"); err != nil {
+		// 	logger.Fatalf("mount %s to %s failed! ", ConfigInfo.Rootfsdir+ConfigInfo.DebWorkdir+"/elfldd.log", err, msg)
 		// }
 
 		// chroot
-		if ret, msg, err := ChrootExecShell(configInfo.Rootfsdir, elfLDDShell, configInfo.DebWorkdir); !ret {
+		if ret, msg, err := ChrootExecShell(ConfigInfo.Rootfsdir, elfLDDShell, ConfigInfo.DebWorkdir); !ret {
 			logger.Fatal("chroot exec shell failed:", msg, err)
 			return
 		}
@@ -714,28 +575,28 @@ Convert:
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Inside rootCmd PostRun with args: %v\n", args)
-		//configInfo.MountsItem.DoUmountAOnce()
+		//ConfigInfo.MountsItem.DoUmountAOnce()
 
 		// umount overlayfs
 		logger.Debug("umount rootfs")
-		if ret, err := rfs.UmountRfs(configInfo.Rootfsdir); !ret {
+		if ret, err := rfs.UmountRfs(ConfigInfo.Rootfsdir); !ret {
 			logger.Error("mount iso failed!", err)
 		}
 
 		// umount squashfs
 		logger.Debug("umount squashfs")
-		if ret, err := rfs.UmountSquashfs(configInfo.Workdir + "/iso/live"); !ret {
+		if ret, err := rfs.UmountSquashfs(ConfigInfo.Workdir + "/iso/live"); !ret {
 			logger.Error("mount iso failed!", err)
 		}
 
 		// umount iso
 		logger.Debug("umount iso")
-		if ret, err := rfs.UmountIso(configInfo.Workdir + "/iso/mount"); !ret {
+		if ret, err := rfs.UmountIso(ConfigInfo.Workdir + "/iso/mount"); !ret {
 			logger.Error("mount iso failed!", err)
 		}
-		//  umount configInfo.Rootfsdir
+		//  umount ConfigInfo.Rootfsdir
 		logger.Debug("umount mounts devs")
-		configInfo.MountsItem.DoUmountAOnce()
+		ConfigInfo.MountsItem.DoUmountAOnce()
 
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
@@ -775,10 +636,10 @@ func main() {
 	// init cmd add
 	rootCmd.AddCommand(initCmd)
 
-	initCmd.Flags().StringVarP(&configInfo.Config, "config", "c", "", "config")
-	initCmd.Flags().StringVarP(&configInfo.Workdir, "workdir", "w", "", "work directory")
-	//initCmd.Flags().StringVarP(&configInfo.iso, "iso", "f", "", "iso")
-	initCmd.Flags().BoolVarP(&configInfo.Cache, "keep-cached", "k", true, "keep cached")
+	initCmd.Flags().StringVarP(&ConfigInfo.Config, "config", "c", "", "config")
+	initCmd.Flags().StringVarP(&ConfigInfo.Workdir, "workdir", "w", "", "work directory")
+	//initCmd.Flags().StringVarP(&ConfigInfo.iso, "iso", "f", "", "iso")
+	initCmd.Flags().BoolVarP(&ConfigInfo.Cache, "keep-cached", "k", true, "keep cached")
 	err := initCmd.MarkFlagRequired("config")
 	if err != nil {
 		logger.Fatal("config required failed", err)
@@ -787,10 +648,10 @@ func main() {
 
 	// convert cmd add
 	rootCmd.AddCommand(convertCmd)
-	convertCmd.Flags().StringVarP(&transInfo.yamlconfig, "config", "c", "", "config")
-	convertCmd.Flags().StringVarP(&transInfo.Workdir, "workdir", "w", "", "work directory")
-	convertCmd.Flags().StringVarP(&transInfo.CachePath, "cache-file", "f", "", "cache yaml file")
-	convertCmd.Flags().StringVarP(&transInfo.debPath, "deb-file", "d", "", "deb file")
+	convertCmd.Flags().StringVarP(&TransInfo.Yamlconfig, "config", "c", "", "config")
+	convertCmd.Flags().StringVarP(&TransInfo.Workdir, "workdir", "w", "", "work directory")
+	convertCmd.Flags().StringVarP(&TransInfo.CachePath, "cache-file", "f", "", "cache yaml file")
+	convertCmd.Flags().StringVarP(&TransInfo.DebPath, "deb-file", "d", "", "deb file")
 
 	err = convertCmd.MarkFlagRequired("config")
 	if err != nil {
@@ -804,21 +665,21 @@ func main() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
 	// root cmd add
-	rootCmd.PersistentFlags().BoolVarP(&configInfo.Verbose, "verbose", "v", false, "verbose output")
+	rootCmd.PersistentFlags().BoolVarP(&ConfigInfo.Verbose, "verbose", "v", false, "verbose output")
 
-	if configInfo.Workdir == "" {
-		configInfo.Workdir = "/mnt/workdir"
+	if ConfigInfo.Workdir == "" {
+		ConfigInfo.Workdir = "/mnt/workdir"
 	}
 
-	if transInfo.Workdir == "" {
-		transInfo.Workdir = "/mnt/workdir"
+	if TransInfo.Workdir == "" {
+		TransInfo.Workdir = "/mnt/workdir"
 	}
 	// fix cache path
-	if transInfo.CachePath == "" {
-		transInfo.CachePath = transInfo.Workdir + "/cache.yaml"
+	if TransInfo.CachePath == "" {
+		TransInfo.CachePath = TransInfo.Workdir + "/cache.yaml"
 	}
 
-	configInfo.MountsItem.Mounts = make(map[string]MountItem)
+	ConfigInfo.MountsItem.Mounts = make(map[string]MountItem)
 
 	err = rootCmd.Execute()
 	if err != nil {
