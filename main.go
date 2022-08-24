@@ -436,7 +436,7 @@ var initCmd = &cobra.Command{
 		configInfo.Rootfsdir = fmt.Sprintf("%s/rootfs", configInfo.Workdir)
 		err = os.Mkdir(configInfo.Rootfsdir, 0755)
 		if os.IsNotExist(err) {
-			logger.Error("mkdir runtime basedir failed!", err)
+			logger.Error("mkdir rootfsdir failed!", err)
 		}
 
 		err = os.Mkdir(configInfo.Basedir, 0755)
@@ -511,6 +511,7 @@ Convert:
 		}
 
 		logger.Debug("load cache.yaml", transInfo.CachePath)
+		transInfo.CachePath = transInfo.Workdir + "/cache.yaml"
 
 		if ret, msg := CheckFileExits(transInfo.CachePath); ret {
 			// load cache.yaml

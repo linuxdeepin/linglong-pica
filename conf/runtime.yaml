@@ -7,9 +7,9 @@ sdk:
       hash: 7e608086182e5cfe402e305487311c0fd60f2a3825c4aefe53eab3daa365cccf
     - 
       type: ostree
-      ref: org.deepin.Runtime/20/x86_64
+      ref: linglong/org.deepin.Runtime/20.5.0/x86_64/runtime
       hash:
-      remote: http://10.20.54.2:8888/repo/
+      remote: https://repo.linglong.space/repo
   extra:
     repo:
       - "deb [trusted=yes] http://pools.uniontech.com/desktop-professional/ eagle main contrib non-free"

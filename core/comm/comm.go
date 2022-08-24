@@ -217,7 +217,7 @@ func (ts *BaseInfo) CheckoutOstree(target string) bool {
 		logger.Errorf("msg: %v ,err: %+v", msg, err)
 		return false
 	}
-	return false
+	return true
 }
 
 func (ts *BaseInfo) InitOstree(ostreePath string) bool {
@@ -238,7 +238,7 @@ func (ts *BaseInfo) InitOstree(ostreePath string) bool {
 		}
 
 		logger.Debug("ostree pull")
-		_, msg, err = ExecAndWait(30, "ostree", "pull", "runtime", "--repo", ts.Path, "--mirror", ts.Ref)
+		_, msg, err = ExecAndWait(300, "ostree", "pull", "runtime", "--repo", ts.Path, "--mirror", ts.Ref)
 		if err != nil {
 			logger.Errorf("msg: %+v err:%+v", msg, err)
 			return false
