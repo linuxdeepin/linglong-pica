@@ -192,8 +192,12 @@ func (ts *BaseInfo) CheckIsoHash() bool {
 }
 
 func (ts *BaseInfo) FetchIsoFile(workdir, isopath string) bool {
+	//转化绝对路径
+	isoAbsPath, _ := filepath.Abs(isopath)
+	//如果下载目录不存在就创建目录
+	CreateDir(GetFilePPath(isoAbsPath))
 	if ts.Type == "iso" {
-		ts.Path = isopath
+		ts.Path = isoAbsPath
 		_, msg, err := ExecAndWait(1<<20, "wget", "-O", ts.Path, ts.Ref)
 		if err != nil {
 			logger.Errorf("msg: %+v err:%+v", msg, err)
@@ -216,10 +220,10 @@ func (ts *BaseInfo) CheckoutOstree(target string) bool {
 	return false
 }
 
-func (ts *BaseInfo) InitOstree(workdir string) bool {
+func (ts *BaseInfo) InitOstree(ostreePath string) bool {
 	if ts.Type == "ostree" {
 		logger.Debug("ostree init")
-		ts.Path = fmt.Sprintf("%s/runtime", workdir)
+		ts.Path = ostreePath
 		_, msg, err := ExecAndWait(10, "ostree", "init", "--mode=bare-user-only", "--repo", ts.Path)
 		if err != nil {
 			logger.Errorf("msg: %v ,err: %+v", msg, err)

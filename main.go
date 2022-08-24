@@ -40,6 +40,7 @@ type Config struct {
 	debPath           string
 	IsRuntimeFetch    bool   `yaml:"runtime-fetched"`
 	IsRuntimeCheckout bool   `yaml:"runtime-checkedout"`
+	RuntimeOstreeDir  string `yaml:"runtime-ostreedir"`
 	RuntimeBasedir    string `yaml:"runtime-basedir"`
 	IsIsoDownload     bool   `yaml:"iso-downloaded"`
 	IsoPath           string `yaml:"iso-path"`
@@ -319,7 +320,8 @@ var initCmd = &cobra.Command{
 			case "ostree":
 				if !configInfo.IsRuntimeFetch {
 					logger.Debug("ostree init")
-					if ret := SdkConf.SdkInfo.Base[idx].InitOstree(configInfo.Workdir); !ret {
+					configInfo.RuntimeOstreeDir = fmt.Sprintf("%s/runtime", configInfo.Workdir)
+					if ret := SdkConf.SdkInfo.Base[idx].InitOstree(configInfo.RuntimeOstreeDir); !ret {
 						logger.Error("init ostree failed")
 						configInfo.IsRuntimeFetch = false
 						return
