@@ -211,10 +211,10 @@ func (ts *BaseInfo) CheckoutOstree(target string) bool {
 	return false
 }
 
-func (ts *BaseInfo) InitOstree(workdir string) bool {
+func (ts *BaseInfo) InitOstree(ostreePath string) bool {
 	if ts.Type == "ostree" {
 		logger.Debug("ostree init")
-		ts.Path = fmt.Sprintf("%s/runtime", workdir)
+		ts.Path = ostreePath
 		_, msg, err := ExecAndWait(10, "ostree", "init", "--mode=bare-user-only", "--repo", ts.Path)
 		if err != nil {
 			logger.Errorf("msg: %v ,err: %+v", msg, err)
