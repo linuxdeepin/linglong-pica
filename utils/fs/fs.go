@@ -48,7 +48,7 @@ func CheckFileExits(file string) (bool, error) {
 
 	_logger.Debug("check file exists: ", file)
 	if _, err := os.Stat(file); os.IsNotExist(err) {
-		_logger.Error("file not exists and exit", err)
+		_logger.Warnw("file not exists and exit", err)
 		return false, err
 	} else if err == nil {
 		_logger.Debug("file exists")

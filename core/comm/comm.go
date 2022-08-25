@@ -17,12 +17,222 @@ import (
 	"io/ioutil"
 	. "ll-pica/utils/fs"
 	. "ll-pica/utils/log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
 
 	"go.uber.org/zap"
 )
+
+// app config with runtime
+
+var ConfigInfo Config
+var TransInfo Config
+var DebConf DebConfig
+
+type Config struct {
+	Verbose           bool   `yaml:"verbose"`
+	Config            string `yaml:"config"`
+	Workdir           string `yaml:"workdir"`
+	Basedir           string `yaml:"basedir"`
+	IsInited          bool   `yaml:"inited"`
+	Cache             bool   `yaml:"cache"`
+	CachePath         string `yaml:"cache-path"`
+	DebWorkdir        string `yaml:"debdir"`
+	DebPath           string
+	IsRuntimeFetch    bool   `yaml:"runtime-fetched"`
+	IsRuntimeCheckout bool   `yaml:"runtime-checkedout"`
+	RuntimeOstreeDir  string `yaml:"runtime-ostreedir"`
+	RuntimeBasedir    string `yaml:"runtime-basedir"`
+	IsIsoDownload     bool   `yaml:"iso-downloaded"`
+	IsoPath           string `yaml:"iso-path"`
+	IsoMountDir       string `yaml:"iso-mount-dir"`
+	IsIsoChecked      bool   `yaml:"iso-checked"`
+	Rootfsdir         string `yaml:"rootfsdir"`
+	MountsItem        Mounts `yaml:"mounts"`
+	Yamlconfig        string
+	ExportDir         string `yaml:"exportdir"`
+	FilesSearchPath   string `yaml:"files-search-path"`
+}
+
+type MountItem struct {
+	MountPoint string `yaml:"mountpoint"`
+	Source     string `yaml:"source"`
+	Type       string `yaml:"type"`
+	IsRbind    bool   `yaml:"bind"`
+}
+
+type Mounts struct {
+	Mounts map[string]MountItem `yaml:"mounts"`
+}
+
+func (ts Mounts) DoMountALL() []error {
+
+	logger.Debug("mount list: ", len(ts.Mounts))
+	var errs []error
+	if len(ts.Mounts) == 0 {
+		return errs
+	}
+
+	var msg string
+	var err error
+
+	for _, item := range ts.Mounts {
+
+		logger.Debugf("mount: ", item.MountPoint, item.Source, item.Type, item.IsRbind)
+		if IsRbind := item.IsRbind; IsRbind {
+
+			// sudo mount --rbind /tmp/ /mnt/workdir/rootfs/tmp/
+			_, msg, err = ExecAndWait(10, "mount", "--rbind", item.Source, item.MountPoint)
+			if err != nil {
+				logger.Warnf("mount bind failed: ", msg, err)
+				errs = append(errs, err)
+			}
+
+			// sudo mount --make-rslave /mnt/workdir/rootfs/tmp/
+			_, msg, err = ExecAndWait(10, "mount", "--make-rslave", item.MountPoint)
+			if err != nil {
+				logger.Warnf("mount bind rslave failed: ", msg, err)
+				errs = append(errs, err)
+			}
+
+		} else {
+			_, msg, err = ExecAndWait(10, "mount", "-t", item.Type, item.Source, item.MountPoint)
+			if err != nil {
+				logger.Warnf("mount failed: ", msg, err)
+				errs = append(errs, err)
+			}
+		}
+
+	}
+	return errs
+}
+
+func (ts Mounts) DoUmountALL() []error {
+	logger.Debug("mount list: ", len(ts.Mounts))
+	var errs []error
+	if len(ts.Mounts) == 0 {
+		return errs
+	}
+
+	for _, item := range ts.Mounts {
+		logger.Debugf("umount: ", item.MountPoint)
+		_, msg, err := ExecAndWait(10, "umount", item.MountPoint)
+		if err != nil {
+			logger.Warnf("umount failed: ", msg, err)
+			errs = append(errs, err)
+		} else {
+			delete(ts.Mounts, item.MountPoint)
+		}
+
+	}
+	return errs
+}
+
+func (ts Mounts) DoUmountAOnce() []error {
+	return nil
+	logger.Debug("mount list: ", len(ts.Mounts))
+	var errs []error
+	if len(ts.Mounts) == 0 {
+		return nil
+	}
+
+	idx := 0
+UMOUNT_ONCE:
+	_, msg, err := ExecAndWait(10, "umount", "-R", ConfigInfo.Rootfsdir)
+	if err == nil {
+		idx++
+		if idx < 10 {
+			goto UMOUNT_ONCE
+		}
+	} else {
+		logger.Warnf("umount success: ", msg, err)
+		errs = append(errs, nil)
+	}
+	for _, item := range ts.Mounts {
+		logger.Debugf("umount: ", item.MountPoint)
+		delete(ts.Mounts, item.MountPoint)
+
+	}
+	return errs
+}
+
+func (ts *Mounts) FillMountRules() {
+
+	logger.Debug("mount list: ", len(ts.Mounts))
+	ts.Mounts[ConfigInfo.Rootfsdir+"/dev/"] = MountItem{ConfigInfo.Rootfsdir + "/dev/", "/dev/", "tmpfs", true}
+	ts.Mounts[ConfigInfo.Rootfsdir+"/sys/"] = MountItem{ConfigInfo.Rootfsdir + "/sys/", "/sys/", "sysfs", true}
+	ts.Mounts[ConfigInfo.Rootfsdir+"/tmp/"] = MountItem{ConfigInfo.Rootfsdir + "/tmp/", "/tmp/", "tmpfs", true}
+	ts.Mounts[ConfigInfo.Rootfsdir+"/etc/resolv.conf"] = MountItem{ConfigInfo.Rootfsdir + "/etc/resolv.conf", "/etc/resolv.conf", "tmpfs", true}
+
+	ts.Mounts[ConfigInfo.Rootfsdir+"/proc/"] = MountItem{ConfigInfo.Rootfsdir + "/proc/", "none", "proc", false}
+
+	logger.Debug("mount list: ", len(ts.Mounts))
+}
+
+func (config *Config) Export() (bool, error) {
+	// 检查新建export目录
+	if ret, err := CheckFileExits(config.ExportDir); !ret && err != nil {
+		CreateDir(config.ExportDir)
+	} else {
+		os.RemoveAll(config.ExportDir)
+		CreateDir(config.ExportDir)
+	}
+
+	// 定义需要拷贝的usr目录列表并处理
+	usrDirMap := map[string]string{
+		"usr/bin":   "files/bin",
+		"usr/share": "files/share",
+		"usr/lib":   "files/lib",
+		"etc":       "files/etc",
+	}
+
+	rsyncDir := func(timeout int, src, dst string) (stdout string, stderr string, err error) {
+		// 判断rsync命令是否存在
+		if _, err := exec.LookPath("rsync"); err != nil {
+			// return CopyFileKeepPath(src,dst)
+		}
+		return ExecAndWait(timeout, "rsync", "-av", src, dst)
+	}
+
+	for key, value := range usrDirMap {
+		keyPath := ConfigInfo.Basedir + "/" + key
+		valuePath := ConfigInfo.ExportDir + "/" + value
+		if ret, err := CheckFileExits(keyPath); ret && err == nil {
+			CreateDir(valuePath)
+			rsyncDir(30, keyPath+"/", valuePath)
+		}
+	}
+
+	// 拷贝处理/opt目录
+	srcOptPath := ConfigInfo.Basedir + "/opt/apps/" + DebConf.Info.Appid
+	if ret, err := CheckFileExits(srcOptPath); ret && err == nil {
+		rsyncDir(30, srcOptPath+"/", ConfigInfo.ExportDir)
+	}
+
+	// 特殊处理applications、icons、dbus-1、systemd、mime、autostart、help等目录
+	specialDirList := []string{
+		"files/share/applications",
+		"files/share/icons",
+		"files/share/dbus-1",
+		"files/lib/systemd",
+		"files/share/mime",
+		"files/etc/xdg/autostart",
+		"files/share/help",
+	}
+	for _, dir := range specialDirList {
+		srcPath := ConfigInfo.ExportDir + "/" + dir + "/"
+		if ret, err := CheckFileExits(srcPath); ret && err == nil {
+			dstPath := ConfigInfo.ExportDir + "/entries/" + GetFileName(srcPath)
+			CreateDir(dstPath)
+			rsyncDir(30, srcPath, dstPath)
+			os.RemoveAll(srcPath)
+		}
+	}
+	ConfigInfo.FilesSearchPath = ConfigInfo.ExportDir + "/files"
+	return true, nil
+}
 
 var logger *zap.SugaredLogger
 
@@ -209,7 +419,7 @@ func (ts *BaseInfo) FetchIsoFile(workdir, isopath string) bool {
 }
 
 func (ts *BaseInfo) CheckoutOstree(target string) bool {
-	// configInfo.RuntimeBasedir = fmt.Sprintf("%s/runtimedir", configInfo.Workdir)
+	// ConfigInfo.RuntimeBasedir = fmt.Sprintf("%s/runtimedir", ConfigInfo.Workdir)
 	logger.Debug("ostree checkout %s to %s", ts.Path, target)
 	_, msg, err := ExecAndWait(10, "ostree", "checkout", "--repo", ts.Path, ts.Ref, target)
 
@@ -217,7 +427,7 @@ func (ts *BaseInfo) CheckoutOstree(target string) bool {
 		logger.Errorf("msg: %v ,err: %+v", msg, err)
 		return false
 	}
-	return false
+	return true
 }
 
 func (ts *BaseInfo) InitOstree(ostreePath string) bool {
@@ -238,7 +448,7 @@ func (ts *BaseInfo) InitOstree(ostreePath string) bool {
 		}
 
 		logger.Debug("ostree pull")
-		_, msg, err = ExecAndWait(30, "ostree", "pull", "runtime", "--repo", ts.Path, "--mirror", ts.Ref)
+		_, msg, err = ExecAndWait(300, "ostree", "pull", "runtime", "--repo", ts.Path, "--mirror", ts.Ref)
 		if err != nil {
 			logger.Errorf("msg: %+v err:%+v", msg, err)
 			return false

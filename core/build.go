@@ -264,10 +264,10 @@ apt_install_deb
 {{if len .ExtraPackageStr }}apt_install_pkgs{{end}}
 `
 
-func RenderDebConfig(debConf DebConfig, save string) (bool, error) {
+func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 
 	// init template
-	logger.Debug("render deb config: ", debConf)
+	logger.Debug("render deb config: ", DebConf)
 	tpl, err := template.New("pica").Parse(DEB_SHELL_TMPL)
 
 	if err != nil {
@@ -277,15 +277,15 @@ func RenderDebConfig(debConf DebConfig, save string) (bool, error) {
 
 	debShell := DebShellTemplate{"", "", false}
 
-	for _, debStr := range debConf.FileElement.Deb {
+	for _, debStr := range DebConf.FileElement.Deb {
 
 		logger.Debugf("deb str: %s path :%s", debStr, debStr.Path)
 		debShell.DebString += debStr.Path
 		debShell.DebString += " "
 	}
 
-	if len(debConf.FileElement.Package) != 0 {
-		debShell.ExtraPackageStr = strings.Join(debConf.FileElement.Package, " ")
+	if len(DebConf.FileElement.Package) != 0 {
+		debShell.ExtraPackageStr = strings.Join(DebConf.FileElement.Package, " ")
 	} else {
 		debShell.ExtraPackageStr = ""
 	}
