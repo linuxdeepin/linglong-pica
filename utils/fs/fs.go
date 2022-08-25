@@ -13,18 +13,20 @@ package fs
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	. "ll-pica/utils/log"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"go.uber.org/zap"
 )
 
-var _logger *zap.SugaredLogger
+var logger *zap.SugaredLogger
 
 func init() {
-	_logger = InitLog()
+	logger = InitLog()
 }
 
 /*!
@@ -46,12 +48,12 @@ func IsDir(file string) bool {
  */
 func CheckFileExits(file string) (bool, error) {
 
-	_logger.Debug("check file exists: ", file)
+	logger.Debug("check file exists: ", file)
 	if _, err := os.Stat(file); os.IsNotExist(err) {
-		_logger.Warnw("file not exists and exit", err)
+		logger.Error("file not exists and exit", err)
 		return false, err
 	} else if err == nil {
-		_logger.Debug("file exists")
+		logger.Debug("file exists")
 		return true, nil
 	}
 	return false, nil
@@ -64,12 +66,12 @@ func CheckFileExits(file string) (bool, error) {
  */
 func CreateDir(file string) (bool, error) {
 
-	_logger.Debug("create file: ", file)
+	logger.Debug("create file: ", file)
 	if err := os.MkdirAll(file, 0755); err == nil {
-		_logger.Debug("create file: ", file, " mask: 0755")
+		logger.Debug("create file: ", file, " mask: 0755")
 		return true, nil
 	} else {
-		_logger.Error("create file error: ", err)
+		logger.Error("create file error: ", err)
 		return false, err
 	}
 
@@ -105,7 +107,7 @@ func GetFilePPath(file string) string {
  */
 func MoveFileOrDir(src, dst string) (bool, error) {
 	if ret, err := CheckFileExits(src); !ret {
-		_logger.Warnw(src, " no existd!")
+		logger.Warnw(src, " no existd!")
 		return false, err
 	}
 	dstDirPath := GetFilePPath(dst)
@@ -161,12 +163,12 @@ func CopyFile(src, dst string) (bool, error) {
 func CopyDir(src, dst string) bool {
 	//检查源目录是否存在
 	if ret, _ := CheckFileExits(src); !ret {
-		_logger.Warnw(src, " no existd!")
+		logger.Warnw(src, " no existd!")
 		return false
 	}
 
 	if strings.TrimSpace(src) == strings.TrimSpace(dst) {
-		_logger.Warnw("源路径与目标路径一样")
+		logger.Warnw("源路径与目标路径一样")
 		return false
 	}
 
@@ -205,4 +207,142 @@ func CopyDir(src, dst string) bool {
 	})
 
 	return err == nil
+}
+
+// Copy File Keep Permission
+// return error if copy fails
+func CopyFileKeepPermission(src, dst string, mod, owner bool) (err error) {
+	srcFd, err := os.Open(src)
+	if err != nil {
+		return
+	}
+	defer srcFd.Close()
+
+	dstFd, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if e := dstFd.Close(); e != nil {
+			err = e
+		}
+	}()
+
+	if _, err = io.Copy(dstFd, srcFd); err != nil {
+		return err
+	}
+
+	if err = dstFd.Sync(); err != nil {
+		return err
+	}
+
+	fileStat, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if mod {
+		if err = os.Chmod(dst, fileStat.Mode()); err != nil {
+			return err
+		}
+	}
+
+	if owner {
+		if stat, ok := fileStat.Sys().(*syscall.Stat_t); ok {
+			UID := int(stat.Uid)
+			GID := int(stat.Gid)
+			if err = os.Chown(dst, UID, GID); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+/*!
+ * @brief CopyDirKeepPathAndPerm 复制文件同时保留目录结构
+ * @param src path 来源
+ * @param dst path 目的路径
+ * @return 成功与失败
+ */
+func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err error) {
+	src = filepath.Clean(src)
+	dst = filepath.Clean(dst)
+
+	si, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if !si.IsDir() {
+		logger.Errorf("source only support directory")
+		return fmt.Errorf("source is not a directory")
+	}
+
+	_, err = os.Stat(dst)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err == nil && !os.IsNotExist(err) {
+		if !force {
+			logger.Errorf("destination already exists failed")
+			return fmt.Errorf("destination already exists")
+		} else {
+			if err := os.RemoveAll(dst); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err = os.MkdirAll(dst, si.Mode()); err != nil {
+		return err
+	}
+
+	items, err := ioutil.ReadDir(src)
+	if err != nil {
+		return
+	}
+
+	for _, item := range items {
+		srcPath := filepath.Join(src, item.Name())
+		dstPath := filepath.Join(dst, item.Name())
+
+		if item.IsDir() {
+			// not drop subdirectories
+			if err = CopyDirKeepPathAndPerm(srcPath, dstPath, false, mod, owner); err != nil {
+				return err
+			}
+		} else {
+			// copy link data
+			// fixme(heysion)
+			if item.Mode()&os.ModeSymlink != 0 {
+				realPath, err := os.Readlink(srcPath)
+				if err != nil {
+					logger.Warnf("link failed to read link data: %v %s %s", err, realPath, srcPath)
+					return err
+				}
+				if realPathFileInfo, err := os.Stat(dst); err != nil {
+					if realPathFileInfo.IsDir() {
+						if err = CopyDirKeepPathAndPerm(realPath, dstPath, false, mod, owner); err != nil {
+							return err
+						}
+					} else {
+						// copy data drop the mod and owner
+						if err = CopyFileKeepPermission(srcPath, dstPath, false, false); err != nil {
+							logger.Warnf("link %s to %s failed: %v", srcPath, dstPath, err)
+							return err
+						}
+					}
+				}
+
+				continue
+			}
+			// copy file keep the mod and owner
+			if err = CopyFileKeepPermission(srcPath, dstPath, mod, owner); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
