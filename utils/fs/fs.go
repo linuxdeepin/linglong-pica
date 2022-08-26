@@ -11,12 +11,14 @@
 package fs
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
 	. "ll-pica/utils/log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 
@@ -50,7 +52,7 @@ func CheckFileExits(file string) (bool, error) {
 
 	logger.Debug("check file exists: ", file)
 	if _, err := os.Stat(file); os.IsNotExist(err) {
-		logger.Error("file not exists and exit", err)
+		logger.Warnw("file not exists and exit", err)
 		return false, err
 	} else if err == nil {
 		logger.Debug("file exists")
@@ -321,7 +323,7 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 					logger.Warnf("link failed to read link data: %v %s %s", err, realPath, srcPath)
 					return err
 				}
-				if realPathFileInfo, err := os.Stat(dst); err != nil {
+				if realPathFileInfo, err := os.Stat(realPath); err != nil {
 					if realPathFileInfo.IsDir() {
 						if err = CopyDirKeepPathAndPerm(realPath, dstPath, false, mod, owner); err != nil {
 							return err
@@ -345,4 +347,139 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 	}
 
 	return nil
+}
+
+// 初始化desktop文件
+type DesktopData map[string]map[string]string
+
+const (
+	GroupBegin uint32 = iota
+	KeyValue
+	Empty
+	Comments
+)
+
+func DesktopInit(desktopFilePath string) (bool, DesktopData) {
+	if ret, err := CheckFileExits(desktopFilePath); !ret && err != nil {
+		logger.Errorw("desktop file not exists：", desktopFilePath)
+		return false, nil
+	}
+	file, err := os.Open(desktopFilePath)
+	if err != nil {
+		logger.Errorw("open file failed: ", desktopFilePath)
+		return false, nil
+	}
+	defer file.Close()
+	reader := bufio.NewReader(file)
+
+	lineType := func(line string) uint32 {
+		for _, c := range line {
+			switch c {
+			case '#':
+				return Comments
+			case '[':
+				return GroupBegin
+			case ' ':
+				break
+			case '=':
+				return KeyValue
+			case '\n':
+				break
+			default:
+				return KeyValue
+			}
+		}
+		return Empty
+	}
+
+	parseGroupKey := func(line string) string {
+		newLine := strings.Replace(line, "[", "", -1)
+		newLine = strings.Replace(newLine, "]", "", -1)
+		return newLine
+	}
+
+	parseKeyValue := func(line string) (string, string) {
+		value := strings.Split(line, "=")
+		return value[0], value[1]
+	}
+	data := make(DesktopData, 10)
+	var groupName string
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				logger.Debug("File read ok! : ", desktopFilePath)
+				break
+			} else {
+				logger.Errorw("Read file error! : ", desktopFilePath)
+				return false, nil
+			}
+		}
+		// 去掉换行符号
+		line = strings.TrimRight(line, "\r\n")
+		switch lineType(line) {
+		case GroupBegin:
+			groupName = parseGroupKey(line)
+			break
+		case KeyValue:
+			key, value := parseKeyValue(line)
+			if data[groupName] == nil {
+				subMap := make(map[string]string, 200)
+				data[groupName] = subMap
+			}
+
+			data[groupName][key] = value
+
+			break
+		case Empty:
+		case Comments:
+			break
+		}
+	}
+	//fmt.Printf("%v", data)
+	return true, data
+}
+
+// 通过desktop文件返回其groupName
+func DesktopGroupname(desktopFile string) []string {
+	ok, data := DesktopInit(desktopFile)
+	if !ok && data == nil {
+		logger.Errorw("Init dekstop failed! : ", desktopFile)
+		return nil
+	}
+	groupNmaeList := []string{}
+	for name := range data {
+		groupNmaeList = append(groupNmaeList, name)
+		fmt.Printf("%s\n", data[name]["Exec"])
+	}
+	return groupNmaeList
+}
+
+// 转换Exec字段为玲珑格式
+func TransExecToLl(exec, appid string) string {
+	// 去掉/usr/bin/
+	if ret := strings.HasPrefix(exec, "/usr/bin"); ret {
+		exec = strings.Replace(exec, "/usr/bin/", "", -1)
+	}
+	// 去掉首尾空格
+	exec = strings.TrimSpace(exec)
+	// 添加 ll-cli run appid --exec
+	exec = "ll-cli run " + appid + " --exec " + "\"" + exec + "\""
+
+	// 查找占位符
+	findSign := func(exec string) string {
+		reg := regexp.MustCompile("%.")
+		if ret := reg.FindAllString(exec, -1); ret != nil {
+			return ret[0]
+		}
+		return ""
+	}
+
+	// 占位符放到引号外
+	if ret := findSign(exec); ret != "" {
+		exec = strings.Replace(exec, " "+ret, "", -1)
+		exec = exec + " " + ret
+	}
+	return exec
 }
