@@ -483,3 +483,20 @@ func TransExecToLl(exec, appid string) string {
 	}
 	return exec
 }
+
+// 转换icon字段为玲珑格式
+func TransIconToLl(iconValue string) string {
+	// 去掉首尾空格
+	iconValue = strings.TrimSpace(iconValue)
+	// 如果icon以/usr开头
+	if strings.HasPrefix(iconValue, "/usr") && strings.HasSuffix(iconValue, ".svg") {
+		iconValue = GetFileName(iconValue)
+		iconValue = strings.Replace(iconValue, ".svg", "", -1)
+	}
+	if strings.HasPrefix(iconValue, "/usr") && strings.HasSuffix(iconValue, ".png") {
+		iconValue = GetFileName(iconValue)
+		iconValue = strings.Replace(iconValue, ".png", "", -1)
+	}
+
+	return iconValue
+}

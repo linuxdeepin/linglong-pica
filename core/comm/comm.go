@@ -10,16 +10,19 @@
 package comm
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	. "ll-pica/utils/fs"
 	. "ll-pica/utils/log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -231,6 +234,108 @@ func (config *Config) Export() (bool, error) {
 		}
 	}
 	ConfigInfo.FilesSearchPath = ConfigInfo.ExportDir + "/files"
+	return true, nil
+}
+
+func (config *Config) fixDesktop(desktopFile, appid string) (bool, error) {
+	newFileDesktop := GetFilePPath(desktopFile) + "/bak-linglong.desktop"
+	newFileDesktop = filepath.Clean(newFileDesktop)
+
+	file, err := os.Open(desktopFile)
+	if err != nil {
+		logger.Errorw("desktopFile open failed! : ", desktopFile)
+		return false, err
+	}
+	defer file.Close()
+
+	newFile, newFileErr := os.OpenFile(newFileDesktop, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if newFileErr != nil {
+		logger.Errorw("desktopFile open failed! : ", newFileDesktop)
+		return false, newFileErr
+	}
+	defer newFile.Close()
+
+	reader := bufio.NewReader(file)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				logger.Debug("desktopFile read ok! : ", desktopFile)
+				break
+			} else {
+				logger.Errorw("read desktopFile failed! : ", desktopFile)
+				return false, err
+			}
+		}
+		// 处理Exec
+		if strings.HasPrefix(line, "Exec=") {
+			valueList := strings.Split(line, "=")
+			newLine := strings.TrimRight(valueList[1], "\r\n")
+			newLine = TransExecToLl(newLine, appid)
+			byteLine := []byte("Exec=" + newLine + "\n")
+			newFile.Write(byteLine)
+			// 处理TryExec
+		} else if strings.HasPrefix(line, "TryExec=") {
+			byteLine := []byte("TryExec=" + "\n")
+			newFile.Write(byteLine)
+			// 处理icon
+		} else if strings.HasPrefix(line, "Icon=") {
+			valueList := strings.Split(line, "=")
+			newLine := strings.TrimRight(valueList[1], "\r\n")
+			newLine = TransIconToLl(newLine)
+			byteLine := []byte("Icon=" + newLine + "\n")
+			newFile.Write(byteLine)
+		} else {
+			newFile.Write([]byte(line))
+		}
+	}
+	newFile.Sync()
+
+	if ret, err := MoveFileOrDir(newFileDesktop, desktopFile); !ret && err != nil {
+		logger.Errorw("move test.desktop failed!")
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (config *Config) FixDesktop(appid string) (bool, error) {
+	applicationsPath := config.ExportDir + "/entries/applications"
+	applicationsPath = filepath.Clean(applicationsPath)
+	if ret, err := CheckFileExits(applicationsPath); !ret && err != nil {
+		logger.Errorw("applications dir not exists! : ", applicationsPath)
+		return false, err
+	}
+
+	// 移除desktop目录里面多余文件
+	dropfiles := []string{
+		"bamf-2.index",
+		"mimeinfo.cache",
+	}
+	for _, file := range dropfiles {
+		dropfile := applicationsPath + "/" + file
+		if ret, err := CheckFileExits(dropfile); ret && err == nil {
+			os.RemoveAll(dropfile)
+		}
+	}
+	// 遍历desktop目录
+	fileList, err := ioutil.ReadDir(applicationsPath)
+	if err != nil {
+		logger.Errorw("readDir failed! : ", applicationsPath)
+		return false, err
+
+	}
+	for _, fileinfo := range fileList {
+		logger.Debug("read dir : ", applicationsPath)
+		desktopPath := applicationsPath + "/" + fileinfo.Name()
+		if ret := strings.HasSuffix(desktopPath, ".desktop"); ret {
+			// 处理desktop
+			if ok, err := config.fixDesktop(desktopPath, appid); !ok && err != nil {
+				return false, err
+			}
+		}
+	}
+
 	return true, nil
 }
 

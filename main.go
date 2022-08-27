@@ -564,6 +564,7 @@ Convert:
 
 		// fix desktop
 		// FixDesktop()
+		ConfigInfo.FixDesktop(DebConf.Info.Appid)
 
 		// update info.json
 
