@@ -18,6 +18,7 @@ import (
 
 	. "ll-pica/core"
 	. "ll-pica/core/comm"
+	. "ll-pica/core/info"
 	. "ll-pica/utils/fs"
 	. "ll-pica/utils/log"
 	"ll-pica/utils/rfs"
@@ -567,6 +568,7 @@ Convert:
 		ConfigInfo.FixDesktop(DebConf.Info.Appid)
 
 		// update info.json
+		CreateInfo(ConfigInfo.ExportDir, DebConf)
 
 		// umount
 
