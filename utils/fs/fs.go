@@ -277,7 +277,7 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 		return err
 	}
 	if !si.IsDir() {
-		logger.Errorf("source only support directory")
+		logger.Warnf("source only support directory")
 		return fmt.Errorf("source is not a directory")
 	}
 
@@ -287,7 +287,7 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 	}
 	if err == nil && !os.IsNotExist(err) {
 		if !force {
-			logger.Errorf("destination already exists failed")
+			logger.Warnf("destination already exists failed")
 			return fmt.Errorf("destination already exists")
 		} else {
 			if err := os.RemoveAll(dst); err != nil {
@@ -318,12 +318,23 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 			// copy link data
 			// fixme(heysion)
 			if item.Mode()&os.ModeSymlink != 0 {
-				realPath, err := os.Readlink(srcPath)
+				if realLink, err := os.Readlink(srcPath); err == nil && (realLink == "." || realLink == "..") {
+					// skip special link files
+					continue
+				} else if err != nil {
+					// skip  can not read link
+					continue
+				}
+				realPath, err := filepath.Abs(srcPath)
 				if err != nil {
 					logger.Warnf("link failed to read link data: %v %s %s", err, realPath, srcPath)
 					return err
 				}
 				if realPathFileInfo, err := os.Stat(realPath); err != nil {
+					// broken link
+					logger.Warnf("link failed to stat link data: %v %s %s", err, realPath, srcPath)
+					continue
+				} else {
 					if realPathFileInfo.IsDir() {
 						if err = CopyDirKeepPathAndPerm(realPath, dstPath, false, mod, owner); err != nil {
 							return err
