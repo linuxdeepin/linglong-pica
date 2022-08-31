@@ -66,7 +66,8 @@ func CreateInfo(infoDir string, debInfo DebConfig) (bool, error) {
 		Version:     debInfo.Info.Version,
 		Kind:        "app",
 		Description: debInfo.Info.Description,
-		Runtime:     "org.deepin.Runtime/20.5.0/x86_64",
+		// fixme(liujianqiang) get runtime from yaml file?
+		Runtime: "org.deepin.Runtime/20.5.0/x86_64",
 	}
 	infoApp.Permissions.AutoStart = false
 	infoApp.Permissions.Notification = false
