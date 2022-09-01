@@ -91,6 +91,7 @@ func (ts Mounts) DoMountALL() []error {
 			if err != nil {
 				logger.Warnf("mount bind failed: ", msg, err)
 				errs = append(errs, err)
+				// continue
 			}
 
 			// sudo mount --make-rslave /mnt/workdir/rootfs/tmp/

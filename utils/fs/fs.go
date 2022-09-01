@@ -50,9 +50,9 @@ func IsDir(file string) bool {
  */
 func CheckFileExits(file string) (bool, error) {
 
-	logger.Debug("check file exists: ", file)
+	logger.Debugf("check file exists: ", file)
 	if _, err := os.Stat(file); os.IsNotExist(err) {
-		logger.Warnw("file not exists and exit", err)
+		logger.Warnf("file not exists and exit", err)
 		return false, err
 	} else if err == nil {
 		logger.Debug("file exists")

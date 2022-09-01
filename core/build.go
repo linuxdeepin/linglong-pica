@@ -90,6 +90,66 @@ func (ts *BinFormatReactor) FixElfLDDPath(exclude []string) bool {
 }
 
 /*!
+ * @brief FixElfNeedPath
+ * @param exclude []string 排除的文件的列表
+ * @return true
+ */
+func (ts *BinFormatReactor) FixElfNeedPath(exclude []string) bool {
+
+	for _, exStr := range exclude {
+		if len(exStr) > 0 {
+			deleteKeyList := FilterMap(ts.ElfNeedPath, func(str string) bool {
+				return strings.HasSuffix(str, exStr)
+			})
+
+			if len(deleteKeyList) > 0 {
+				for _, v := range deleteKeyList {
+					delete(ts.ElfNeedPath, v)
+				}
+			}
+		}
+	}
+	return true
+}
+
+/*!
+ * @brief CopyElfNeedPath
+ * @param prefix, dst string
+ * @return true
+ */
+func (ts *BinFormatReactor) CopyElfNeedPath(prefix, dst string) bool {
+	if len(prefix) <= 0 || len(ts.ElfNeedPath) <= 0 {
+		return false
+	}
+
+	for v := range ts.ElfNeedPath {
+		srcPath := prefix + "/" + v
+		if ret, _ := CheckFileExits(srcPath); ret {
+			var dstPath string
+			if strings.HasPrefix(v, "/usr/lib") {
+				dstPath = dst + strings.Replace(v, "/usr/lib", "/lib", 1)
+			} else {
+				dstPath = dst + v
+			}
+
+			dstParentPath := GetFilePPath(dstPath)
+			logger.Debugf("Copying path %s ", dstParentPath)
+			if ret, _ := CheckFileExits(dstParentPath); !ret {
+				CreateDir(dstParentPath)
+			}
+			if err := CopyFileKeepPermission(srcPath, dstPath, true, true); err != nil {
+				logger.Warnf("copy file failed %v", err)
+				continue
+			}
+		}
+		logger.Debugf("Copying src path %s not found", srcPath)
+		continue
+	}
+	// CopyFileKeepPermission()
+	return true
+}
+
+/*!
  * @brief GetElfList
  * @param exclude string 排除的目录
  * @return 返回elf列表
@@ -129,10 +189,10 @@ type ElfLDDShellTemplate struct {
 	Verbose          bool
 }
 
+// fixme: ldd not found case
 const TMPL_ELF_LDD = `#!/bin/bash
 set -x
-ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq > {{.OutputNameString}}
-ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq > tt.log
+ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq >> {{.OutputNameString}}
 `
 
 /*!
@@ -208,31 +268,55 @@ func GetElfNeedWithStrace(elf string) (string, error) {
 	return "", nil
 }
 
-func ChrootExecShell(chroot, shell, datadir string) (bool, string, error) {
-	logger.Debugf("chroot exec shell: %s shell: %s", chroot, shell)
+func ChrootExecShell(chrootDirPath, shell string, bindMounts []string) (bool, string, error) {
+	logger.Debugf("chroot exec shell: %s shell: %s", chrootDirPath, shell)
 
 	// fixme:(heysion) mount /mnt/workdir/debdir/ to chroot /mnt/workdir/debdir
-	shellChroot := chroot + datadir
-	CreateDir(shellChroot)
-	defer func() { os.RemoveAll(shellChroot) }()
+	if len(bindMounts) > 0 {
+		for _, srcPath := range bindMounts {
+			dstPath := chrootDirPath + srcPath
+			CreateDir(dstPath)
+			defer func() { os.RemoveAll(dstPath) }()
+			logger.Debug("bind mount: ", srcPath, dstPath)
+			// bind mount src to dst
+			if _, msg, err := ExecAndWait(10, "mount", "-B", srcPath, dstPath); err != nil {
+				logger.Fatalf("mount %s to %s failed! ", srcPath, dstPath, err, msg)
+			}
+			defer func() { ExecAndWait(10, "umount", dstPath) }()
+		}
 
-	// mount shell to chroot
-	logger.Debug("copy shell to chroot: ", shell, shellChroot)
-	if _, msg, err := ExecAndWait(10, "mount", "-B", GetFilePPath(shell), shellChroot); err != nil {
-		logger.Fatalf("mount %s to %s failed! ", shell, shellChroot, err, msg)
 	}
 
-	defer func() { ExecAndWait(10, "umount", shellChroot) }()
+	// mount shell to chroot
+	shellSrcPath := GetFilePPath(shell)
+	shellDstPath := chrootDirPath + shellSrcPath
+	shellChrootPath := chrootDirPath + shell
+
+	logger.Debugf("shell src path: %s to %s", shellSrcPath, shellDstPath)
+	if ret, _ := CheckFileExits(shellDstPath); !ret {
+		CreateDir(shellDstPath)
+	}
+	// CreateDir(shellDstPath)
+	defer func() { os.RemoveAll(shellDstPath) }()
+
+	if _, msg, err := ExecAndWait(10, "mount", "-B", shellSrcPath, shellDstPath); err != nil {
+		logger.Fatalf("mount %s to %s failed! ", shell, shellDstPath, err, msg)
+		return false, msg, err
+	}
+
+	defer func() { ExecAndWait(10, "umount", shellDstPath) }()
 
 	// chmod +x shell
-	if _, msg, err := ExecAndWait(10, "chmod", "+x", "-R", shellChroot); err != nil {
-		logger.Fatalf("chmod +x %s failed! ", shellChroot, err, msg)
+	if _, msg, err := ExecAndWait(10, "chmod", "+x", "-R", shellChrootPath); err != nil {
+		logger.Fatalf("chmod +x %s failed! ", shellChrootPath, err, msg)
+		return false, msg, err
 	}
 
 	// chroot shell
-	logger.Debugf("chroot shell: path: %s shell:%s", chroot, shell)
-	if _, msg, err := ExecAndWait(1000, "chroot", chroot, shell); err != nil {
+	logger.Debugf("chroot shell: path: %s shell:%s", chrootDirPath, shell)
+	if _, msg, err := ExecAndWait(1000, "chroot", chrootDirPath, shell); err != nil {
 		logger.Fatalf("chroot exec shell failed! ", err, msg)
+		return false, msg, err
 	}
 	return true, "", nil
 }
@@ -267,7 +351,7 @@ apt_install_deb
 func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 
 	// init template
-	logger.Debug("render deb config: ", DebConf)
+	// logger.Debug("render deb config: ", DebConf)
 	tpl, err := template.New("pica").Parse(DEB_SHELL_TMPL)
 
 	if err != nil {
@@ -279,7 +363,7 @@ func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 
 	for _, debStr := range DebConf.FileElement.Deb {
 
-		logger.Debugf("deb str: %s path :%s", debStr, debStr.Path)
+		// logger.Debugf("deb str: %s path :%s", debStr, debStr.Path)
 		debShell.DebString += debStr.Path
 		debShell.DebString += " "
 	}

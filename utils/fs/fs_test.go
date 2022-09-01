@@ -66,6 +66,7 @@ var testDataSet3 = []struct {
 	{"/bin/bash.txt", false},
 	{"/etc/fstab", false},
 	{"/usr/bin/", true},
+	{"/lib/x86_64-linux-gnu/", false},
 }
 
 // test CopyDirKeepPathAndPerm
@@ -82,4 +83,42 @@ func TestCopyDirKeepPathAndPerm(t *testing.T) {
 		t.Error("failed:", err, dst)
 	}
 
+}
+
+// test CopyDirKeepPathAndPerm
+func TestCopyDirKeepPathAndPerm2(t *testing.T) {
+	// t.Parallel()
+	dst := "/tmp/aaaaaxxx"
+	for _, tds := range testDataSet3 {
+		fmt.Println(tds)
+		if err := CopyDirKeepPathAndPerm("/mnt/workdir/rootfs/"+tds.in, dst, true, false, false); err != nil && tds.ret {
+			t.Error("failed:", err, tds, dst)
+		}
+	}
+	if err := os.RemoveAll(dst); err != nil {
+		t.Error("failed:", err, dst)
+	}
+
+}
+
+var testDataSet4 = []struct {
+	in  string
+	ret bool
+}{
+	{"/bin/bash.txt", false},
+	{"/etc/fstab", true},
+	{"/etc/systemd/system", false},
+	{"/usr/lib/x86_64-linux-gnu/libc.so.6", true},
+}
+
+// test CopyFileKeepPermission
+func TestCopyFileKeepPermission(t *testing.T) {
+	dst := "/tmp/aaaaaxxx"
+
+	for _, tds := range testDataSet4 {
+		fmt.Println(tds)
+		if err := CopyFileKeepPermission("/mnt/workdir/rootfs"+tds.in, dst, true, false); err != nil && tds.ret {
+			t.Error("failed:", err, tds, dst)
+		}
+	}
 }

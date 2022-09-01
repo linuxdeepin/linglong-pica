@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 
 	. "ll-pica/core"
 	. "ll-pica/core/comm"
@@ -248,7 +247,7 @@ var initCmd = &cobra.Command{
 		if err != nil {
 			logger.Errorf("convert to yaml failed!")
 		}
-		logger.Debugf("write Config Cache: %v", string(yamlData))
+		// logger.Debugf("write Config Cache: %v", string(yamlData))
 		err = ioutil.WriteFile(fmt.Sprintf("%s/cache.yaml", ConfigInfo.Workdir), yamlData, 0644)
 		if err != nil {
 			logger.Error("write cache.yaml failed!")
@@ -315,7 +314,7 @@ var initCmd = &cobra.Command{
 		if err != nil {
 			logger.Errorf("convert to yaml failed!")
 		}
-		logger.Debugf("write Config Cache: %v", string(yamlData))
+		// logger.Debugf("write Config Cache: %v", string(yamlData))
 		err = ioutil.WriteFile(fmt.Sprintf("%s/cache.yaml", ConfigInfo.Workdir), yamlData, 0644)
 		if err != nil {
 			logger.Error("write cache.yaml failed!")
@@ -358,13 +357,13 @@ Convert:
 				logger.Fatalf("read error: %s %s", err, msg)
 				return
 			}
-			logger.Debugf("load: %s", cacheFd)
+			// logger.Debugf("load: %s", cacheFd)
 			err = yaml.Unmarshal(cacheFd, &DebConf)
 			if err != nil {
 				logger.Fatalf("unmarshal error: %s", err)
 				return
 			}
-			logger.Debugf("loaded %+v", DebConf)
+			// logger.Debugf("loaded %+v", DebConf)
 
 		}
 
@@ -385,14 +384,14 @@ Convert:
 				logger.Warnf("unmarshal error: %s", err)
 				return
 			}
-			logger.Debugf("load config info %v", ConfigInfo)
+			// logger.Debugf("load config info %v", ConfigInfo)
 		} else {
 			logger.Fatalf("can not found: %s", msg)
 			return
 		}
 
 		// fmt.Printf("Inside rootCmd PreRun with args: %v\n", args)
-		logger.Debug("mount all", ConfigInfo.MountsItem)
+		//logger.Debug("mount all", ConfigInfo.MountsItem)
 		ConfigInfo.MountsItem.DoMountALL()
 
 		logger.Debug("configinfo.rootfsdir", ConfigInfo.Rootfsdir)
@@ -404,9 +403,9 @@ Convert:
 		// ConfigInfo.Workdir = TransInfo.Workdir
 		// ConfigInfo.Rootfsdir = TransInfo.Rootfsdir
 
-		logger.Debug("ConfigInfo:", ConfigInfo)
-		logger.Debug("TransInfo:", TransInfo)
-		logger.Debug("DebConf:", DebConf)
+		// logger.Debug("ConfigInfo:", ConfigInfo)
+		// logger.Debug("TransInfo:", TransInfo)
+		// logger.Debug("DebConf:", DebConf)
 
 		if TransInfo.DebWorkdir != "" && ConfigInfo.DebWorkdir == "" {
 			ConfigInfo.DebWorkdir = TransInfo.DebWorkdir
@@ -463,15 +462,10 @@ Convert:
 		RenderDebConfig(DebConf, ConfigInfo.DebWorkdir+"/pica.sh")
 
 		// chroot
-		if ret, msg, err := ChrootExecShell(ConfigInfo.Rootfsdir, ConfigInfo.DebWorkdir+"/pica.sh", ConfigInfo.DebWorkdir); !ret {
+		if ret, msg, err := ChrootExecShell(ConfigInfo.Rootfsdir, ConfigInfo.DebWorkdir+"/pica.sh", []string{ConfigInfo.DebWorkdir}); !ret {
 			logger.Fatal("chroot exec shell failed:", msg, err)
 			return
 		}
-
-		var binReactor BinFormatReactor
-
-		// fixme(heysion) set files directory
-		binReactor.SearchPath = ConfigInfo.Basedir
 
 		// copy deb data
 		// fixme(heysion): todo
@@ -486,20 +480,36 @@ Convert:
 		// find all elf file with path
 		// FilerList := ("libc.so","lib.so")
 
+		var binReactor BinFormatReactor
+
+		// fixme(heysion) set files directory
+		binReactor.SearchPath = ConfigInfo.FilesSearchPath
 		// get elf binary  need exclude with self path
 
 		binReactor.GetElfList(binReactor.SearchPath + "/lib")
 
-		excludeSoList := []string{"ld-linux-aarch64.so",
+		excludeSoList := []string{
+			"ld-linux-aarch64.so",
 			"ld-linux-armhf.so",
 			"ld-linux-x86-64.so",
 			"ld-linux.so",
 			"ld64.so",
 			"libc.so",
+			"libc.so.6",
+			"libm.so.6",
 			"libdl.so",
+			"libdl.so.2",
 			"libgcc_s.so",
+			"libgcc_s.so.1",
 			"libm.so",
-			"libstdc++.so"}
+			"libstdc++.so",
+			"libstdc++.so.6",
+			"libz.so.1",
+			"libXi.so.6",
+			"libX11.so.6",
+			"libX11-xcb.so.1",
+			"libselinux.so.1",
+		}
 		logger.Debugf("exclude so list:", excludeSoList)
 
 		//binReactor.FixElfLDDPath(binReactor.SearchPath + "bin/lib")
@@ -519,7 +529,7 @@ Convert:
 		// }
 
 		// chroot
-		if ret, msg, err := ChrootExecShell(ConfigInfo.Rootfsdir, elfLDDShell, ConfigInfo.DebWorkdir); !ret {
+		if ret, msg, err := ChrootExecShell(ConfigInfo.Rootfsdir, elfLDDShell, []string{ConfigInfo.FilesSearchPath}); !ret {
 			logger.Fatal("chroot exec shell failed:", msg, err)
 			return
 		}
@@ -531,32 +541,47 @@ Convert:
 		}
 
 		// read elfldd.log
-		logger.Debug("read elfldd.log")
+		logger.Debug("read elfldd.log", elfLDDLog)
 		if elfLDDLogFile, err := os.Open(elfLDDLog); err != nil {
 			logger.Fatal("open elfldd.log failed:", err)
 			//elfLDDLogFile.Close()
 		} else {
 			defer elfLDDLogFile.Close()
 
+			binReactor.ElfNeedPath = make(map[string]uint)
+
 			LogFileItor := bufio.NewScanner(elfLDDLogFile)
 			LogFileItor.Split(bufio.ScanLines)
 			var ReadLine string
+			//var ReadLines map[string]uint = make(map[string]uint)
 			for LogFileItor.Scan() {
 				ReadLine = LogFileItor.Text()
-				if len(ReadLine) > 0 && func() bool {
-					for _, v := range excludeSoList {
-						return !strings.HasSuffix(ReadLine, v)
-					}
-					return true
-				}() {
-					logger.Debugf("%s", ReadLine)
+				if len(ReadLine) > 0 {
 					binReactor.ElfNeedPath[ReadLine] = 1
 				}
 			}
 
+			binReactor.FixElfNeedPath(excludeSoList)
+			// for _, exfind := range excludeSoList {
+			// 	if len(exfind) > 0 {
+			// 		deleteKeyList := FilterMap(binReactor.ElfNeedPath, func(str string) bool {
+			// 			return strings.HasSuffix(str, exfind)
+			// 		})
+
+			// 		if len(deleteKeyList) > 0 {
+			// 			for _, v := range deleteKeyList {
+			// 				delete(binReactor.ElfNeedPath, v)
+			// 			}
+			// 		}
+			// 	}
+			// }
+			logger.Debugf("fix exclude so list: %v", binReactor.ElfNeedPath)
+
 		}
 
 		logger.Debugf("found %d elf need objects", len(binReactor.ElfNeedPath))
+
+		binReactor.CopyElfNeedPath(ConfigInfo.Rootfsdir, ConfigInfo.FilesSearchPath)
 
 		// fix library
 		// if msg, ret := GetElfNeedWithLDD("/bin/bash"); ret != nil {
