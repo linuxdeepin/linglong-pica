@@ -500,7 +500,7 @@ Convert:
 		// fixme(jianqiang)
 		// make new directory that need to be created for linglong files stucturesk
 		// 定义拷贝的目标目录
-		ConfigInfo.ExportDir = ConfigInfo.Workdir + "/export"
+		ConfigInfo.ExportDir = ConfigInfo.Workdir + "/export/runtime"
 		// 导出export目录
 		ConfigInfo.Export()
 

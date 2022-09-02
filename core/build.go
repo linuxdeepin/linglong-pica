@@ -192,7 +192,7 @@ type ElfLDDShellTemplate struct {
 // fixme: ldd not found case
 const TMPL_ELF_LDD = `#!/bin/bash
 set -x
-ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq >> {{.OutputNameString}}
+ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq | sed '/^$/d' >> {{.OutputNameString}}
 `
 
 /*!
