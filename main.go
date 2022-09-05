@@ -11,6 +11,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -191,7 +192,7 @@ var initCmd = &cobra.Command{
 			case "ostree":
 				if !ConfigInfo.IsRuntimeFetch {
 					logger.Debug("ostree init")
-					ConfigInfo.RuntimeOstreeDir = fmt.Sprintf("%s/runtime", ConfigInfo.Workdir)
+					ConfigInfo.RuntimeOstreeDir = ConfigInfo.Workdir + "/runtime"
 					if ret := SdkConf.SdkInfo.Base[idx].InitOstree(ConfigInfo.RuntimeOstreeDir); !ret {
 						logger.Error("init ostree failed")
 						ConfigInfo.IsRuntimeFetch = false
@@ -200,7 +201,7 @@ var initCmd = &cobra.Command{
 						ConfigInfo.IsRuntimeFetch = true
 					}
 
-					ConfigInfo.RuntimeBasedir = fmt.Sprintf("%s/runtimedir", ConfigInfo.Workdir)
+					ConfigInfo.RuntimeBasedir = ConfigInfo.Workdir + "/runtimedir"
 					if ret := SdkConf.SdkInfo.Base[idx].CheckoutOstree(ConfigInfo.RuntimeBasedir); !ret {
 						logger.Error("checkout ostree failed")
 						ConfigInfo.IsRuntimeCheckout = false
@@ -217,7 +218,7 @@ var initCmd = &cobra.Command{
 				if !ConfigInfo.IsIsoDownload {
 					logger.Debug("iso download")
 
-					ConfigInfo.IsoPath = fmt.Sprintf("%s/iso/base.iso", ConfigInfo.Workdir)
+					ConfigInfo.IsoPath = ConfigInfo.Workdir + "/iso/base.iso"
 
 					if ret := SdkConf.SdkInfo.Base[idx].FetchIsoFile(ConfigInfo.Workdir, ConfigInfo.IsoPath); !ret {
 						ConfigInfo.IsIsoDownload = false
@@ -244,7 +245,7 @@ var initCmd = &cobra.Command{
 			}
 		}
 
-		ConfigInfo.Basedir = fmt.Sprintf("%s/basedir", ConfigInfo.Workdir)
+		ConfigInfo.Basedir = ConfigInfo.Workdir + "/basedir"
 		logger.Debug("set basedir: ", ConfigInfo.Basedir)
 
 		// extra
@@ -257,18 +258,9 @@ var initCmd = &cobra.Command{
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
 		logger.Debugf("config :%+v", ConfigInfo)
-		yamlData, err := yaml.Marshal(&ConfigInfo)
-		if err != nil {
-			logger.Errorf("convert to yaml failed!")
-		}
-		// logger.Debugf("write Config Cache: %v", string(yamlData))
-		err = ioutil.WriteFile(fmt.Sprintf("%s/cache.yaml", ConfigInfo.Workdir), yamlData, 0644)
-		if err != nil {
-			logger.Error("write cache.yaml failed!")
-		}
-
+		err := errors.New("")
 		logger.Debug("begin mount iso: ", ConfigInfo.IsoPath)
-		ConfigInfo.IsoMountDir = fmt.Sprintf("%s/iso/mount", ConfigInfo.Workdir)
+		ConfigInfo.IsoMountDir = ConfigInfo.Workdir + "/iso/mount"
 
 		if ret, _ := CheckFileExits(ConfigInfo.IsoMountDir); !ret {
 			err = os.Mkdir(ConfigInfo.IsoMountDir, 0755)
@@ -282,29 +274,29 @@ var initCmd = &cobra.Command{
 		if err != nil {
 			logger.Error("mount iso failed!", msg, err)
 		}
-		UmountIsoDir := func() {
-			ExecAndWait(10, "umount", ConfigInfo.IsoMountDir)
-		}
+		// UmountIsoDir := func() {
+		// 	ExecAndWait(10, "umount", ConfigInfo.IsoMountDir)
+		// }
 
-		defer UmountIsoDir()
+		// defer UmountIsoDir()
 
 		// mount squashfs to base dir
 
-		baseDir := fmt.Sprintf("%s/iso/live", ConfigInfo.Workdir)
+		baseDir := ConfigInfo.Workdir + "/iso/live"
 		err = os.Mkdir(baseDir, 0755)
 		if os.IsNotExist(err) {
 			logger.Error("mkdir iso mount dir failed!", err)
 		}
-		_, msg, err = ExecAndWait(10, "mount", fmt.Sprintf("%s/live/filesystem.squashfs", ConfigInfo.IsoMountDir), baseDir)
+		_, msg, err = ExecAndWait(10, "mount", ConfigInfo.IsoMountDir+"/live/filesystem.squashfs", baseDir)
 		if err != nil {
 			logger.Error("mount squashfs failed!", msg, err)
 		}
-		UmountSquashfsDir := func() {
-			ExecAndWait(10, "umount", baseDir)
-		}
-		defer UmountSquashfsDir()
+		// UmountSquashfsDir := func() {
+		// 	ExecAndWait(10, "umount", baseDir)
+		// }
+		// defer UmountSquashfsDir()
 
-		ConfigInfo.Rootfsdir = fmt.Sprintf("%s/rootfs", ConfigInfo.Workdir)
+		ConfigInfo.Rootfsdir = ConfigInfo.Workdir + "/rootfs"
 		err = os.Mkdir(ConfigInfo.Rootfsdir, 0755)
 		if os.IsNotExist(err) {
 			logger.Error("mkdir rootfsdir failed!", err)
@@ -324,7 +316,7 @@ var initCmd = &cobra.Command{
 		fmt.Printf("Inside rootCmd PostRun with args: %v\n", args)
 		ConfigInfo.IsInited = true
 
-		yamlData, err = yaml.Marshal(&ConfigInfo)
+		yamlData, err := yaml.Marshal(&ConfigInfo)
 		if err != nil {
 			logger.Errorf("convert to yaml failed!")
 		}
