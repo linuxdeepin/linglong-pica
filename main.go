@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	. "ll-pica/core"
 	. "ll-pica/core/comm"
@@ -80,10 +81,23 @@ var initCmd = &cobra.Command{
 	Short: "init sdk runtime env",
 	Long:  `init sdk runtime env with iso and runtime .`,
 	PreRun: func(cmd *cobra.Command, args []string) {
+		// 转换获取路径为绝对路径
+		if configPath, err := filepath.Abs(ConfigInfo.Config); err != nil {
+			logger.Errorf("Trans %s err: %s ", ConfigInfo.Config, err)
+		} else {
+			ConfigInfo.Config = configPath
+		}
+
+		if workPath, err := filepath.Abs(ConfigInfo.Workdir); err != nil {
+			logger.Errorf("Trans %s err: %s ", ConfigInfo.Workdir, err)
+		} else {
+			ConfigInfo.Workdir = workPath
+		}
+
 		logger.Debug("begin process cache: ", ConfigInfo.Cache)
-		configCache := fmt.Sprintf("%s/cache.yaml", ConfigInfo.Workdir)
-		runtimeDir := fmt.Sprintf("%s/runtime", ConfigInfo.Workdir)
-		isoDir := fmt.Sprintf("%s/iso", ConfigInfo.Workdir)
+		configCache := ConfigInfo.Workdir + "/cache.yaml"
+		runtimeDir := ConfigInfo.Workdir + "/runtime"
+		isoDir := ConfigInfo.Workdir + "/iso"
 
 		ClearRuntime := func() {
 			logger.Debug("begin clear runtime")
@@ -339,6 +353,19 @@ Convert:
 		// fmt.Printf("Inside rootCmd PersistentPreRun with args: %v\n", args)
 	},
 	PreRun: func(cmd *cobra.Command, args []string) {
+		// 转换获取路径为绝对路径
+		if yamlPath, err := filepath.Abs(TransInfo.Yamlconfig); err != nil {
+			logger.Errorf("Trans %s err: %s ", TransInfo.Yamlconfig, err)
+		} else {
+			TransInfo.Yamlconfig = yamlPath
+		}
+
+		if workPath, err := filepath.Abs(TransInfo.Workdir); err != nil {
+			logger.Errorf("Trans %s err: %s ", TransInfo.Workdir, err)
+		} else {
+			TransInfo.Workdir = workPath
+		}
+
 		if TransInfo.Verbose {
 			fmt.Println(TransInfo.Verbose)
 		}
