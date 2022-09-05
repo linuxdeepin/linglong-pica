@@ -276,13 +276,15 @@ func ChrootExecShell(chrootDirPath, shell string, bindMounts []string) (bool, st
 		for _, srcPath := range bindMounts {
 			dstPath := chrootDirPath + srcPath
 			CreateDir(dstPath)
-			defer func() { os.RemoveAll(dstPath) }()
 			logger.Debug("bind mount: ", srcPath, dstPath)
 			// bind mount src to dst
 			if _, msg, err := ExecAndWait(10, "mount", "-B", srcPath, dstPath); err != nil {
 				logger.Fatalf("mount %s to %s failed! ", srcPath, dstPath, err, msg)
 			}
-			defer func() { ExecAndWait(10, "umount", dstPath) }()
+			// defer func() { RemovePath(dstPath) }()
+			defer func() { logger.Debugf("remove %s", dstPath) }()
+			defer func() { UmountPath(dstPath) }()
+			defer func() { logger.Debugf("umount %s", dstPath) }()
 		}
 
 	}
@@ -296,15 +298,18 @@ func ChrootExecShell(chrootDirPath, shell string, bindMounts []string) (bool, st
 	if ret, _ := CheckFileExits(shellDstPath); !ret {
 		CreateDir(shellDstPath)
 	}
-	// CreateDir(shellDstPath)
-	defer func() { os.RemoveAll(shellDstPath) }()
 
 	if _, msg, err := ExecAndWait(10, "mount", "-B", shellSrcPath, shellDstPath); err != nil {
 		logger.Fatalf("mount %s to %s failed! ", shell, shellDstPath, err, msg)
 		return false, msg, err
 	}
 
-	defer func() { ExecAndWait(10, "umount", shellDstPath) }()
+	// CreateDir(shellDstPath)
+	// defer func() { RemovePath(shellDstPath) }()
+	defer func() { logger.Debugf("remove %s", shellDstPath) }()
+
+	defer func() { UmountPath(shellDstPath) }()
+	defer func() { logger.Debugf("umount %s", shellDstPath) }()
 
 	// chmod +x shell
 	if _, msg, err := ExecAndWait(10, "chmod", "+x", "-R", shellChrootPath); err != nil {
@@ -314,9 +319,11 @@ func ChrootExecShell(chrootDirPath, shell string, bindMounts []string) (bool, st
 
 	// chroot shell
 	logger.Debugf("chroot shell: path: %s shell:%s", chrootDirPath, shell)
-	if _, msg, err := ExecAndWait(1000, "chroot", chrootDirPath, shell); err != nil {
-		logger.Fatalf("chroot exec shell failed! ", err, msg)
+	if ret, msg, err := ExecAndWait(1000, "chroot", chrootDirPath, shell); err != nil {
+		logger.Fatalf("chroot exec shell failed! ", err, msg, ret)
 		return false, msg, err
+	} else {
+		logger.Debugf("chroot exec shell msg:", ret, msg)
 	}
 	return true, "", nil
 }

@@ -80,6 +80,26 @@ func CreateDir(file string) (bool, error) {
 }
 
 /*!
+ * @brief RemovePath 删除指定路径
+ * @param file 目录路径或者文件路径
+ * @return (bool, error)
+ */
+func RemovePath(file string) (bool, error) {
+
+	logger.Debugf("remove path: %s", file)
+	if ret, _ := CheckFileExits(file); ret {
+		if err := os.RemoveAll(file); err == nil {
+			logger.Debugf("remove path: %s", file)
+			return true, nil
+		} else {
+			logger.Debugf("remove path error: ", err)
+			return false, err
+		}
+	}
+	return false, nil
+}
+
+/*!
  * @brief 获取文件名
  * @param file 文件
  * @return 是否存在

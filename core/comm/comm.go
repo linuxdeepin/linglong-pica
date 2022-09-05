@@ -590,3 +590,14 @@ func GetFileSha256(filename string) (string, error) {
 
 	return sha256Sum, nil
 }
+
+func UmountPath(path string) bool {
+	logger.Debugf("umount path: %s", path)
+	if ret, msg, err := ExecAndWait(10, "umount", path); err != nil {
+		logger.Debugf("umount path failed: %s %v \nout:%s", msg, err, ret)
+		return false
+	} else {
+		logger.Debugf("umount path %s \nout:%s", msg, ret)
+		return true
+	}
+}
