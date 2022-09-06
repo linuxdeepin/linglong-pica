@@ -692,26 +692,6 @@ push:
 				if bundleList, err := FindBundlePath(workdirPath); err == nil {
 					logger.Debugf("found bundle file %v", bundleList)
 					// mutiple bundles
-					if ConfigInfo.BundleKeyFile != "" {
-						for _, bundle := range bundleList {
-							ConfigInfo.BundlePath = bundle
-
-							if ret, err := LinglongBuilderWarp(BundleLoginWithKeyfile, &ConfigInfo); !ret {
-								logger.Infof("push failed: %v", err, bundle)
-								continue
-							}
-						}
-					} else {
-						for _, bundle := range bundleList {
-							ConfigInfo.BundlePath = bundle
-
-							if ret, err := LinglongBuilderWarp(BundleLoginWithPassword, &ConfigInfo); !ret {
-								logger.Infof("push failed: %v", err, bundle)
-								continue
-							}
-						}
-					}
-					return
 
 				} else {
 					logger.Errorf("not found bundle")
@@ -721,24 +701,7 @@ push:
 		} else {
 			//
 			if ret, _ := CheckFileExits(ConfigInfo.BundlePath); ret {
-				if ret := HasBundleName(ConfigInfo.BundlePath); ret {
-					// run push
-					if ConfigInfo.BundleKeyFile != "" {
-						if ret, err := LinglongBuilderWarp(BundleLoginWithKeyfile, &ConfigInfo); !ret {
-							logger.Errorf("push failed: %v", err)
-							return
-						}
-					} else {
-						if ret, err := LinglongBuilderWarp(BundleLoginWithPassword, &ConfigInfo); !ret {
-							logger.Errorf("push failed: %v", err)
-							return
-						}
-					}
 
-				} else {
-					logger.Errorf("need bundle file %s", ConfigInfo.BundlePath)
-					return
-				}
 			} else {
 				logger.Errorf("not found bundle %s", ConfigInfo.BundlePath)
 				return
@@ -786,9 +749,9 @@ func main() {
 	// }
 
 	rootCmd.AddCommand(pushCmd)
-	pushCmd.Flags().StringVarP(&ConfigInfo.BundleKeyFile, "keyfile", "k", "", "auth key file")
-	pushCmd.Flags().StringVarP(&ConfigInfo.BundleUsername, "username", "u", "", "username")
-	pushCmd.Flags().StringVarP(&ConfigInfo.BundlePasswords, "passwords", "p", "", "passwords")
+	pushCmd.Flags().StringVarP(&ConfigInfo.PushKeyFile, "keyfile", "k", "", "auth key file")
+	pushCmd.Flags().StringVarP(&ConfigInfo.Username, "username", "u", "", "username")
+	pushCmd.Flags().StringVarP(&ConfigInfo.Passwords, "passwords", "p", "", "passwords")
 	pushCmd.Flags().StringVarP(&ConfigInfo.BundlePath, "uab", "d", "", "bundle path")
 	pushCmd.Flags().StringVarP(&ConfigInfo.BundleChannel, "channel", "c", "", "bundle channel")
 	pushCmd.Flags().StringVarP(&ConfigInfo.BundleRepoUrl, "repo", "r", "", "bundle repo url")

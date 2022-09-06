@@ -57,9 +57,9 @@ type Config struct {
 	Yamlconfig        string
 	ExportDir         string `yaml:"exportdir"`
 	FilesSearchPath   string `yaml:"files-search-path"`
-	BundleKeyFile     string
-	BundleUsername    string
-	BundlePasswords   string
+	PushKeyFile       string
+	Username          string
+	Passwords         string
 	BundlePath        string
 	BundleRepoUrl     string
 	BundleChannel     string
@@ -627,49 +627,5 @@ func UmountPath(path string) bool {
 	} else {
 		logger.Debugf("umount path %s \nout:%s", msg, ret)
 		return true
-	}
-}
-
-const (
-	BundleLoginWithPassword uint = iota
-	BundleLoginWithKeyfile
-)
-
-// Bundle push with ll-builder
-func LinglongBuilderWarp(t uint, conf *Config) (bool, error) {
-	// ll-builder push --repo-url  http://repo-dev.linglong.space --channel linglong *.uab
-	// max wait time for two MTL
-	BundleCommand := []string{
-		"push",
-		"--repo-url", conf.BundleRepoUrl,
-		"--channel", conf.BundleChannel,
-	}
-	logger.Debugf("command args: %v", BundleCommand)
-	switch t {
-	case BundleLoginWithPassword:
-		BundleCommand = append(BundleCommand, []string{
-			"--username",
-			conf.BundleUsername,
-			"--password",
-			conf.BundlePasswords}...)
-		break
-	case BundleLoginWithKeyfile:
-		BundleCommand = append(BundleCommand, []string{
-			"--auth",
-			conf.BundleKeyFile}...)
-		break
-	default:
-		return false, fmt.Errorf("not support")
-	}
-
-	BundleCommand = append(BundleCommand, conf.BundlePath)
-
-	// ll-builder push
-	if ret, msg, err := ExecAndWait(120, "ll-builder", BundleCommand...); err == nil {
-		logger.Infof("output: %v", ret)
-		return true, nil
-	} else {
-		logger.Debugf("output: %v", ret, msg)
-		return false, err
 	}
 }
