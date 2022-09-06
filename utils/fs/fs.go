@@ -388,7 +388,7 @@ func FindBundlePath(flie string) ([]string, error) {
 
 		err := filepath.Walk(flie, func(path string, info os.FileInfo, err error) error {
 
-			if (info != nil && !info.IsDir() && info.Mode().IsRegular()) && strings.HasSuffix(path, ".uab") {
+			if (info != nil && !info.IsDir() && info.Mode().IsRegular()) && HasBundleName(info.Name()) {
 				//fmt.Println("elf: ", path)
 				bundleList = append(bundleList, path)
 			}
@@ -404,6 +404,11 @@ func FindBundlePath(flie string) ([]string, error) {
 
 	}
 	return nil, fmt.Errorf("not found: %s", flie)
+}
+
+// HasBundleName
+func HasBundleName(name string) bool {
+	return strings.HasSuffix(name, ".uab")
 }
 
 // 初始化desktop文件
