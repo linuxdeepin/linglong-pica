@@ -580,18 +580,18 @@ type ExtraInfo struct {
 
 func (ts *ExtraInfo) WriteRootfsRepo(config Config) bool {
 	if ret, err := CheckFileExits(config.Rootfsdir + "/etc/apt/sources.list"); !ret && err != nil {
-		logger.Errorf("rootfs sources.list not exists ! ,err : %+v", err)
+		logger.Warnf("rootfs sources.list not exists ! ,err : %+v", err)
 		return false
 	}
 	file, err := os.OpenFile(config.Rootfsdir+"/etc/apt/sources.list", os.O_RDWR|os.O_APPEND|os.O_TRUNC, 0644)
 	if err != nil {
-		logger.Errorf("open sources.list failed! err: %+v", err)
+		logger.Warnf("open sources.list failed! err: %+v", err)
 		return false
 	}
 	defer file.Close()
 	for _, value := range ts.Repo {
-		if _, err := file.WriteString(value); err != nil {
-			logger.Errorf("write sources.list failed! err : %+v", err)
+		if _, err := file.WriteString(value + "\n"); err != nil {
+			logger.Warnf("write sources.list failed! err : %+v", err)
 			return false
 		}
 	}

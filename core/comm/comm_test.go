@@ -11,6 +11,7 @@ package comm
 
 import (
 	"io/ioutil"
+	. "ll-pica/utils/fs"
 	"log"
 	"os"
 	"testing"
@@ -39,4 +40,45 @@ func TestGetFileSha256(t *testing.T) {
 	if fileSha256, err := GetFileSha256(file.Name()); fileSha256 != oneFileSha256 || err != nil {
 		t.Error("failed: ", err, file.Name())
 	}
+}
+
+// WriteRootfsRepo
+func TestWriteRootfsRepo(t *testing.T) {
+	sourceRepo := "deb [trusted=yes] http://pools.uniontech.com/desktop-professional/ eagle main contrib non-free"
+	rootfsPath := "/tmp/ll-rootfs"
+	var configTest Config
+	var extraInfo ExtraInfo
+	configTest.Rootfsdir = rootfsPath
+	extraInfo.Repo = append(extraInfo.Repo, sourceRepo)
+	if ret := extraInfo.WriteRootfsRepo(configTest); ret {
+		t.Errorf("failed test for WriteRootfsRepo!")
+	}
+	if ret, err := CreateDir("/tmp/ll-rootfs/etc/apt"); !ret && err != nil {
+		t.Errorf("failed test for WriteRootfsRepo! Error: failed to create dir")
+	}
+	if file, err := os.OpenFile(rootfsPath+"/etc/apt/sources.list", os.O_RDWR|os.O_APPEND|os.O_TRUNC|os.O_CREATE, 0644); err != nil {
+		t.Errorf("failed test for WriteRootfsRepo! Error: failed to open sources.list")
+	} else {
+		defer file.Close()
+		if _, err := file.WriteString("test ll-pica"); err != nil {
+			t.Errorf("failed test for WriteRootfsRepo! Error: failed to write sources.list")
+		}
+		file.Sync()
+		if ret := extraInfo.WriteRootfsRepo(configTest); !ret {
+			t.Errorf("failed test for WriteRootfsRepo!")
+		}
+	}
+
+	sourcesData, err := ioutil.ReadFile(rootfsPath + "/etc/apt/sources.list")
+	if err != nil {
+		t.Errorf("failed test for WriteRootfsRepo! Error: failed to read sources.list")
+	}
+	if sourceRepo+"\n" != string(sourcesData) {
+		t.Errorf("failed test for WriteRootfsRepo! Error: read data not right!")
+	}
+
+	if ret, err := RemovePath(rootfsPath); err != nil || !ret {
+		t.Errorf("failed test for WriteRootfsRepo! Error: failed to remove rootfs")
+	}
+
 }
