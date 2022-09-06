@@ -380,6 +380,32 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 	return nil
 }
 
+// FindBundlePath
+func FindBundlePath(flie string) ([]string, error) {
+	if ret, _ := CheckFileExits(flie); ret {
+
+		bundleList := []string{}
+
+		err := filepath.Walk(flie, func(path string, info os.FileInfo, err error) error {
+
+			if (info != nil && !info.IsDir() && info.Mode().IsRegular()) && strings.HasSuffix(path, ".uab") {
+				//fmt.Println("elf: ", path)
+				bundleList = append(bundleList, path)
+			}
+			return nil
+		})
+		if err != nil {
+			logger.Debugf("get bundle file failed: %v", err)
+			return nil, err
+		}
+		if len(bundleList) > 0 {
+			return bundleList, nil
+		}
+
+	}
+	return nil, fmt.Errorf("not found: %s", flie)
+}
+
 // 初始化desktop文件
 type DesktopData map[string]map[string]string
 

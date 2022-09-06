@@ -556,12 +556,6 @@ Convert:
 
 		binReactor.RenderElfWithLDD(elfLDDLog, elfLDDShell)
 
-		// // mount shell to chroot
-		// logger.Debug("set output in chroot: elfldd.log")
-		// if _, msg, err := ExecAndWait(10, "mount", "-B", ConfigInfo.DebWorkdir+"/elfldd.log", ConfigInfo.Rootfsdir+ConfigInfo.DebWorkdir+"/elfldd.log"); err != nil {
-		// 	logger.Fatalf("mount %s to %s failed! ", ConfigInfo.Rootfsdir+ConfigInfo.DebWorkdir+"/elfldd.log", err, msg)
-		// }
-
 		// chroot
 		if ret, msg, err := ChrootExecShell(ConfigInfo.Rootfsdir, elfLDDShell, []string{ConfigInfo.FilesSearchPath}); !ret {
 			logger.Fatal("chroot exec shell failed:", msg, err)
@@ -596,19 +590,7 @@ Convert:
 			}
 
 			binReactor.FixElfNeedPath(excludeSoList)
-			// for _, exfind := range excludeSoList {
-			// 	if len(exfind) > 0 {
-			// 		deleteKeyList := FilterMap(binReactor.ElfNeedPath, func(str string) bool {
-			// 			return strings.HasSuffix(str, exfind)
-			// 		})
 
-			// 		if len(deleteKeyList) > 0 {
-			// 			for _, v := range deleteKeyList {
-			// 				delete(binReactor.ElfNeedPath, v)
-			// 			}
-			// 		}
-			// 	}
-			// }
 			logger.Debugf("fix exclude so list: %v", binReactor.ElfNeedPath)
 
 		}
@@ -690,6 +672,47 @@ Simple:
 	},
 }
 
+var pushCmd = &cobra.Command{
+	Use:   "push",
+	Short: "push uab to repo",
+	Long: `Push uab to repo that used ll-builder push For example:
+push:
+	ll-pica push -u deepin -p deepin -d org.deepin.calculator_x86-64.uab
+	`,
+	// Uncomment the following line if your bare application
+	// has an action associated with it:
+
+	Run: func(cmd *cobra.Command, args []string) {
+		if ConfigInfo.BundlePath == "" {
+			if workdirPath, err := os.Getwd(); err != nil {
+				logger.Debugf("get working directory: %v", err)
+				return
+			} else {
+				logger.Debugf("working directory: %v", workdirPath)
+				if bundleList, err := FindBundlePath(workdirPath); err == nil {
+					logger.Debugf("found bundle file %v", bundleList)
+					// mutiple bundles
+
+				} else {
+					logger.Errorf("not found bundle")
+					return
+				}
+			}
+		} else {
+			//
+			if ret, _ := CheckFileExits(ConfigInfo.BundlePath); ret {
+
+			} else {
+				logger.Errorf("not found bundle %s", ConfigInfo.BundlePath)
+				return
+			}
+		}
+	},
+	PostRun: func(cmd *cobra.Command, args []string) {
+
+	},
+}
+
 func main() {
 
 	// logger, _ := zap.NewProduction()
@@ -724,6 +747,14 @@ func main() {
 	// if err != nil {
 	// 	logger.Fatal("deb file required failed", err)
 	// }
+
+	rootCmd.AddCommand(pushCmd)
+	pushCmd.Flags().StringVarP(&ConfigInfo.PushKeyFile, "keyfile", "k", "", "auth key file")
+	pushCmd.Flags().StringVarP(&ConfigInfo.Username, "username", "u", "", "username")
+	pushCmd.Flags().StringVarP(&ConfigInfo.Passwords, "passwords", "p", "", "passwords")
+	pushCmd.Flags().StringVarP(&ConfigInfo.BundlePath, "uab", "d", "", "bundle path")
+	pushCmd.Flags().StringVarP(&ConfigInfo.BundleChannel, "channel", "c", "", "bundle channel")
+	pushCmd.Flags().StringVarP(&ConfigInfo.BundleRepoUrl, "repo", "r", "", "bundle repo url")
 
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 

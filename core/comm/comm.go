@@ -57,6 +57,12 @@ type Config struct {
 	Yamlconfig        string
 	ExportDir         string `yaml:"exportdir"`
 	FilesSearchPath   string `yaml:"files-search-path"`
+	PushKeyFile       string
+	Username          string
+	Passwords         string
+	BundlePath        string
+	BundleRepoUrl     string
+	BundleChannel     string
 }
 
 type MountItem struct {
