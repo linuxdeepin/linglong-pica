@@ -12,6 +12,7 @@ package fs
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -96,7 +97,7 @@ func RemovePath(file string) (bool, error) {
 			return false, err
 		}
 	}
-	return false, nil
+	return false, errors.New("Error: file not exists!")
 }
 
 /*!
