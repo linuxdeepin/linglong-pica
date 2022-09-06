@@ -681,7 +681,30 @@ push:
 	`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// keyfile
+		if ConfigInfo.BundleKeyFile != "" {
+			if ret, _ := CheckFileExits(ConfigInfo.BundleKeyFile); !ret {
+				ConfigInfo.BundleAuthType = BundleLoginFailed
+				logger.Errorf("not found keyfile %v", ConfigInfo.BundleKeyFile)
+				return
 
+			} else {
+				ConfigInfo.BundleAuthType = BundleLoginWithKeyfile
+				return
+			}
+		}
+
+		// auth username
+		if ConfigInfo.BundleUsername == "" || ConfigInfo.BundlePasswords == "" {
+			ConfigInfo.BundleAuthType = BundleLoginFailed
+			logger.Errorf("need bundle repo auth username and passwords")
+			return
+		} else {
+			ConfigInfo.BundleAuthType = BundleLoginWithPassword
+		}
+
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if ConfigInfo.BundlePath == "" {
 			if workdirPath, err := os.Getwd(); err != nil {
@@ -693,6 +716,17 @@ push:
 					logger.Debugf("found bundle file %v", bundleList)
 					// mutiple bundles
 
+					for _, bundle := range bundleList {
+						ConfigInfo.BundlePath = bundle
+
+						if ret, err := LinglongBuilderWarp(ConfigInfo.BundleAuthType, &ConfigInfo); !ret {
+							logger.Infof("push failed: %v", err, bundle)
+							continue
+						}
+					}
+
+					return
+
 				} else {
 					logger.Errorf("not found bundle")
 					return
@@ -701,7 +735,18 @@ push:
 		} else {
 			//
 			if ret, _ := CheckFileExits(ConfigInfo.BundlePath); ret {
+				if ret := HasBundleName(ConfigInfo.BundlePath); ret {
+					// run push
 
+					if ret, err := LinglongBuilderWarp(ConfigInfo.BundleAuthType, &ConfigInfo); !ret {
+						logger.Errorf("push failed: %v", err)
+						return
+					}
+
+				} else {
+					logger.Errorf("need bundle file %s", ConfigInfo.BundlePath)
+					return
+				}
 			} else {
 				logger.Errorf("not found bundle %s", ConfigInfo.BundlePath)
 				return
@@ -749,12 +794,14 @@ func main() {
 	// }
 
 	rootCmd.AddCommand(pushCmd)
-	pushCmd.Flags().StringVarP(&ConfigInfo.PushKeyFile, "keyfile", "k", "", "auth key file")
-	pushCmd.Flags().StringVarP(&ConfigInfo.Username, "username", "u", "", "username")
-	pushCmd.Flags().StringVarP(&ConfigInfo.Passwords, "passwords", "p", "", "passwords")
+	pushCmd.Flags().StringVarP(&ConfigInfo.BundleKeyFile, "keyfile", "k", "", "auth key file")
+	pushCmd.Flags().StringVarP(&ConfigInfo.BundleUsername, "username", "u", "", "username")
+	pushCmd.Flags().StringVarP(&ConfigInfo.BundlePasswords, "passwords", "p", "", "passwords")
 	pushCmd.Flags().StringVarP(&ConfigInfo.BundlePath, "uab", "d", "", "bundle path")
 	pushCmd.Flags().StringVarP(&ConfigInfo.BundleChannel, "channel", "c", "", "bundle channel")
 	pushCmd.Flags().StringVarP(&ConfigInfo.BundleRepoUrl, "repo", "r", "", "bundle repo url")
+
+	pushCmd.MarkFlagsMutuallyExclusive("keyfile", "username")
 
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
