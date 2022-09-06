@@ -566,9 +566,31 @@ func (ts *BaseInfo) InitOstree(ostreePath string) bool {
 }
 
 type ExtraInfo struct {
-	repo    []string `yaml:"repo"`
+	Repo    []string `yaml:"repo"`
 	Package []string `yaml:"package"`
 	Cmd     []string `yaml:"command"`
+}
+
+func (ts *ExtraInfo) WriteRootfsRepo(config Config) bool {
+	if ret, err := CheckFileExits(config.Rootfsdir + "/etc/apt/sources.list"); !ret && err != nil {
+		logger.Errorf("rootfs sources.list not exists ! ,err : %+v", err)
+		return false
+	}
+	file, err := os.OpenFile(config.Rootfsdir+"/etc/apt/sources.list", os.O_RDWR|os.O_APPEND|os.O_TRUNC, 0644)
+	if err != nil {
+		logger.Errorf("open sources.list failed! err: %+v", err)
+		return false
+	}
+	defer file.Close()
+	for _, value := range ts.Repo {
+		if _, err := file.WriteString(value); err != nil {
+			logger.Errorf("write sources.list failed! err : %+v", err)
+			return false
+		}
+	}
+	file.Sync()
+
+	return true
 }
 
 func GetFileSha256(filename string) (string, error) {

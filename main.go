@@ -185,6 +185,7 @@ var initCmd = &cobra.Command{
 				return
 			}
 		}
+
 		for idx, context := range SdkConf.SdkInfo.Base {
 			logger.Debugf("get %d %s", idx, context)
 			switch context.Type {
@@ -326,6 +327,12 @@ var initCmd = &cobra.Command{
 		}
 
 		ConfigInfo.MountsItem.DoMountALL()
+
+		// write source.list
+		logger.Debugf("Start write sources.list !")
+		if ret := SdkConf.SdkInfo.Extra.WriteRootfsRepo(ConfigInfo); !ret {
+			logger.Errorf("Write sources.list failed!")
+		}
 		ConfigInfo.MountsItem.DoUmountAOnce()
 	},
 }
