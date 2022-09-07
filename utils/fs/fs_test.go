@@ -320,8 +320,8 @@ var testDataCopyDirKeepPathAndPerm = []struct {
 	{"/etc/default/grub.d", true},
 	{"/bin/bash.txt", false},
 	{"/etc/fstab", false},
-	{"/usr/bin/", true},
-	{"/lib/x86_64-linux-gnu/", false},
+	// {"/usr/bin/", true},
+	// {"/lib/x86_64-linux-gnu/", false},
 }
 
 func TestCopyDirKeepPathAndPerm(t *testing.T) {
@@ -356,20 +356,30 @@ func TestCopyDirKeepPathAndPerm2(t *testing.T) {
 
 // FindBundlePath
 func TestFindBundlePath(t *testing.T) {
+	findBundleTestDir, err := ioutil.TempDir("/tmp/", "ll-pica_")
+	if err != nil {
+		t.Errorf("failed to create temporary file: %v", err)
+	}
+
 	t.Parallel()
 	// 测试未存在uab目录
-	dirPath := "/tmp/ll-pica/linglong"
+	dirPath := findBundleTestDir
 	if ret, err := CreateDir(dirPath); !ret || err != nil {
 		t.Errorf("Failed test for TestFindBundlePath! Error: failed to create dir  %+v", dirPath)
 	}
-	uabList, err := FindBundlePath("/tmp/ll-pica")
+	defer func() { RemovePath(dirPath) }()
+
+	if ret, err := CreateDir(dirPath + "/linglong"); !ret || err != nil {
+		t.Errorf("Failed test for TestFindBundlePath! Error: failed to create dir  %+v", dirPath)
+	}
+	uabList, err := FindBundlePath(dirPath)
 	if err == nil || len(uabList) != 0 {
 		t.Errorf("Failed test for TestFindBundlePath! Error: failed to FindBundlePath  /tmp/ll-pica")
 	}
 	// 测试已存在uab目录
 	// 创建uab文件
-	uab1File := "/tmp/ll-pica/ll-pica_1.2.1_amd64.uab"
-	uab2File := "/tmp/ll-pica/linglong/ll-pica_1.1.1_amd64.uab"
+	uab1File := dirPath + "/ll-pica_1.2.1_amd64.uab"
+	uab2File := dirPath + "/linglong/ll-pica_1.1.1_amd64.uab"
 	if err := ioutil.WriteFile(uab1File, []byte("I am uab1"), 0755); err != nil {
 		t.Errorf("Failed test for TestFindBundlePath! Error: failed to create file  %+v", uab1File)
 	}
@@ -377,7 +387,7 @@ func TestFindBundlePath(t *testing.T) {
 		t.Errorf("Failed test for TestFindBundlePath! Error: failed to create file  %+v", uab2File)
 	}
 	// 搜索uab
-	uabList, err = FindBundlePath("/tmp/ll-pica")
+	uabList, err = FindBundlePath(dirPath)
 	if err != nil {
 		t.Errorf("Failed test for TestFindBundlePath! Error: failed to FindBundlePath  /tmp/ll-pica")
 	}
@@ -387,10 +397,10 @@ func TestFindBundlePath(t *testing.T) {
 	if uabList[0] != uab2File {
 		t.Errorf("Failed test for TestFindBundlePath! Error: failed to FindBundlePath  %+v", uab2File)
 	}
-	// 移除目录
-	if ret, err := RemovePath("/tmp/ll-pica"); !ret || err != nil {
-		t.Errorf("Failed test for TestFindBundlePath! Error: failed to remove dir /tmp/ll-pica")
-	}
+	// // 移除目录
+	// if ret, err := RemovePath(dirPath); !ret || err != nil {
+	// 	t.Errorf("Failed test for TestFindBundlePath! Error: failed to remove dir /tmp/ll-pica")
+	// }
 
 }
 
@@ -654,6 +664,7 @@ func TestDesktopInit(t *testing.T) {
 	if ret, err := CreateDir(dirPath); !ret || err != nil {
 		t.Errorf("Failed test for TestDesktopInit! Error: failed to create dir  %+v", dirPath)
 	}
+	defer func() { RemovePath(dirPath) }()
 	// 新建desktop file文件
 	desktopPath := "/tmp/ll-pica/ll-pica.desktop"
 	if err := ioutil.WriteFile(desktopPath, []byte(TMPL_DESKTOP), 0644); err != nil {
@@ -670,9 +681,9 @@ func TestDesktopInit(t *testing.T) {
 		}
 	}
 	// 移除目录
-	if ret, err := RemovePath(dirPath); !ret || err != nil {
-		t.Errorf("Failed test for TestDesktopInit! Error: failed to remove dir %+v", dirPath)
-	}
+	// if ret, err := RemovePath(dirPath); !ret || err != nil {
+	// 	t.Errorf("Failed test for TestDesktopInit! Error: failed to remove dir %+v", dirPath)
+	// }
 }
 
 // DesktopGroupname
