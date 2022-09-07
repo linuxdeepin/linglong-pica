@@ -354,8 +354,80 @@ func TestCopyDirKeepPathAndPerm2(t *testing.T) {
 }
 
 // FindBundlePath
+func TestFindBundlePath(t *testing.T) {
+	t.Parallel()
+	// 测试未存在uab目录
+	dirPath := "/tmp/ll-pica/linglong"
+	if ret, err := CreateDir(dirPath); !ret || err != nil {
+		t.Errorf("Failed test for TestFindBundlePath! Error: failed to create dir  %+v", dirPath)
+	}
+	uabList, err := FindBundlePath("/tmp/ll-pica")
+	if err == nil || len(uabList) != 0 {
+		t.Errorf("Failed test for TestFindBundlePath! Error: failed to FindBundlePath  /tmp/ll-pica")
+	}
+	// 测试已存在uab目录
+	// 创建uab文件
+	uab1File := "/tmp/ll-pica/ll-pica_1.2.1_amd64.uab"
+	uab2File := "/tmp/ll-pica/linglong/ll-pica_1.1.1_amd64.uab"
+	if err := ioutil.WriteFile(uab1File, []byte("I am uab1"), 0755); err != nil {
+		t.Errorf("Failed test for TestFindBundlePath! Error: failed to create file  %+v", uab1File)
+	}
+	if err := ioutil.WriteFile(uab2File, []byte("I am uab2"), 0755); err != nil {
+		t.Errorf("Failed test for TestFindBundlePath! Error: failed to create file  %+v", uab2File)
+	}
+	// 搜索uab
+	uabList, err = FindBundlePath("/tmp/ll-pica")
+	if err != nil {
+		t.Errorf("Failed test for TestFindBundlePath! Error: failed to FindBundlePath  /tmp/ll-pica")
+	}
+	if uabList[1] != uab1File {
+		t.Errorf("Failed test for TestFindBundlePath! Error: failed to FindBundlePath  %+v", uab1File)
+	}
+	if uabList[0] != uab2File {
+		t.Errorf("Failed test for TestFindBundlePath! Error: failed to FindBundlePath  %+v", uab2File)
+	}
+	// 移除目录
+	if ret, err := RemovePath("/tmp/ll-pica"); !ret || err != nil {
+		t.Errorf("Failed test for TestFindBundlePath! Error: failed to remove dir /tmp/ll-pica")
+	}
+
+}
+
 // HasBundleName
+var testDataHasBundleName = []struct {
+	in  string
+	ret bool
+}{
+	{"/usr/share/ll-pica.uab", true},
+	{"/tmp/test/ll-pica.uac", false},
+	{"/etc/fstab", false},
+}
+
+func TestHasBundleName(t *testing.T) {
+	t.Parallel()
+	for _, tds := range testDataHasBundleName {
+		if ret := HasBundleName(tds.in); ret != tds.ret {
+			t.Errorf("Failed test for TestHasBundleName! Error: failed to HasBundleName %+v", tds.in)
+		}
+	}
+}
+
 // DesktopInit
+func TestDesktopInit(t *testing.T) {
+	t.Parallel()
+}
+
 // DesktopGroupname
+func TestDesktopGroupname(t *testing.T) {
+	t.Parallel()
+}
+
 // TransExecToLl
+func TestTransExecToLl(t *testing.T) {
+	t.Parallel()
+}
+
 // TransIconToLl
+func TestTransIconToLl(t *testing.T) {
+	t.Parallel()
+}
