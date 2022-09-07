@@ -274,11 +274,11 @@ var initCmd = &cobra.Command{
 		if err != nil {
 			logger.Error("mount iso failed!", msg, err)
 		}
-		// UmountIsoDir := func() {
-		// 	ExecAndWait(10, "umount", ConfigInfo.IsoMountDir)
-		// }
+		UmountIsoDir := func() {
+			ExecAndWait(10, "umount", ConfigInfo.IsoMountDir)
+		}
 
-		// defer UmountIsoDir()
+		defer UmountIsoDir()
 
 		// mount squashfs to base dir
 
@@ -291,10 +291,10 @@ var initCmd = &cobra.Command{
 		if err != nil {
 			logger.Error("mount squashfs failed!", msg, err)
 		}
-		// UmountSquashfsDir := func() {
-		// 	ExecAndWait(10, "umount", baseDir)
-		// }
-		// defer UmountSquashfsDir()
+		UmountSquashfsDir := func() {
+			ExecAndWait(10, "umount", baseDir)
+		}
+		defer UmountSquashfsDir()
 
 		ConfigInfo.Rootfsdir = ConfigInfo.Workdir + "/rootfs"
 		err = os.Mkdir(ConfigInfo.Rootfsdir, 0755)
@@ -310,6 +310,11 @@ var initCmd = &cobra.Command{
 
 		// mount overlay to base dir
 		SetOverlayfs(baseDir, ConfigInfo.RuntimeBasedir, ConfigInfo.Basedir)
+
+		UmountRootfsDir := func() {
+			ExecAndWait(10, "umount", ConfigInfo.Rootfsdir)
+		}
+		defer UmountRootfsDir()
 
 		ConfigInfo.MountsItem.FillMountRules()
 
@@ -333,7 +338,7 @@ var initCmd = &cobra.Command{
 		if ret := SdkConf.SdkInfo.Extra.WriteRootfsRepo(ConfigInfo); !ret {
 			logger.Errorf("Write sources.list failed!")
 		}
-		ConfigInfo.MountsItem.DoUmountAOnce()
+		ConfigInfo.MountsItem.DoUmountALL()
 	},
 }
 

@@ -70,6 +70,7 @@ type MountItem struct {
 	MountPoint string `yaml:"mountpoint"`
 	Source     string `yaml:"source"`
 	Type       string `yaml:"type"`
+	TypeLive   string `yaml:"typelive"`
 	IsRbind    bool   `yaml:"bind"`
 }
 
@@ -90,7 +91,7 @@ func (ts Mounts) DoMountALL() []error {
 
 	for _, item := range ts.Mounts {
 
-		logger.Debugf("mount: ", item.MountPoint, item.Source, item.Type, item.IsRbind)
+		logger.Debugf("mount: ", item.MountPoint, item.Source, item.Type, item.TypeLive, item.IsRbind)
 		if IsRbind := item.IsRbind; IsRbind {
 
 			// sudo mount --rbind /tmp/ /mnt/workdir/rootfs/tmp/
@@ -101,13 +102,12 @@ func (ts Mounts) DoMountALL() []error {
 				// continue
 			}
 
-			// sudo mount --make-rslave /mnt/workdir/rootfs/tmp/
-			_, msg, err = ExecAndWait(10, "mount", "--make-rslave", item.MountPoint)
+		} else if item.TypeLive != "" {
+			_, msg, err = ExecAndWait(10, "mount", item.TypeLive, "-t", item.Type, item.MountPoint)
 			if err != nil {
-				logger.Warnf("mount bind rslave failed: ", msg, err)
+				logger.Warnf("mount failed: ", msg, err)
 				errs = append(errs, err)
 			}
-
 		} else {
 			_, msg, err = ExecAndWait(10, "mount", "-t", item.Type, item.Source, item.MountPoint)
 			if err != nil {
@@ -172,12 +172,11 @@ UMOUNT_ONCE:
 func (ts *Mounts) FillMountRules() {
 
 	logger.Debug("mount list: ", len(ts.Mounts))
-	ts.Mounts[ConfigInfo.Rootfsdir+"/dev/"] = MountItem{ConfigInfo.Rootfsdir + "/dev/", "/dev/", "tmpfs", true}
-	ts.Mounts[ConfigInfo.Rootfsdir+"/sys/"] = MountItem{ConfigInfo.Rootfsdir + "/sys/", "/sys/", "sysfs", true}
-	ts.Mounts[ConfigInfo.Rootfsdir+"/tmp/"] = MountItem{ConfigInfo.Rootfsdir + "/tmp/", "/tmp/", "tmpfs", true}
-	ts.Mounts[ConfigInfo.Rootfsdir+"/etc/resolv.conf"] = MountItem{ConfigInfo.Rootfsdir + "/etc/resolv.conf", "/etc/resolv.conf", "tmpfs", true}
-
-	ts.Mounts[ConfigInfo.Rootfsdir+"/proc/"] = MountItem{ConfigInfo.Rootfsdir + "/proc/", "none", "proc", false}
+	ts.Mounts[ConfigInfo.Rootfsdir+"/dev/pts"] = MountItem{ConfigInfo.Rootfsdir + "/dev/pts", "", "devpts", "devpts-live", false}
+	ts.Mounts[ConfigInfo.Rootfsdir+"/sys"] = MountItem{ConfigInfo.Rootfsdir + "/sys", "", "sysfs", "sysfs-live", false}
+	ts.Mounts[ConfigInfo.Rootfsdir+"/proc"] = MountItem{ConfigInfo.Rootfsdir + "/proc", "", "proc", "proc-live", false}
+	ts.Mounts[ConfigInfo.Rootfsdir+"/tmp/"] = MountItem{ConfigInfo.Rootfsdir + "/tmp", "/tmp", "", "", true}
+	ts.Mounts[ConfigInfo.Rootfsdir+"/etc/resolv.conf"] = MountItem{ConfigInfo.Rootfsdir + "/etc/resolv.conf", "/etc/resolv.conf", "", "", true}
 
 	logger.Debug("mount list: ", len(ts.Mounts))
 }
