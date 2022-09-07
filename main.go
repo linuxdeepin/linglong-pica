@@ -798,7 +798,7 @@ func main() {
 	pushCmd.Flags().StringVarP(&ConfigInfo.BundleUsername, "username", "u", "", "username")
 	pushCmd.Flags().StringVarP(&ConfigInfo.BundlePasswords, "passwords", "p", "", "passwords")
 	pushCmd.Flags().StringVarP(&ConfigInfo.BundlePath, "uab", "d", "", "bundle path")
-	pushCmd.Flags().StringVarP(&ConfigInfo.BundleChannel, "channel", "c", "", "bundle channel")
+	pushCmd.Flags().StringVarP(&ConfigInfo.BundleChannel, "channel", "c", "linglong", "bundle channel")
 	pushCmd.Flags().StringVarP(&ConfigInfo.BundleRepoUrl, "repo", "r", "", "bundle repo url")
 
 	pushCmd.MarkFlagsMutuallyExclusive("keyfile", "username")

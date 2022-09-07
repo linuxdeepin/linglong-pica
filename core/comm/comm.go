@@ -667,7 +667,8 @@ func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 	BundleCommand = append(BundleCommand, conf.BundlePath)
 
 	// ll-builder push
-	if ret, msg, err := ExecAndWait(120, "ll-builder", BundleCommand...); err == nil {
+	// ll-builder wait max timeout 3600 seconds wtf
+	if ret, msg, err := ExecAndWait(1<<12, "ll-builder", BundleCommand...); err == nil {
 		logger.Infof("output: %v", ret)
 		return true, nil
 	} else {
