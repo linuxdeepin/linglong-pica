@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sort"
 	"testing"
 )
 
@@ -413,21 +414,340 @@ func TestHasBundleName(t *testing.T) {
 }
 
 // DesktopInit
+var testDataDesktopInit = []struct {
+	Group string
+	key   string
+	value string
+}{
+	{"Desktop Entry", "Exec", "/usr/bin/google-chrome-stable %U"},
+	{"Desktop Entry", "Name", "Google Chrome"},
+	{"Desktop Action new-window", "Exec", "/usr/bin/google-chrome-stable"},
+}
+
+const TMPL_DESKTOP = `[Desktop Entry]
+Version=1.0
+Name=Google Chrome
+# Only KDE 4 seems to use GenericName, so we reuse the KDE strings.
+# From Ubuntu's language-pack-kde-XX-base packages, version 9.04-20090413.
+GenericName=Web Browser
+GenericName[ar]=متصفح الشبكة
+GenericName[bg]=Уеб браузър
+GenericName[ca]=Navegador web
+GenericName[cs]=WWW prohlížeč
+GenericName[da]=Browser
+GenericName[de]=Web-Browser
+GenericName[el]=Περιηγητής ιστού
+GenericName[en_GB]=Web Browser
+GenericName[es]=Navegador web
+GenericName[et]=Veebibrauser
+GenericName[fi]=WWW-selain
+GenericName[fr]=Navigateur Web
+GenericName[gu]=વબ બરાઉઝર
+GenericName[he]=דפדפן אינטרנט
+GenericName[hi]=वब बराउजर
+GenericName[hu]=Webböngésző
+GenericName[it]=Browser Web
+GenericName[ja]=ウェブブラウザ
+GenericName[kn]=ಜಾಲ ವೀಕಷಕ
+GenericName[ko]=웹 브라우저
+GenericName[lt]=Žiniatinklio naršyklė
+GenericName[lv]=Tīmekļa pārlūks
+GenericName[ml]=വെബ ബരൌസര
+GenericName[mr]=वब बराऊजर
+GenericName[nb]=Nettleser
+GenericName[nl]=Webbrowser
+GenericName[pl]=Przeglądarka WWW
+GenericName[pt]=Navegador Web
+GenericName[pt_BR]=Navegador da Internet
+GenericName[ro]=Navigator de Internet
+GenericName[ru]=Веб-браузер
+GenericName[sl]=Spletni brskalnik
+GenericName[sv]=Webbläsare
+GenericName[ta]=இணைய உலாவி
+GenericName[th]=เวบเบราวเซอร
+GenericName[tr]=Web Tarayıcı
+GenericName[uk]=Навігатор Тенет
+GenericName[zh_CN]=网页浏览器
+GenericName[zh_HK]=網頁瀏覽器
+GenericName[zh_TW]=網頁瀏覽器
+# Not translated in KDE, from Epiphany 2.26.1-0ubuntu1.
+GenericName[bn]=ওয়েব বরাউজার
+GenericName[fil]=Web Browser
+GenericName[hr]=Web preglednik
+GenericName[id]=Browser Web
+GenericName[or]=ଓବେବ ବରାଉଜର
+GenericName[sk]=WWW prehliadač
+GenericName[sr]=Интернет прегледник
+GenericName[te]=మహతల అనవష
+GenericName[vi]=Bộ duyệt Web
+# Gnome and KDE 3 uses Comment.
+Comment=Access the Internet
+Comment[ar]=الدخول إلى الإنترنت
+Comment[bg]=Достъп до интернет
+Comment[bn]=ইনটারনেটটি অযাকসেস করন
+Comment[ca]=Accedeix a Internet
+Comment[cs]=Přístup k internetu
+Comment[da]=Få adgang til internettet
+Comment[de]=Internetzugriff
+Comment[el]=Πρόσβαση στο Διαδίκτυο
+Comment[en_GB]=Access the Internet
+Comment[es]=Accede a Internet.
+Comment[et]=Pääs Internetti
+Comment[fi]=Käytä internetiä
+Comment[fil]=I-access ang Internet
+Comment[fr]=Accéder à Internet
+Comment[gu]=ઇટરનટ ઍકસસ કરો
+Comment[he]=גישה אל האינטרנט
+Comment[hi]=इटरनट तक पहच सथापित कर
+Comment[hr]=Pristup Internetu
+Comment[hu]=Internetelérés
+Comment[id]=Akses Internet
+Comment[it]=Accesso a Internet
+Comment[ja]=インターネットにアクセス
+Comment[kn]=ಇಂಟರನಟ ಅನನು ಪರವೇಶಸ
+Comment[ko]=인터넷 연결
+Comment[lt]=Interneto prieiga
+Comment[lv]=Piekļūt internetam
+Comment[ml]=ഇനറരനെററ ആകസസ ചെയയക
+Comment[mr]=इटरनटमधय परवश करा
+Comment[nb]=Gå til Internett
+Comment[nl]=Verbinding maken met internet
+Comment[or]=ଇଣଟରନେଟ ପରବେଶ କରନତ
+Comment[pl]=Skorzystaj z internetu
+Comment[pt]=Aceder à Internet
+Comment[pt_BR]=Acessar a internet
+Comment[ro]=Accesaţi Internetul
+Comment[ru]=Доступ в Интернет
+Comment[sk]=Prístup do siete Internet
+Comment[sl]=Dostop do interneta
+Comment[sr]=Приступите Интернету
+Comment[sv]=Gå ut på Internet
+Comment[ta]=இணையததை அணுகுதல
+Comment[te]=ఇంటరనటను ఆకసస చయయండ
+Comment[th]=เขาถงอนเทอรเนต
+Comment[tr]=İnternet'e erişin
+Comment[uk]=Доступ до Інтернету
+Comment[vi]=Truy cập Internet
+Comment[zh_CN]=访问互联网
+Comment[zh_HK]=連線到網際網路
+Comment[zh_TW]=連線到網際網路
+Exec=/usr/bin/google-chrome-stable %U
+StartupNotify=true
+Terminal=false
+Icon=google-chrome
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml_xml;image/webp;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/ftp;
+Actions=new-window;new-private-window;
+
+[Desktop Action new-window]
+Name=New Window
+Name[am]=አዲስ መስኮት
+Name[ar]=نافذة جديدة
+Name[bg]=Нов прозорец
+Name[bn]=নতন উইনডো
+Name[ca]=Finestra nova
+Name[cs]=Nové okno
+Name[da]=Nyt vindue
+Name[de]=Neues Fenster
+Name[el]=Νέο Παράθυρο
+Name[en_GB]=New Window
+Name[es]=Nueva ventana
+Name[et]=Uus aken
+Name[fa]=پنجره جدید
+Name[fi]=Uusi ikkuna
+Name[fil]=New Window
+Name[fr]=Nouvelle fenêtre
+Name[gu]=નવી વિડો
+Name[hi]=नई विडो
+Name[hr]=Novi prozor
+Name[hu]=Új ablak
+Name[id]=Jendela Baru
+Name[it]=Nuova finestra
+Name[iw]=חלון חדש
+Name[ja]=新規ウインドウ
+Name[kn]=ಹೊಸ ವಂಡೊ
+Name[ko]=새 창
+Name[lt]=Naujas langas
+Name[lv]=Jauns logs
+Name[ml]=പതിയ വിനഡോ
+Name[mr]=नवीन विडो
+Name[nl]=Nieuw venster
+Name[no]=Nytt vindu
+Name[pl]=Nowe okno
+Name[pt]=Nova janela
+Name[pt_BR]=Nova janela
+Name[ro]=Fereastră nouă
+Name[ru]=Новое окно
+Name[sk]=Nové okno
+Name[sl]=Novo okno
+Name[sr]=Нови прозор
+Name[sv]=Nytt fönster
+Name[sw]=Dirisha Jipya
+Name[ta]=புதிய சாளரம
+Name[te]=కరతత వండ
+Name[th]=หนาตางใหม
+Name[tr]=Yeni Pencere
+Name[uk]=Нове вікно
+Name[vi]=Cửa sổ Mới
+Name[zh_CN]=新建窗口
+Name[zh_TW]=開新視窗
+Exec=/usr/bin/google-chrome-stable
+
+[Desktop Action new-private-window]
+Name=New Incognito Window
+Name[ar]=نافذة جديدة للتصفح المتخفي
+Name[bg]=Нов прозорец „инкогнито“
+Name[bn]=নতন ছদমবেশী উইনডো
+Name[ca]=Finestra d'incògnit nova
+Name[cs]=Nové anonymní okno
+Name[da]=Nyt inkognitovindue
+Name[de]=Neues Inkognito-Fenster
+Name[el]=Νέο παράθυρο για ανώνυμη περιήγηση
+Name[en_GB]=New Incognito window
+Name[es]=Nueva ventana de incógnito
+Name[et]=Uus inkognito aken
+Name[fa]=پنجره جدید حالت ناشناس
+Name[fi]=Uusi incognito-ikkuna
+Name[fil]=Bagong Incognito window
+Name[fr]=Nouvelle fenêtre de navigation privée
+Name[gu]=નવી છપી વિડો
+Name[hi]=नई गपत विडो
+Name[hr]=Novi anoniman prozor
+Name[hu]=Új Inkognitóablak
+Name[id]=Jendela Penyamaran baru
+Name[it]=Nuova finestra di navigazione in incognito
+Name[iw]=חלון חדש לגלישה בסתר
+Name[ja]=新しいシークレット ウィンドウ
+Name[kn]=ಹೊಸ ಅಜಞಾತ ವಂಡೋ
+Name[ko]=새 시크릿 창
+Name[lt]=Naujas inkognito langas
+Name[lv]=Jauns inkognito režīma logs
+Name[ml]=പതിയ വേഷ പരചഛനന വിനഡോ
+Name[mr]=नवीन गपत विडो
+Name[nl]=Nieuw incognitovenster
+Name[no]=Nytt inkognitovindu
+Name[pl]=Nowe okno incognito
+Name[pt]=Nova janela de navegação anónima
+Name[pt_BR]=Nova janela anônima
+Name[ro]=Fereastră nouă incognito
+Name[ru]=Новое окно в режиме инкогнито
+Name[sk]=Nové okno inkognito
+Name[sl]=Novo okno brez beleženja zgodovine
+Name[sr]=Нови прозор за прегледање без архивирања
+Name[sv]=Nytt inkognitofönster
+Name[ta]=புதிய மறைநிலைச சாளரம
+Name[te]=కరతత అజఞత వండ
+Name[th]=หนาตางใหมทไมระบตวตน
+Name[tr]=Yeni Gizli pencere
+Name[uk]=Нове вікно в режимі анонімного перегляду
+Name[vi]=Cửa sổ ẩn danh mới
+Name[zh_CN]=新建隐身窗口
+Name[zh_TW]=新增無痕式視窗
+Exec=/usr/bin/google-chrome-stable --incognito
+`
+
 func TestDesktopInit(t *testing.T) {
 	t.Parallel()
+	// 创建目录
+	dirPath := "/tmp/ll-pica"
+	if ret, err := CreateDir(dirPath); !ret || err != nil {
+		t.Errorf("Failed test for TestDesktopInit! Error: failed to create dir  %+v", dirPath)
+	}
+	// 新建desktop file文件
+	desktopPath := "/tmp/ll-pica/ll-pica.desktop"
+	if err := ioutil.WriteFile(desktopPath, []byte(TMPL_DESKTOP), 0644); err != nil {
+		t.Errorf("Failed test for TestDesktopInit! Error: failed to create file  %+v", desktopPath)
+	}
+	// 初始化desktop
+	ret, data := DesktopInit(desktopPath)
+	if !ret {
+		t.Errorf("Failed test for TestDesktopInit! Error: failed to DesktopInit  %+v", desktopPath)
+	}
+	for _, tds := range testDataDesktopInit {
+		if data[tds.Group][tds.key] != tds.value {
+			t.Errorf("Failed test for TestDesktopInit! Error: failed to DesktopInit  %+v", desktopPath)
+		}
+	}
+	// 移除目录
+	if ret, err := RemovePath(dirPath); !ret || err != nil {
+		t.Errorf("Failed test for TestDesktopInit! Error: failed to remove dir %+v", dirPath)
+	}
 }
 
 // DesktopGroupname
 func TestDesktopGroupname(t *testing.T) {
 	t.Parallel()
+	// 创建目录
+	dirPath := "/tmp/ll-pica"
+	if ret, err := CreateDir(dirPath); !ret || err != nil {
+		t.Errorf("Failed test for TestDesktopGroupname! Error: failed to create dir  %+v", dirPath)
+	}
+	// 新建desktop file文件
+	desktopPath := "/tmp/ll-pica/ll-pica.desktop"
+	if err := ioutil.WriteFile(desktopPath, []byte(TMPL_DESKTOP), 0644); err != nil {
+		t.Errorf("Failed test for TestDesktopGroupname! Error: failed to create file  %+v", desktopPath)
+	}
+	// 获取desktop groupname
+	data := DesktopGroupname(desktopPath)
+	if len(data) == 0 {
+		t.Errorf("Failed test for TestDesktopGroupname! Error: failed to get group name of   %+v", desktopPath)
+	}
+	sort.Strings(data)
+	// 搜索存在group name
+	index := sort.SearchStrings(data, "Desktop Action new-window")
+	if data[index] != "Desktop Action new-window" {
+		t.Errorf("Failed test for TestDesktopGroupname! Error: failed to get group name of   %+v", desktopPath)
+	}
+
+	// 搜索不存在group name
+	index = sort.SearchStrings(data, "ljjsdf")
+	if index != len(data) {
+		t.Errorf("Failed test for TestDesktopGroupname! Error: failed to get group name of   %+v", desktopPath)
+	}
+
+	// 移除目录
+	if ret, err := RemovePath(dirPath); !ret || err != nil {
+		t.Errorf("Failed test for TestDesktopGroupname! Error: failed to remove dir %+v", dirPath)
+	}
 }
 
 // TransExecToLl
+var testDataTransExecToLl = []struct {
+	appid string
+	in    string
+	out   string
+}{
+	{"org.deepin.calculator", "/opt/app/org.deepin.calculator/files/bin/deepin-calculator --test %u", "ll-cli run org.deepin.calculator --exec \"/opt/app/org.deepin.calculator/files/bin/deepin-calculator --test\" %u"},
+	{"org.deepin.calculator", "/usr/bin/deepin-calculator", "ll-cli run org.deepin.calculator --exec \"deepin-calculator\""},
+	{"org.deepin.calculator", "/usr/bin/deepin-calculator --debug %f", "ll-cli run org.deepin.calculator --exec \"deepin-calculator --debug\" %f"},
+}
+
 func TestTransExecToLl(t *testing.T) {
 	t.Parallel()
+	for _, tds := range testDataTransExecToLl {
+		if out := TransExecToLl(tds.in, tds.appid); out != tds.out {
+			t.Errorf("Failed test for TestTransExecToLl! Error: failed to transExec %+v", tds.in)
+		}
+	}
 }
 
 // TransIconToLl
+var testDataTransIconToLl = []struct {
+	in  string
+	out string
+}{
+	{"/usr/share/icons/hicolor/96x96/apps/deepin-toggle-desktop.png", "deepin-toggle-desktop"},
+	{"/usr/share/icons/hicolor/96x96/apps/deepin-toggle-desktop.svg", "deepin-toggle-desktop"},
+	{"/opt/apps/org.deepin.calculator/files/icons/deepin-calculator.png", "/opt/apps/org.deepin.calculator/files/icons/deepin-calculator.png"},
+}
+
 func TestTransIconToLl(t *testing.T) {
 	t.Parallel()
+	for _, tds := range testDataTransIconToLl {
+		if ret := TransIconToLl(tds.in); ret != tds.out {
+			t.Errorf("Failed test for TestTransIconToLl! Error: failed to TransIconToLl %+v", tds.in)
+		}
+	}
+
 }

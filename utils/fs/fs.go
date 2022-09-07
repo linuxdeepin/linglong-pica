@@ -552,11 +552,11 @@ func TransIconToLl(iconValue string) string {
 	// 去掉首尾空格
 	iconValue = strings.TrimSpace(iconValue)
 	// 如果icon以/usr开头
-	if strings.HasPrefix(iconValue, "/usr") && strings.HasSuffix(iconValue, ".svg") {
+	if strings.HasPrefix(iconValue, "/usr/share") && strings.HasSuffix(iconValue, ".svg") {
 		iconValue = GetFileName(iconValue)
 		iconValue = strings.Replace(iconValue, ".svg", "", -1)
 	}
-	if strings.HasPrefix(iconValue, "/usr") && strings.HasSuffix(iconValue, ".png") {
+	if strings.HasPrefix(iconValue, "/usr/share") && strings.HasSuffix(iconValue, ".png") {
 		iconValue = GetFileName(iconValue)
 		iconValue = strings.Replace(iconValue, ".png", "", -1)
 	}
