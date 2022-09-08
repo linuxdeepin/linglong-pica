@@ -52,7 +52,7 @@ var testDataCheckFileExits = []struct {
 }
 
 func TestCheckFileExits(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	for _, tds := range testDataCheckFileExits {
 		if ret, err := CheckFileExits(tds.in); err != nil && tds.out || ret != tds.out {
 			t.Errorf("Failed test for CheckFileExits!")
@@ -165,7 +165,7 @@ var testDataMoveFileOrDir = []struct {
 }
 
 func TestMoveFileOrDir(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	// 测试目录移动
 	if ret, err := CreateDir(testDataMoveFileOrDir[0].src); !ret && err != nil {
 		t.Errorf("CreateDir failed! : %s", testDataMoveFileOrDir[0].src)
@@ -215,7 +215,7 @@ var testDataCopyFile = []struct {
 }
 
 func TestCopyFile(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	// 测试已存在文件拷贝
 	if err := ioutil.WriteFile(testDataCopyFile[0].in, []byte("ll-pica testing"), 0644); err != nil {
 		t.Errorf("Failed test for TestCopyFile! Error: failed to write %+v", testDataCopyFile[0].in)
@@ -268,7 +268,7 @@ var testDataCopyDir = []struct {
 }
 
 func TestCopyDir(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	// 测试已存在的目录
 	if ret, err := CreateDir(testDataCopyDir[0].in); err != nil || !ret {
 		t.Errorf("Failed test for TestCopyDir! Error: failed to create dir %+v", testDataCopyDir[0].in)
@@ -304,16 +304,11 @@ var testDataCopyFileKeepPermission = []struct {
 func TestCopyFileKeepPermission(t *testing.T) {
 	dst := "/tmp/aaaaaxxx"
 
-	prefix := "/mnt/workdir/rootfs"
-	if ret, _ := CheckFileExits(prefix); ret {
-		for _, tds := range testDataCopyFileKeepPermission {
-			fmt.Println(tds)
-			if err := CopyFileKeepPermission(prefix+tds.in, dst, true, false); err != nil && tds.ret {
-				t.Error("failed:", err, tds, dst)
-			}
+	for _, tds := range testDataCopyFileKeepPermission {
+		fmt.Println(tds)
+		if err := CopyFileKeepPermission("/mnt/workdir/rootfs"+tds.in, dst, true, false); err != nil && tds.ret {
+			t.Error("failed:", err, tds, dst)
 		}
-	} else {
-		logger.Infof("skip test case: %v", t)
 	}
 }
 
@@ -663,7 +658,7 @@ Exec=/usr/bin/google-chrome-stable --incognito
 `
 
 func TestDesktopInit(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	// 创建目录
 	dirPath := "/tmp/ll-pica"
 	if ret, err := CreateDir(dirPath); !ret || err != nil {
@@ -693,7 +688,7 @@ func TestDesktopInit(t *testing.T) {
 
 // DesktopGroupname
 func TestDesktopGroupname(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	// 创建目录
 	dirPath := "/tmp/ll-pica"
 	if ret, err := CreateDir(dirPath); !ret || err != nil {
