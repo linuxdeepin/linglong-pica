@@ -375,6 +375,11 @@ Convert:
 			TransInfo.CachePath = cachePath
 		}
 
+		// 修复CachePath参数
+		if ret, err := TransInfo.FixCachePath(); !ret || err != nil {
+			logger.Fatal("can not found: ", TransInfo.Workdir)
+		}
+
 		if TransInfo.Verbose {
 			fmt.Println(TransInfo.Verbose)
 		}

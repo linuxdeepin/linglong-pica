@@ -30,6 +30,12 @@ import (
 
 // app config with runtime
 
+var logger *zap.SugaredLogger
+
+func init() {
+	logger = InitLog()
+}
+
 var ConfigInfo Config
 var TransInfo Config
 var DebConf DebConfig
@@ -64,121 +70,6 @@ type Config struct {
 	BundlePath        string
 	BundleRepoUrl     string
 	BundleChannel     string
-}
-
-type MountItem struct {
-	MountPoint string `yaml:"mountpoint"`
-	Source     string `yaml:"source"`
-	Type       string `yaml:"type"`
-	TypeLive   string `yaml:"typelive"`
-	IsRbind    bool   `yaml:"bind"`
-}
-
-type Mounts struct {
-	Mounts map[string]MountItem `yaml:"mounts"`
-}
-
-func (ts Mounts) DoMountALL() []error {
-
-	logger.Debug("mount list: ", len(ts.Mounts))
-	var errs []error
-	if len(ts.Mounts) == 0 {
-		return errs
-	}
-
-	var msg string
-	var err error
-
-	for _, item := range ts.Mounts {
-
-		logger.Debugf("mount: ", item.MountPoint, item.Source, item.Type, item.TypeLive, item.IsRbind)
-		if IsRbind := item.IsRbind; IsRbind {
-
-			// sudo mount --rbind /tmp/ /mnt/workdir/rootfs/tmp/
-			_, msg, err = ExecAndWait(10, "mount", "--rbind", item.Source, item.MountPoint)
-			if err != nil {
-				logger.Warnf("mount bind failed: ", msg, err)
-				errs = append(errs, err)
-				// continue
-			}
-
-		} else if item.TypeLive != "" {
-			_, msg, err = ExecAndWait(10, "mount", item.TypeLive, "-t", item.Type, item.MountPoint)
-			if err != nil {
-				logger.Warnf("mount failed: ", msg, err)
-				errs = append(errs, err)
-			}
-		} else {
-			_, msg, err = ExecAndWait(10, "mount", "-t", item.Type, item.Source, item.MountPoint)
-			if err != nil {
-				logger.Warnf("mount failed: ", msg, err)
-				errs = append(errs, err)
-			}
-		}
-
-	}
-	return errs
-}
-
-func (ts Mounts) DoUmountALL() []error {
-	logger.Debug("mount list: ", len(ts.Mounts))
-	var errs []error
-	if len(ts.Mounts) == 0 {
-		return errs
-	}
-
-	for _, item := range ts.Mounts {
-		logger.Debugf("umount: ", item.MountPoint)
-		_, msg, err := ExecAndWait(10, "umount", item.MountPoint)
-		if err != nil {
-			logger.Warnf("umount failed: ", msg, err)
-			errs = append(errs, err)
-		} else {
-			delete(ts.Mounts, item.MountPoint)
-		}
-
-	}
-	return errs
-}
-
-func (ts Mounts) DoUmountAOnce() []error {
-	return nil
-	logger.Debug("mount list: ", len(ts.Mounts))
-	var errs []error
-	if len(ts.Mounts) == 0 {
-		return nil
-	}
-
-	idx := 0
-UMOUNT_ONCE:
-	_, msg, err := ExecAndWait(10, "umount", "-R", ConfigInfo.Rootfsdir)
-	if err == nil {
-		idx++
-		if idx < 10 {
-			goto UMOUNT_ONCE
-		}
-	} else {
-		logger.Warnf("umount success: ", msg, err)
-		errs = append(errs, nil)
-	}
-	for _, item := range ts.Mounts {
-		logger.Debugf("umount: ", item.MountPoint)
-		delete(ts.Mounts, item.MountPoint)
-
-	}
-	return errs
-}
-
-func (ts *Mounts) FillMountRules() {
-
-	logger.Debug("mount list: ", len(ts.Mounts))
-	ts.Mounts[ConfigInfo.Rootfsdir+"/dev/pts"] = MountItem{ConfigInfo.Rootfsdir + "/dev/pts", "", "devpts", "devpts-live", false}
-	ts.Mounts[ConfigInfo.Rootfsdir+"/sys"] = MountItem{ConfigInfo.Rootfsdir + "/sys", "", "sysfs", "sysfs-live", false}
-	ts.Mounts[ConfigInfo.Rootfsdir+"/proc"] = MountItem{ConfigInfo.Rootfsdir + "/proc", "", "proc", "proc-live", false}
-	ts.Mounts[ConfigInfo.Rootfsdir+"/tmp/"] = MountItem{ConfigInfo.Rootfsdir + "/tmp", "/tmp", "", "", true}
-	ts.Mounts[ConfigInfo.Rootfsdir+"/etc/resolv.conf"] = MountItem{ConfigInfo.Rootfsdir + "/etc/resolv.conf", "/etc/resolv.conf", "", "", true}
-
-	logger.Debug("mount list: ", len(ts.Mounts))
 }
 
 func (config *Config) Export() (bool, error) {
@@ -346,10 +237,133 @@ func (config *Config) FixDesktop(appid string) (bool, error) {
 	return true, nil
 }
 
-var logger *zap.SugaredLogger
+// 当使用了-w 参数 ，没用 -f 参数时
+func (config *Config) FixCachePath() (bool, error) {
+	// 检查workdir是否存在
+	if ret, err := CheckFileExits(config.Workdir); !ret || err != nil {
+		return false, err
+	}
+	retWork := strings.HasPrefix(config.Workdir, "/mnt/workdir")
+	retCache := strings.HasPrefix(config.CachePath, "/mnt/workdir")
+	if !retWork && retCache {
+		config.CachePath = config.Workdir + "/cache.yaml"
+	}
+	return true, nil
+}
 
-func init() {
-	logger = InitLog()
+type MountItem struct {
+	MountPoint string `yaml:"mountpoint"`
+	Source     string `yaml:"source"`
+	Type       string `yaml:"type"`
+	TypeLive   string `yaml:"typelive"`
+	IsRbind    bool   `yaml:"bind"`
+}
+
+type Mounts struct {
+	Mounts map[string]MountItem `yaml:"mounts"`
+}
+
+func (ts Mounts) DoMountALL() []error {
+
+	logger.Debug("mount list: ", len(ts.Mounts))
+	var errs []error
+	if len(ts.Mounts) == 0 {
+		return errs
+	}
+
+	var msg string
+	var err error
+
+	for _, item := range ts.Mounts {
+
+		logger.Debugf("mount: ", item.MountPoint, item.Source, item.Type, item.TypeLive, item.IsRbind)
+		if IsRbind := item.IsRbind; IsRbind {
+
+			// sudo mount --rbind /tmp/ /mnt/workdir/rootfs/tmp/
+			_, msg, err = ExecAndWait(10, "mount", "--rbind", item.Source, item.MountPoint)
+			if err != nil {
+				logger.Warnf("mount bind failed: ", msg, err)
+				errs = append(errs, err)
+				// continue
+			}
+
+		} else if item.TypeLive != "" {
+			_, msg, err = ExecAndWait(10, "mount", item.TypeLive, "-t", item.Type, item.MountPoint)
+			if err != nil {
+				logger.Warnf("mount failed: ", msg, err)
+				errs = append(errs, err)
+			}
+		} else {
+			_, msg, err = ExecAndWait(10, "mount", "-t", item.Type, item.Source, item.MountPoint)
+			if err != nil {
+				logger.Warnf("mount failed: ", msg, err)
+				errs = append(errs, err)
+			}
+		}
+
+	}
+	return errs
+}
+
+func (ts Mounts) DoUmountALL() []error {
+	logger.Debug("mount list: ", len(ts.Mounts))
+	var errs []error
+	if len(ts.Mounts) == 0 {
+		return errs
+	}
+
+	for _, item := range ts.Mounts {
+		logger.Debugf("umount: ", item.MountPoint)
+		_, msg, err := ExecAndWait(10, "umount", item.MountPoint)
+		if err != nil {
+			logger.Warnf("umount failed: ", msg, err)
+			errs = append(errs, err)
+		} else {
+			delete(ts.Mounts, item.MountPoint)
+		}
+
+	}
+	return errs
+}
+
+func (ts Mounts) DoUmountAOnce() []error {
+	return nil
+	logger.Debug("mount list: ", len(ts.Mounts))
+	var errs []error
+	if len(ts.Mounts) == 0 {
+		return nil
+	}
+
+	idx := 0
+UMOUNT_ONCE:
+	_, msg, err := ExecAndWait(10, "umount", "-R", ConfigInfo.Rootfsdir)
+	if err == nil {
+		idx++
+		if idx < 10 {
+			goto UMOUNT_ONCE
+		}
+	} else {
+		logger.Warnf("umount success: ", msg, err)
+		errs = append(errs, nil)
+	}
+	for _, item := range ts.Mounts {
+		logger.Debugf("umount: ", item.MountPoint)
+		delete(ts.Mounts, item.MountPoint)
+
+	}
+	return errs
+}
+
+func (ts *Mounts) FillMountRules() {
+
+	logger.Debug("mount list: ", len(ts.Mounts))
+	ts.Mounts[ConfigInfo.Rootfsdir+"/dev/pts"] = MountItem{ConfigInfo.Rootfsdir + "/dev/pts", "", "devpts", "devpts-live", false}
+	ts.Mounts[ConfigInfo.Rootfsdir+"/sys"] = MountItem{ConfigInfo.Rootfsdir + "/sys", "", "sysfs", "sysfs-live", false}
+	ts.Mounts[ConfigInfo.Rootfsdir+"/proc"] = MountItem{ConfigInfo.Rootfsdir + "/proc", "", "proc", "proc-live", false}
+	ts.Mounts[ConfigInfo.Rootfsdir+"/tmp/"] = MountItem{ConfigInfo.Rootfsdir + "/tmp", "/tmp", "", "", true}
+	ts.Mounts[ConfigInfo.Rootfsdir+"/etc/resolv.conf"] = MountItem{ConfigInfo.Rootfsdir + "/etc/resolv.conf", "/etc/resolv.conf", "", "", true}
+
+	logger.Debug("mount list: ", len(ts.Mounts))
 }
 
 // exec and wait for command
@@ -407,6 +421,28 @@ type DebConfig struct {
 	BuildInfo struct{} `yaml:"build"`
 }
 
+func (ts *DebConfig) MergeInfo(t *DebConfig) bool {
+	if ts.Info.Appid == "" {
+		ts.Info.Appid = t.Info.Appid
+	}
+	if ts.Info.Name == "" {
+		ts.Info.Name = t.Info.Name
+	}
+	if ts.Info.Version == "" {
+		ts.Info.Version = t.Info.Version
+	}
+	if ts.Info.Description == "" {
+		ts.Info.Description = t.Info.Description
+	}
+	if ts.Info.Kind == "" {
+		ts.Info.Kind = t.Info.Kind
+	}
+	if ts.Info.Arch == "" {
+		ts.Info.Arch = t.Info.Arch
+	}
+	return true
+}
+
 type DebInfo struct {
 	Name string `yaml:"name"`
 	Type string `yaml:"type"`
@@ -458,28 +494,6 @@ func (ts *DebInfo) FetchDebFile(dirPath string) bool {
 		}
 	}
 	return false
-}
-
-func (ts *DebConfig) MergeInfo(t *DebConfig) bool {
-	if ts.Info.Appid == "" {
-		ts.Info.Appid = t.Info.Appid
-	}
-	if ts.Info.Name == "" {
-		ts.Info.Name = t.Info.Name
-	}
-	if ts.Info.Version == "" {
-		ts.Info.Version = t.Info.Version
-	}
-	if ts.Info.Description == "" {
-		ts.Info.Description = t.Info.Description
-	}
-	if ts.Info.Kind == "" {
-		ts.Info.Kind = t.Info.Kind
-	}
-	if ts.Info.Arch == "" {
-		ts.Info.Arch = t.Info.Arch
-	}
-	return true
 }
 
 type BaseConfig struct {
