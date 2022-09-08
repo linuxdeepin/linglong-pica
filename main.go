@@ -22,6 +22,7 @@ import (
 	. "ll-pica/core/info"
 	. "ll-pica/utils/fs"
 	. "ll-pica/utils/log"
+	"ll-pica/utils/rfs"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -419,9 +420,6 @@ Convert:
 		// fmt.Printf("Inside rootCmd PreRun with args: %v\n", args)
 		//Logger.Debug("mount all", ConfigInfo.MountsItem)
 
-		// todo(ll-pica init umount?)
-		//ConfigInfo.MountsItem.DoMountALL()
-
 		Logger.Debug("configinfo.rootfsdir", ConfigInfo.Rootfsdir)
 
 		ConfigInfo.DebPath = TransInfo.DebPath
@@ -447,23 +445,23 @@ Convert:
 			}
 		}
 
-		// todo(ll-pica init umount?)
-		// if ret, err := rfs.MountIso(ConfigInfo.IsoPath, ConfigInfo.Workdir+"/iso/mount"); !ret {
-		// 	Logger.Error("mount iso failed!", err)
-		// }
+		if ret, err := rfs.MountIso(ConfigInfo.Workdir+"/iso/mount", ConfigInfo.IsoPath); !ret {
+			Logger.Error("mount iso failed!", err)
+		}
 
-		// if ret, err := rfs.MountSquashfs(ConfigInfo.Workdir+"/iso/live", ConfigInfo.Workdir+"/iso/mount/live/filesystem.squashfs"); !ret {
-		// 	Logger.Error("mount iso failed!", err)
-		// }
+		if ret, err := rfs.MountSquashfs(ConfigInfo.Workdir+"/iso/live", ConfigInfo.Workdir+"/iso/mount/live/filesystem.squashfs"); !ret {
+			Logger.Error("mount iso failed!", err)
+		}
 
 		// mount overlay to base dir
 		Logger.Debug("Rootfsdir:", ConfigInfo.Rootfsdir, "runtimeBasedir:", ConfigInfo.RuntimeBasedir, "basedir:", ConfigInfo.Basedir, "workdir:", ConfigInfo.Workdir)
 
-		// todo(ll-pica init umount?)
-		// CreateDir(ConfigInfo.Workdir + "/tmpdir")
-		// if ret, err := rfs.MountRfsWithOverlayfs(ConfigInfo.Basedir, ConfigInfo.Rootfsdir, ConfigInfo.RuntimeBasedir, ConfigInfo.Workdir+"/tmpdir", ConfigInfo.Workdir+"/iso/live"); !ret {
-		// 	Logger.Error("mount iso failed!", err)
-		// }
+		CreateDir(ConfigInfo.Workdir + "/tmpdir")
+		if ret, err := rfs.MountRfsWithOverlayfs(ConfigInfo.Basedir, ConfigInfo.Rootfsdir, ConfigInfo.RuntimeBasedir, ConfigInfo.Workdir+"/tmpdir", ConfigInfo.Workdir+"/iso/live"); !ret {
+			Logger.Error("mount iso failed!", err)
+		}
+
+		ConfigInfo.MountsItem.DoMountALL()
 
 		//  umount ConfigInfo.Rootfsdir
 
@@ -619,29 +617,25 @@ Convert:
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Inside rootCmd PostRun with args: %v\n", args)
-		//ConfigInfo.MountsItem.DoUmountAOnce()
+		ConfigInfo.MountsItem.DoUmountALL()
 
-		// todo(when  umount?)
-		// // umount overlayfs
-		// Logger.Debug("umount rootfs")
-		// if ret, err := rfs.UmountRfs(ConfigInfo.Rootfsdir); !ret {
-		// 	Logger.Error("mount iso failed!", err)
-		// }
+		// umount overlayfs
+		Logger.Debug("umount rootfs")
+		if ret, err := rfs.UmountRfs(ConfigInfo.Rootfsdir); !ret {
+			Logger.Error("mount iso failed!", err)
+		}
 
-		// // umount squashfs
-		// Logger.Debug("umount squashfs")
-		// if ret, err := rfs.UmountSquashfs(ConfigInfo.Workdir + "/iso/live"); !ret {
-		// 	Logger.Error("mount iso failed!", err)
-		// }
+		// umount squashfs
+		Logger.Debug("umount squashfs")
+		if ret, err := rfs.UmountSquashfs(ConfigInfo.Workdir + "/iso/live"); !ret {
+			Logger.Error("mount iso failed!", err)
+		}
 
-		// // umount iso
-		// Logger.Debug("umount iso")
-		// if ret, err := rfs.UmountIso(ConfigInfo.Workdir + "/iso/mount"); !ret {
-		// 	Logger.Error("mount iso failed!", err)
-		// }
-		// //  umount ConfigInfo.Rootfsdir
-		// Logger.Debug("umount mounts devs")
-		// ConfigInfo.MountsItem.DoUmountAOnce()
+		// umount iso
+		Logger.Debug("umount iso")
+		if ret, err := rfs.UmountIso(ConfigInfo.Workdir + "/iso/mount"); !ret {
+			Logger.Error("mount iso failed!", err)
+		}
 
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
