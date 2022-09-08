@@ -20,6 +20,7 @@ import (
 	. "ll-pica/core"
 	. "ll-pica/core/comm"
 	. "ll-pica/core/info"
+	. "ll-pica/core/linglong"
 	. "ll-pica/utils/fs"
 	. "ll-pica/utils/log"
 	"ll-pica/utils/rfs"
@@ -611,8 +612,22 @@ Convert:
 
 		// umount
 
+		builder := LinglongBuder{}
+
+		builder.Appid = DebConf.Info.Appid
+		builder.Version = DebConf.Info.Version
+		builder.Description = DebConf.Info.Description
+		builder.Runtime = "org.deepin.Runtime"
+		builder.Rversion = "20.6"
+
+		Logger.Debugf("update linglong builder: %v", builder)
+
+		// create linglong.yaml
+		builder.CreateLinglongYamlBuilder(ConfigInfo.ExportDir + "/linglong.yaml")
+
 		// build uab
 		// ll-builder export --local
+		builder.CreateLinglongBuilder(ConfigInfo.ExportDir)
 
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
