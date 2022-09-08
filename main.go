@@ -24,23 +24,12 @@ import (
 	. "ll-pica/utils/log"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )
 
-// type BaseSdk struct {
-// 	Sdk map[string]dataset `yaml:"sdk"`
-// }
-// type dataset []DataSet
+var disableDevelop string
 
-// type DataSet struct {
-// 	Type   string `yaml:"type"`
-// 	Ref    string `yaml:"ref"`
-// 	Hash   string `yaml:"hash"`
-// 	Remote string `yaml:"remote"`
-// }
-
-var logger *zap.SugaredLogger
+// var Logger *zap.SugaredLogger
 
 // var RootfsMountList Mounts
 
@@ -49,29 +38,29 @@ var SdkConf BaseConfig
 // initCmd represents the init command
 
 func SetOverlayfs(lower string, upper string, workdir string) error {
-	logger.Debug("SetOverlayfs :", lower, upper, workdir)
+	Logger.Debug("SetOverlayfs :", lower, upper, workdir)
 	// mount lower dir to upper dir
 	//mount -t overlay overlay -o lowerdir=$WORK_DIR/lower,upperdir=$WORK_DIR/upper,workdir=$WORK_DIR/work $WORK_DIR/merged
 	tempDir := ConfigInfo.Workdir + "/temp"
 	err := os.Mkdir(tempDir, 0755)
 	if os.IsNotExist(err) {
-		logger.Error("mkdir failed: ", err)
+		Logger.Error("mkdir failed: ", err)
 		return err
 	}
 	msg := fmt.Sprintf("lowerdir=%s:%s,upperdir=%s,workdir=%s", upper, lower, workdir, tempDir)
 	_, msg, err = ExecAndWait(10, "mount", "-t", "overlay", "overlay", "-o", msg, ConfigInfo.Rootfsdir)
 	if err != nil {
-		logger.Error("mount overlayfs failed: ", msg, err)
+		Logger.Error("mount overlayfs failed: ", msg, err)
 	}
 	return nil
 }
 
 func UmountOverlayfs(workdir string) error {
-	logger.Debug("UmountOverlayfs :", workdir)
+	Logger.Debug("UmountOverlayfs :", workdir)
 	// umount upper dir
 	_, msg, err := ExecAndWait(10, "umount", workdir)
 	if err != nil {
-		logger.Error("umount overlayfs failed: ", msg, err)
+		Logger.Error("umount overlayfs failed: ", msg, err)
 	}
 	return nil
 }
@@ -83,87 +72,87 @@ var initCmd = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {
 		// 转换获取路径为绝对路径
 		if configPath, err := filepath.Abs(ConfigInfo.Config); err != nil {
-			logger.Errorf("Trans %s err: %s ", ConfigInfo.Config, err)
+			Logger.Errorf("Trans %s err: %s ", ConfigInfo.Config, err)
 		} else {
 			ConfigInfo.Config = configPath
 		}
 
 		if workPath, err := filepath.Abs(ConfigInfo.Workdir); err != nil {
-			logger.Errorf("Trans %s err: %s ", ConfigInfo.Workdir, err)
+			Logger.Errorf("Trans %s err: %s ", ConfigInfo.Workdir, err)
 		} else {
 			ConfigInfo.Workdir = workPath
 		}
 
-		logger.Debug("begin process cache: ", ConfigInfo.Cache)
+		Logger.Debug("begin process cache: ", ConfigInfo.Cache)
 		configCache := ConfigInfo.Workdir + "/cache.yaml"
 		runtimeDir := ConfigInfo.Workdir + "/runtime"
 		isoDir := ConfigInfo.Workdir + "/iso"
 
 		ClearRuntime := func() {
-			logger.Debug("begin clear runtime")
+			Logger.Debug("begin clear runtime")
 			if _, err := os.Stat(runtimeDir); !os.IsNotExist(err) {
-				logger.Debugf("remove runtime: %s", runtimeDir)
+				Logger.Debugf("remove runtime: %s", runtimeDir)
 				err = os.RemoveAll(runtimeDir)
 				if err != nil {
-					logger.Errorf("remove error", err)
+					Logger.Errorf("remove error", err)
 				}
 
 			}
 		}
 
 		ClearIso := func() {
-			logger.Debug("begin clear iso")
+			Logger.Debug("begin clear iso")
 			if _, err := os.Stat(isoDir); !os.IsNotExist(err) {
-				logger.Debugf("remove iso: %s", isoDir)
+				Logger.Debugf("remove iso: %s", isoDir)
 				err = os.RemoveAll(isoDir)
 				if err != nil {
-					logger.Errorf("remove error", err)
+					Logger.Errorf("remove error", err)
 				}
 			}
 		}
 
 		if _, err := os.Stat(configCache); !os.IsNotExist(err) && ConfigInfo.Cache {
 			// load cache.yaml
-			logger.Debugf("load: %s", configCache)
+			Logger.Debugf("load: %s", configCache)
 			cacheFd, err := ioutil.ReadFile(configCache)
 			if err != nil {
-				logger.Warnf("read error: %s", err)
+				Logger.Warnf("read error: %s", err)
 				return
 			}
 			err = yaml.Unmarshal(cacheFd, &ConfigInfo)
 			if err != nil {
-				logger.Warnf("unmarshal error: %s", err)
+				Logger.Warnf("unmarshal error: %s", err)
 				return
 			}
-			logger.Debugf("load cache.yaml success: %s", configCache)
+			Logger.Debugf("load cache.yaml success: %s", configCache)
 
-			logger.Debug("clear runtime: ", ConfigInfo.IsRuntimeFetch)
+			Logger.Debug("clear runtime: ", ConfigInfo.IsRuntimeFetch)
 			if !ConfigInfo.IsRuntimeFetch {
 				ClearRuntime()
 			}
 
 			err = os.Mkdir(runtimeDir, 0755)
 			if err != nil {
-				logger.Info("create runtime dir error: ", err)
+				Logger.Info("create runtime dir error: ", err)
 			}
 
-			logger.Debug("clear iso: ", ConfigInfo.IsIsoDownload)
+			Logger.Debug("clear iso: ", ConfigInfo.IsIsoDownload)
 			if !ConfigInfo.IsIsoDownload {
 				ClearIso()
 			}
 
 			err = os.Mkdir(isoDir, 0755)
 			if err != nil {
-				logger.Info("create iso dir error: ", err)
+				Logger.Info("create iso dir error: ", err)
 			}
 
 			return // Config Cache exist
 		} else {
-			logger.Debug("Config Cache not exist")
+			Logger.Debug("Config Cache not exist")
 			if !ConfigInfo.IsRuntimeCheckout {
 				err := os.RemoveAll(ConfigInfo.RuntimeBasedir)
 				if err != nil {
-					logger.Errorf("remove error", err)
+					Logger.Errorf("remove error", err)
 				}
 			}
 
@@ -172,29 +161,29 @@ var initCmd = &cobra.Command{
 
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		logger.Debug("begin run: ", ConfigInfo.Config)
+		Logger.Debug("begin run: ", ConfigInfo.Config)
 		if ConfigInfo.Config != "" {
 			yamlFile, err := ioutil.ReadFile(ConfigInfo.Config)
 			if err != nil {
-				logger.Errorf("get %s error: %v", ConfigInfo.Config, err)
+				Logger.Errorf("get %s error: %v", ConfigInfo.Config, err)
 				return
 			}
 			err = yaml.Unmarshal(yamlFile, &SdkConf)
 			if err != nil {
-				logger.Errorf("error: %v", err)
+				Logger.Errorf("error: %v", err)
 				return
 			}
 		}
 
 		for idx, context := range SdkConf.SdkInfo.Base {
-			logger.Debugf("get %d %s", idx, context)
+			Logger.Debugf("get %d %s", idx, context)
 			switch context.Type {
 			case "ostree":
 				if !ConfigInfo.IsRuntimeFetch {
-					logger.Debug("ostree init")
+					Logger.Debug("ostree init")
 					ConfigInfo.RuntimeOstreeDir = ConfigInfo.Workdir + "/runtime"
 					if ret := SdkConf.SdkInfo.Base[idx].InitOstree(ConfigInfo.RuntimeOstreeDir); !ret {
-						logger.Error("init ostree failed")
+						Logger.Error("init ostree failed")
 						ConfigInfo.IsRuntimeFetch = false
 						return
 					} else {
@@ -203,7 +192,7 @@ var initCmd = &cobra.Command{
 
 					ConfigInfo.RuntimeBasedir = ConfigInfo.Workdir + "/runtimedir"
 					if ret := SdkConf.SdkInfo.Base[idx].CheckoutOstree(ConfigInfo.RuntimeBasedir); !ret {
-						logger.Error("checkout ostree failed")
+						Logger.Error("checkout ostree failed")
 						ConfigInfo.IsRuntimeCheckout = false
 						return
 					} else {
@@ -216,63 +205,63 @@ var initCmd = &cobra.Command{
 			case "iso":
 
 				if !ConfigInfo.IsIsoDownload {
-					logger.Debug("iso download")
+					Logger.Debug("iso download")
 
 					ConfigInfo.IsoPath = ConfigInfo.Workdir + "/iso/base.iso"
 
 					if ret := SdkConf.SdkInfo.Base[idx].FetchIsoFile(ConfigInfo.Workdir, ConfigInfo.IsoPath); !ret {
 						ConfigInfo.IsIsoDownload = false
-						logger.Errorf("download iso failed")
+						Logger.Errorf("download iso failed")
 						return
 					} else {
 						ConfigInfo.IsIsoDownload = true
 					}
-					logger.Debug("iso download success")
+					Logger.Debug("iso download success")
 				}
 
 				if !ConfigInfo.IsIsoChecked {
-					logger.Debug("iso check hash")
+					Logger.Debug("iso check hash")
 					if ret := SdkConf.SdkInfo.Base[idx].CheckIsoHash(); !ret {
 						ConfigInfo.IsIsoChecked = false
-						logger.Errorf("check iso hash failed")
+						Logger.Errorf("check iso hash failed")
 						return
 					} else {
 						ConfigInfo.IsIsoChecked = true
 					}
-					logger.Debug("iso check hash success")
+					Logger.Debug("iso check hash success")
 				}
 				continue
 			}
 		}
 
 		ConfigInfo.Basedir = ConfigInfo.Workdir + "/basedir"
-		logger.Debug("set basedir: ", ConfigInfo.Basedir)
+		Logger.Debug("set basedir: ", ConfigInfo.Basedir)
 
 		// extra
-		logger.Debug("extra init")
+		Logger.Debug("extra init")
 		// if SdkConf.SdkInfo.Extra != ExtraInfo{,} {
-		// 	logger.Debug(SdkConf.SdkInfo.Extra)
+		// 	Logger.Debug(SdkConf.SdkInfo.Extra)
 		// }
 
-		logger.Debug("end init")
+		Logger.Debug("end init")
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
-		logger.Debugf("config :%+v", ConfigInfo)
+		Logger.Debugf("config :%+v", ConfigInfo)
 		err := errors.New("")
-		logger.Debug("begin mount iso: ", ConfigInfo.IsoPath)
+		Logger.Debug("begin mount iso: ", ConfigInfo.IsoPath)
 		ConfigInfo.IsoMountDir = ConfigInfo.Workdir + "/iso/mount"
 
 		if ret, _ := CheckFileExits(ConfigInfo.IsoMountDir); !ret {
 			err = os.Mkdir(ConfigInfo.IsoMountDir, 0755)
 			if os.IsNotExist(err) {
-				logger.Error("mkdir iso mount dir failed!", err)
+				Logger.Error("mkdir iso mount dir failed!", err)
 			}
 		}
 
 		var msg string
 		_, msg, err = ExecAndWait(10, "mount", "-o", "loop", ConfigInfo.IsoPath, ConfigInfo.IsoMountDir)
 		if err != nil {
-			logger.Error("mount iso failed!", msg, err)
+			Logger.Error("mount iso failed!", msg, err)
 		}
 		UmountIsoDir := func() {
 			ExecAndWait(10, "umount", ConfigInfo.IsoMountDir)
@@ -285,11 +274,11 @@ var initCmd = &cobra.Command{
 		baseDir := ConfigInfo.Workdir + "/iso/live"
 		err = os.Mkdir(baseDir, 0755)
 		if os.IsNotExist(err) {
-			logger.Error("mkdir iso mount dir failed!", err)
+			Logger.Error("mkdir iso mount dir failed!", err)
 		}
 		_, msg, err = ExecAndWait(10, "mount", ConfigInfo.IsoMountDir+"/live/filesystem.squashfs", baseDir)
 		if err != nil {
-			logger.Error("mount squashfs failed!", msg, err)
+			Logger.Error("mount squashfs failed!", msg, err)
 		}
 		UmountSquashfsDir := func() {
 			ExecAndWait(10, "umount", baseDir)
@@ -299,13 +288,13 @@ var initCmd = &cobra.Command{
 		ConfigInfo.Rootfsdir = ConfigInfo.Workdir + "/rootfs"
 		err = os.Mkdir(ConfigInfo.Rootfsdir, 0755)
 		if os.IsNotExist(err) {
-			logger.Error("mkdir rootfsdir failed!", err)
+			Logger.Error("mkdir rootfsdir failed!", err)
 		}
 
 		err = os.Mkdir(ConfigInfo.Basedir, 0755)
 
 		if os.IsNotExist(err) {
-			logger.Error("mkdir runtime basedir failed!", err)
+			Logger.Error("mkdir runtime basedir failed!", err)
 		}
 
 		// mount overlay to base dir
@@ -323,20 +312,20 @@ var initCmd = &cobra.Command{
 
 		yamlData, err := yaml.Marshal(&ConfigInfo)
 		if err != nil {
-			logger.Errorf("convert to yaml failed!")
+			Logger.Errorf("convert to yaml failed!")
 		}
-		// logger.Debugf("write Config Cache: %v", string(yamlData))
+		// Logger.Debugf("write Config Cache: %v", string(yamlData))
 		err = ioutil.WriteFile(fmt.Sprintf("%s/cache.yaml", ConfigInfo.Workdir), yamlData, 0644)
 		if err != nil {
-			logger.Error("write cache.yaml failed!")
+			Logger.Error("write cache.yaml failed!")
 		}
 
 		ConfigInfo.MountsItem.DoMountALL()
 
 		// write source.list
-		logger.Debugf("Start write sources.list !")
+		Logger.Debugf("Start write sources.list !")
 		if ret := SdkConf.SdkInfo.Extra.WriteRootfsRepo(ConfigInfo); !ret {
-			logger.Errorf("Write sources.list failed!")
+			Logger.Errorf("Write sources.list failed!")
 		}
 		ConfigInfo.MountsItem.DoUmountALL()
 	},
@@ -358,93 +347,94 @@ Convert:
 	PreRun: func(cmd *cobra.Command, args []string) {
 		// 转换获取路径为绝对路径
 		if yamlPath, err := filepath.Abs(TransInfo.Yamlconfig); err != nil {
-			logger.Errorf("Trans %s err: %s ", TransInfo.Yamlconfig, err)
+			Logger.Errorf("Trans %s err: %s ", TransInfo.Yamlconfig, err)
 		} else {
 			TransInfo.Yamlconfig = yamlPath
 		}
 
 		if workPath, err := filepath.Abs(TransInfo.Workdir); err != nil {
-			logger.Errorf("Trans %s err: %s ", TransInfo.Workdir, err)
+			Logger.Errorf("Trans %s err: %s ", TransInfo.Workdir, err)
 		} else {
 			TransInfo.Workdir = workPath
 		}
 
 		if cachePath, err := filepath.Abs(TransInfo.CachePath); err != nil {
-			logger.Errorf("Trans %s err: %s ", TransInfo.CachePath, err)
+			Logger.Errorf("Trans %s err: %s ", TransInfo.CachePath, err)
 		} else {
 			TransInfo.CachePath = cachePath
 		}
 
 		// 修复CachePath参数
 		if ret, err := TransInfo.FixCachePath(); !ret || err != nil {
-			logger.Fatal("can not found: ", TransInfo.Workdir)
+			Logger.Fatal("can not found: ", TransInfo.Workdir)
 		}
 
 		if TransInfo.Verbose {
 			fmt.Println(TransInfo.Verbose)
 		}
 
-		logger.Debug("load yaml config", TransInfo.Yamlconfig)
+		Logger.Debug("load yaml config", TransInfo.Yamlconfig)
 
 		if ret, msg := CheckFileExits(TransInfo.Yamlconfig); !ret {
-			logger.Fatal("can not found: ", msg)
+			Logger.Fatal("can not found: ", msg)
 		} else {
-			logger.Debugf("load: %s", TransInfo.Yamlconfig)
+			Logger.Debugf("load: %s", TransInfo.Yamlconfig)
 			cacheFd, err := ioutil.ReadFile(TransInfo.Yamlconfig)
 			if err != nil {
-				logger.Fatalf("read error: %s %s", err, msg)
+				Logger.Fatalf("read error: %s %s", err, msg)
 				return
 			}
-			// logger.Debugf("load: %s", cacheFd)
+			// Logger.Debugf("load: %s", cacheFd)
 			err = yaml.Unmarshal(cacheFd, &DebConf)
 			if err != nil {
-				logger.Fatalf("unmarshal error: %s", err)
+				Logger.Fatalf("unmarshal error: %s", err)
 				return
 			}
-			// logger.Debugf("loaded %+v", DebConf)
+			// Logger.Debugf("loaded %+v", DebConf)
 
 		}
 
-		logger.Debug("load cache.yaml", TransInfo.CachePath)
+		Logger.Debug("load cache.yaml", TransInfo.CachePath)
 
 		if ret, msg := CheckFileExits(TransInfo.CachePath); ret {
 			// load cache.yaml
-			logger.Debugf("load cache: %s", TransInfo.CachePath)
+			Logger.Debugf("load cache: %s", TransInfo.CachePath)
 			cacheFd, err := ioutil.ReadFile(TransInfo.CachePath)
 			if err != nil {
-				logger.Warnf("read error: %s %s", err, msg)
+				Logger.Warnf("read error: %s %s", err, msg)
 				return
 			}
 
 			err = yaml.Unmarshal(cacheFd, &ConfigInfo)
 			if err != nil {
-				logger.Warnf("unmarshal error: %s", err)
+				Logger.Warnf("unmarshal error: %s", err)
 				return
 			}
-			// logger.Debugf("load config info %v", ConfigInfo)
+			// Logger.Debugf("load config info %v", ConfigInfo)
 		} else {
-			logger.Fatalf("can not found: %s", msg)
+			Logger.Fatalf("can not found: %s", msg)
 			return
 		}
 
 		// fmt.Printf("Inside rootCmd PreRun with args: %v\n", args)
-		//logger.Debug("mount all", ConfigInfo.MountsItem)
+		//Logger.Debug("mount all", ConfigInfo.MountsItem)
 
 		// todo(ll-pica init umount?)
 		//ConfigInfo.MountsItem.DoMountALL()
 
-		logger.Debug("configinfo.rootfsdir", ConfigInfo.Rootfsdir)
+		Logger.Debug("configinfo.rootfsdir", ConfigInfo.Rootfsdir)
 
 		ConfigInfo.DebPath = TransInfo.DebPath
 		ConfigInfo.Yamlconfig = TransInfo.Yamlconfig
 		ConfigInfo.Verbose = TransInfo.Verbose
 		ConfigInfo.CachePath = TransInfo.CachePath
+		ConfigInfo.DebugMode = TransInfo.DebugMode
 		// ConfigInfo.Workdir = TransInfo.Workdir
 		// ConfigInfo.Rootfsdir = TransInfo.Rootfsdir
 
-		// logger.Debug("ConfigInfo:", ConfigInfo)
-		// logger.Debug("TransInfo:", TransInfo)
-		// logger.Debug("DebConf:", DebConf)
+		// Logger.Debug("ConfigInfo:", ConfigInfo)
+		// Logger.Debug("TransInfo:", TransInfo)
+		// Logger.Debug("DebConf:", DebConf)
 
 		// if TransInfo.DebWorkdir != "" && ConfigInfo.DebWorkdir == "" {
 		// 	ConfigInfo.DebWorkdir = TransInfo.DebWorkdir
@@ -459,20 +449,20 @@ Convert:
 
 		// todo(ll-pica init umount?)
 		// if ret, err := rfs.MountIso(ConfigInfo.IsoPath, ConfigInfo.Workdir+"/iso/mount"); !ret {
-		// 	logger.Error("mount iso failed!", err)
+		// 	Logger.Error("mount iso failed!", err)
 		// }
 
 		// if ret, err := rfs.MountSquashfs(ConfigInfo.Workdir+"/iso/live", ConfigInfo.Workdir+"/iso/mount/live/filesystem.squashfs"); !ret {
-		// 	logger.Error("mount iso failed!", err)
+		// 	Logger.Error("mount iso failed!", err)
 		// }
 
 		// mount overlay to base dir
-		logger.Debug("Rootfsdir:", ConfigInfo.Rootfsdir, "runtimeBasedir:", ConfigInfo.RuntimeBasedir, "basedir:", ConfigInfo.Basedir, "workdir:", ConfigInfo.Workdir)
+		Logger.Debug("Rootfsdir:", ConfigInfo.Rootfsdir, "runtimeBasedir:", ConfigInfo.RuntimeBasedir, "basedir:", ConfigInfo.Basedir, "workdir:", ConfigInfo.Workdir)
 
 		// todo(ll-pica init umount?)
 		// CreateDir(ConfigInfo.Workdir + "/tmpdir")
 		// if ret, err := rfs.MountRfsWithOverlayfs(ConfigInfo.Basedir, ConfigInfo.Rootfsdir, ConfigInfo.RuntimeBasedir, ConfigInfo.Workdir+"/tmpdir", ConfigInfo.Workdir+"/iso/live"); !ret {
-		// 	logger.Error("mount iso failed!", err)
+		// 	Logger.Error("mount iso failed!", err)
 		// }
 
 		//  umount ConfigInfo.Rootfsdir
@@ -482,32 +472,32 @@ Convert:
 		// fmt.Printf("Inside rootCmd Run with args: %v\n", args)
 
 		// check enter deb file
-		logger.Debug("check DebPath:", ConfigInfo.DebPath)
+		Logger.Debug("check DebPath:", ConfigInfo.DebPath)
 		if ret, msg := CheckFileExits(ConfigInfo.DebPath); !ret {
-			logger.Debug("can not found: ", msg)
+			Logger.Debug("can not found: ", msg)
 		}
 
 		// fetch deb file
 		// DebConfig
-		logger.Debugf("debConfig deb:%v", DebConf.FileElement.Deb)
+		Logger.Debugf("debConfig deb:%v", DebConf.FileElement.Deb)
 		for idx, _ := range DebConf.FileElement.Deb {
 			// fetch deb file
 			DebConf.FileElement.Deb[idx].FetchDebFile(ConfigInfo.DebWorkdir)
-			logger.Debugf("fetch deb path:[%d] %s", idx, DebConf.FileElement.Deb[idx].Path)
+			Logger.Debugf("fetch deb path:[%d] %s", idx, DebConf.FileElement.Deb[idx].Path)
 			// check deb hash
 			if ret := DebConf.FileElement.Deb[idx].CheckDebHash(); !ret {
-				logger.Fatal("check deb hash failed! : ", DebConf.FileElement.Deb[idx].Name)
+				Logger.Fatal("check deb hash failed! : ", DebConf.FileElement.Deb[idx].Name)
 				return
 			}
 		}
 
 		// render DebConfig to template save to pica.sh
-		logger.Debugf("render berfore %s:", DebConf.FileElement.Deb)
+		Logger.Debugf("render berfore %s:", DebConf.FileElement.Deb)
 		RenderDebConfig(DebConf, ConfigInfo.DebWorkdir+"/pica.sh")
 
 		// chroot
 		if ret, msg, err := ChrootExecShell(ConfigInfo.Rootfsdir, ConfigInfo.DebWorkdir+"/pica.sh", []string{ConfigInfo.DebWorkdir}); !ret {
-			logger.Fatal("chroot exec shell failed:", msg, err)
+			Logger.Fatal("chroot exec shell failed:", msg, err)
 			return
 		}
 
@@ -554,7 +544,7 @@ Convert:
 			"libX11-xcb.so.1",
 			"libselinux.so.1",
 		}
-		logger.Debugf("exclude so list:", excludeSoList)
+		Logger.Debugf("exclude so list:", excludeSoList)
 
 		//binReactor.FixElfLDDPath(binReactor.SearchPath + "bin/lib")
 		//
@@ -562,26 +552,26 @@ Convert:
 		elfLDDLog := ConfigInfo.DebWorkdir + "/elfldd.log"
 		elfLDDShell := ConfigInfo.DebWorkdir + "/elfldd.sh"
 
-		logger.Debugf("out: %s , sh: %s", elfLDDLog, elfLDDShell)
+		Logger.Debugf("out: %s , sh: %s", elfLDDLog, elfLDDShell)
 
 		binReactor.RenderElfWithLDD(elfLDDLog, elfLDDShell)
 
 		// chroot
 		if ret, msg, err := ChrootExecShell(ConfigInfo.Rootfsdir, elfLDDShell, []string{ConfigInfo.FilesSearchPath}); !ret {
-			logger.Fatal("chroot exec shell failed:", msg, err)
+			Logger.Fatal("chroot exec shell failed:", msg, err)
 			return
 		}
 
 		// check result with chroot exec shell
 		if ret, err := CheckFileExits(elfLDDLog); !ret {
-			logger.Fatal("chroot exec shell failed:", ret, err)
+			Logger.Fatal("chroot exec shell failed:", ret, err)
 			return
 		}
 
 		// read elfldd.log
-		logger.Debug("read elfldd.log", elfLDDLog)
+		Logger.Debug("read elfldd.log", elfLDDLog)
 		if elfLDDLogFile, err := os.Open(elfLDDLog); err != nil {
-			logger.Fatal("open elfldd.log failed:", err)
+			Logger.Fatal("open elfldd.log failed:", err)
 			//elfLDDLogFile.Close()
 		} else {
 			defer elfLDDLogFile.Close()
@@ -601,17 +591,17 @@ Convert:
 
 			binReactor.FixElfNeedPath(excludeSoList)
 
-			logger.Debugf("fix exclude so list: %v", binReactor.ElfNeedPath)
+			Logger.Debugf("fix exclude so list: %v", binReactor.ElfNeedPath)
 
 		}
 
-		logger.Debugf("found %d elf need objects", len(binReactor.ElfNeedPath))
+		Logger.Debugf("found %d elf need objects", len(binReactor.ElfNeedPath))
 
 		binReactor.CopyElfNeedPath(ConfigInfo.Rootfsdir, ConfigInfo.FilesSearchPath)
 
 		// fix library
 		// if msg, ret := GetElfNeedWithLDD("/bin/bash"); ret != nil {
-		// 	logger.Debug("get elf need failed: ", msg)
+		// 	Logger.Debug("get elf need failed: ", msg)
 		// }
 
 		// fix desktop
@@ -633,24 +623,24 @@ Convert:
 
 		// todo(when  umount?)
 		// // umount overlayfs
-		// logger.Debug("umount rootfs")
+		// Logger.Debug("umount rootfs")
 		// if ret, err := rfs.UmountRfs(ConfigInfo.Rootfsdir); !ret {
-		// 	logger.Error("mount iso failed!", err)
+		// 	Logger.Error("mount iso failed!", err)
 		// }
 
 		// // umount squashfs
-		// logger.Debug("umount squashfs")
+		// Logger.Debug("umount squashfs")
 		// if ret, err := rfs.UmountSquashfs(ConfigInfo.Workdir + "/iso/live"); !ret {
-		// 	logger.Error("mount iso failed!", err)
+		// 	Logger.Error("mount iso failed!", err)
 		// }
 
 		// // umount iso
-		// logger.Debug("umount iso")
+		// Logger.Debug("umount iso")
 		// if ret, err := rfs.UmountIso(ConfigInfo.Workdir + "/iso/mount"); !ret {
-		// 	logger.Error("mount iso failed!", err)
+		// 	Logger.Error("mount iso failed!", err)
 		// }
 		// //  umount ConfigInfo.Rootfsdir
-		// logger.Debug("umount mounts devs")
+		// Logger.Debug("umount mounts devs")
 		// ConfigInfo.MountsItem.DoUmountAOnce()
 
 	},
@@ -692,11 +682,12 @@ push:
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	PreRun: func(cmd *cobra.Command, args []string) {
+		Logger.Infof("parse input:", ConfigInfo.BundleKeyFile, ConfigInfo.BundlePath)
 		// keyfile
 		if ConfigInfo.BundleKeyFile != "" {
 			if ret, _ := CheckFileExits(ConfigInfo.BundleKeyFile); !ret {
 				ConfigInfo.BundleAuthType = BundleLoginFailed
-				logger.Errorf("not found keyfile %v", ConfigInfo.BundleKeyFile)
+				Logger.Errorf("not found keyfile %v", ConfigInfo.BundleKeyFile)
 				return
 
 			} else {
@@ -708,7 +699,7 @@ push:
 		// auth username
 		if ConfigInfo.BundleUsername == "" || ConfigInfo.BundlePasswords == "" {
 			ConfigInfo.BundleAuthType = BundleLoginFailed
-			logger.Errorf("need bundle repo auth username and passwords")
+			Logger.Errorf("need bundle repo auth username and passwords")
 			return
 		} else {
 			ConfigInfo.BundleAuthType = BundleLoginWithPassword
@@ -716,21 +707,22 @@ push:
 
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		Logger.Infof("bundle path %v", ConfigInfo.BundlePath)
 		if ConfigInfo.BundlePath == "" {
 			if workdirPath, err := os.Getwd(); err != nil {
-				logger.Debugf("get working directory: %v", err)
+				Logger.Debugf("get working directory: %v", err)
 				return
 			} else {
-				logger.Debugf("working directory: %v", workdirPath)
+				Logger.Debugf("working directory: %v", workdirPath)
 				if bundleList, err := FindBundlePath(workdirPath); err == nil {
-					logger.Debugf("found bundle file %v", bundleList)
+					Logger.Debugf("found bundle file %v", bundleList)
 					// mutiple bundles
 
 					for _, bundle := range bundleList {
 						ConfigInfo.BundlePath = bundle
 
 						if ret, err := LinglongBuilderWarp(ConfigInfo.BundleAuthType, &ConfigInfo); !ret {
-							logger.Infof("push failed: %v", err, bundle)
+							Logger.Infof("push failed: %v", err, bundle)
 							continue
 						}
 					}
@@ -738,7 +730,7 @@ push:
 					return
 
 				} else {
-					logger.Errorf("not found bundle")
+					Logger.Errorf("not found bundle")
 					return
 				}
 			}
@@ -749,16 +741,16 @@ push:
 					// run push
 
 					if ret, err := LinglongBuilderWarp(ConfigInfo.BundleAuthType, &ConfigInfo); !ret {
-						logger.Errorf("push failed: %v", err)
+						Logger.Errorf("push failed: %v", err)
 						return
 					}
 
 				} else {
-					logger.Errorf("need bundle file %s", ConfigInfo.BundlePath)
+					Logger.Errorf("need bundle file %s", ConfigInfo.BundlePath)
 					return
 				}
 			} else {
-				logger.Errorf("not found bundle %s", ConfigInfo.BundlePath)
+				Logger.Errorf("not found bundle %s", ConfigInfo.BundlePath)
 				return
 			}
 		}
@@ -770,20 +762,18 @@ push:
 
 func main() {
 
-	// logger, _ := zap.NewProduction()
-	logger = InitLog()
-	defer logger.Sync()
+	Logger = InitLog()
+	defer Logger.Sync()
 
 	// init cmd add
 	rootCmd.AddCommand(initCmd)
 
 	initCmd.Flags().StringVarP(&ConfigInfo.Config, "config", "c", "", "config")
 	initCmd.Flags().StringVarP(&ConfigInfo.Workdir, "workdir", "w", "", "work directory")
-	//initCmd.Flags().StringVarP(&ConfigInfo.iso, "iso", "f", "", "iso")
 	initCmd.Flags().BoolVarP(&ConfigInfo.Cache, "keep-cached", "k", true, "keep cached")
 	err := initCmd.MarkFlagRequired("config")
 	if err != nil {
-		logger.Fatal("config required failed", err)
+		Logger.Fatal("config required failed", err)
 		return
 	}
 
@@ -796,11 +786,11 @@ func main() {
 
 	err = convertCmd.MarkFlagRequired("config")
 	if err != nil {
-		logger.Fatal("yaml config required failed", err)
+		Logger.Fatal("yaml config required failed", err)
 	}
 	// err = convertCmd.MarkFlagRequired("deb-file")
 	// if err != nil {
-	// 	logger.Fatal("deb file required failed", err)
+	// 	Logger.Fatal("deb file required failed", err)
 	// }
 
 	rootCmd.AddCommand(pushCmd)
@@ -816,7 +806,7 @@ func main() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
 	// root cmd add
-	rootCmd.PersistentFlags().BoolVarP(&ConfigInfo.Verbose, "verbose", "v", false, "verbose output")
+	rootCmd.PersistentFlags().BoolVarP(&ConfigInfo.Verbose, "verbose", "", false, "verbose output")
 
 	if ConfigInfo.Workdir == "" {
 		ConfigInfo.Workdir = "/mnt/workdir"
@@ -828,6 +818,18 @@ func main() {
 	// fix cache path
 	if TransInfo.CachePath == "" {
 		TransInfo.CachePath = TransInfo.Workdir + "/cache.yaml"
+	}
+
+	// go build -ldflags '-X ll-pica/utils/log.disableLogDebug=yes -X main.disableDevelop=yes'
+	// fmt.Printf("disableDevelop: %s\n", disableDevelop)
+	if disableDevelop != "" {
+		Logger.Debugf("develop mode disable")
+		TransInfo.DebugMode = false
+		ConfigInfo.DebugMode = false
+	} else {
+		Logger.Debugf("develop mode enabled")
+		TransInfo.DebugMode = true
+		ConfigInfo.DebugMode = true
 	}
 
 	ConfigInfo.MountsItem.Mounts = make(map[string]MountItem)

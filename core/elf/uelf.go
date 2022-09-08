@@ -16,15 +16,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-
-	"go.uber.org/zap"
 )
-
-var logger *zap.SugaredLogger
-
-func init() {
-	logger = InitLog()
-}
 
 var ELF_MAGIC = []byte{0x7f, 0x45, 0x4c, 0x46}
 
@@ -36,14 +28,14 @@ var ELF_MAGIC = []byte{0x7f, 0x45, 0x4c, 0x46}
 func IsElfWithPath(elfPath string) bool {
 	f, err := os.Open(elfPath)
 	if err != nil {
-		//logger.Debugf("Open:", elfPath, err)
+		//Logger.Debugf("Open:", elfPath, err)
 		return false
 	}
 	defer f.Close()
 
 	file_header_data := make([]byte, 32)
 	n, err := f.Read(file_header_data)
-	//logger.Debugf("Read:", elfPath, n, err)
+	//Logger.Debugf("Read:", elfPath, n, err)
 	if err != nil || n <= 30 {
 		return false
 	}
@@ -68,7 +60,7 @@ func GetElfWithPath(dir string) ([]string, error) {
 		real_path = real_path + "/"
 	}
 
-	logger.Debugf("GetElfWithPath:", real_path)
+	Logger.Debugf("GetElfWithPath:", real_path)
 
 	err := filepath.Walk(real_path, func(path string, info os.FileInfo, err error) error {
 

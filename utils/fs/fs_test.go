@@ -13,6 +13,7 @@ package fs
 import (
 	"fmt"
 	"io/ioutil"
+	. "ll-pica/utils/log"
 	"os"
 	"sort"
 	"testing"
@@ -313,7 +314,7 @@ func TestCopyFileKeepPermission(t *testing.T) {
 			}
 		}
 	} else {
-		logger.Infof("skip test case: %v", t)
+		Logger.Infof("skip test case: %v", t)
 	}
 }
 
@@ -359,7 +360,7 @@ func TestCopyDirKeepPathAndPerm2(t *testing.T) {
 			t.Error("failed:", err, dst)
 		}
 	} else {
-		logger.Infof("skip test case: %v", t)
+		Logger.Infof("skip test case: %v", t)
 	}
 
 }

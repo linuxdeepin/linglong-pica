@@ -24,24 +24,23 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 // app config with runtime
 
-var logger *zap.SugaredLogger
+// var Logger *zap.SugaredLogger
 
-func init() {
-	logger = InitLog()
-}
+// func init() {
+// 	Logger = InitLog()
+// }
 
 var ConfigInfo Config
 var TransInfo Config
 var DebConf DebConfig
 
 type Config struct {
-	Verbose           bool   `yaml:"verbose"`
+	Verbose           bool `yaml:"verbose"`
+	DebugMode         bool
 	Config            string `yaml:"config"`
 	Workdir           string `yaml:"workdir"`
 	Basedir           string `yaml:"basedir"`
@@ -141,14 +140,14 @@ func (config *Config) fixDesktop(desktopFile, appid string) (bool, error) {
 
 	file, err := os.Open(desktopFile)
 	if err != nil {
-		logger.Errorw("desktopFile open failed! : ", desktopFile)
+		Logger.Errorw("desktopFile open failed! : ", desktopFile)
 		return false, err
 	}
 	defer file.Close()
 
 	newFile, newFileErr := os.OpenFile(newFileDesktop, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if newFileErr != nil {
-		logger.Errorw("desktopFile open failed! : ", newFileDesktop)
+		Logger.Errorw("desktopFile open failed! : ", newFileDesktop)
 		return false, newFileErr
 	}
 	defer newFile.Close()
@@ -158,10 +157,10 @@ func (config *Config) fixDesktop(desktopFile, appid string) (bool, error) {
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
-				logger.Debug("desktopFile read ok! : ", desktopFile)
+				Logger.Debug("desktopFile read ok! : ", desktopFile)
 				break
 			} else {
-				logger.Errorw("read desktopFile failed! : ", desktopFile)
+				Logger.Errorw("read desktopFile failed! : ", desktopFile)
 				return false, err
 			}
 		}
@@ -190,7 +189,7 @@ func (config *Config) fixDesktop(desktopFile, appid string) (bool, error) {
 	newFile.Sync()
 
 	if ret, err := MoveFileOrDir(newFileDesktop, desktopFile); !ret && err != nil {
-		logger.Errorw("move test.desktop failed!")
+		Logger.Errorw("move test.desktop failed!")
 		return false, err
 	}
 
@@ -201,7 +200,7 @@ func (config *Config) FixDesktop(appid string) (bool, error) {
 	applicationsPath := config.ExportDir + "/entries/applications"
 	applicationsPath = filepath.Clean(applicationsPath)
 	if ret, err := CheckFileExits(applicationsPath); !ret && err != nil {
-		logger.Errorw("applications dir not exists! : ", applicationsPath)
+		Logger.Errorw("applications dir not exists! : ", applicationsPath)
 		return false, err
 	}
 
@@ -219,12 +218,12 @@ func (config *Config) FixDesktop(appid string) (bool, error) {
 	// 遍历desktop目录
 	fileList, err := ioutil.ReadDir(applicationsPath)
 	if err != nil {
-		logger.Errorw("readDir failed! : ", applicationsPath)
+		Logger.Errorw("readDir failed! : ", applicationsPath)
 		return false, err
 
 	}
 	for _, fileinfo := range fileList {
-		logger.Debug("read dir : ", applicationsPath)
+		Logger.Debug("read dir : ", applicationsPath)
 		desktopPath := applicationsPath + "/" + fileinfo.Name()
 		if ret := strings.HasSuffix(desktopPath, ".desktop"); ret {
 			// 处理desktop
@@ -265,7 +264,7 @@ type Mounts struct {
 
 func (ts Mounts) DoMountALL() []error {
 
-	logger.Debug("mount list: ", len(ts.Mounts))
+	Logger.Debug("mount list: ", len(ts.Mounts))
 	var errs []error
 	if len(ts.Mounts) == 0 {
 		return errs
@@ -276,13 +275,13 @@ func (ts Mounts) DoMountALL() []error {
 
 	for _, item := range ts.Mounts {
 
-		logger.Debugf("mount: ", item.MountPoint, item.Source, item.Type, item.TypeLive, item.IsRbind)
+		Logger.Debugf("mount: ", item.MountPoint, item.Source, item.Type, item.TypeLive, item.IsRbind)
 		if IsRbind := item.IsRbind; IsRbind {
 
 			// sudo mount --rbind /tmp/ /mnt/workdir/rootfs/tmp/
 			_, msg, err = ExecAndWait(10, "mount", "--rbind", item.Source, item.MountPoint)
 			if err != nil {
-				logger.Warnf("mount bind failed: ", msg, err)
+				Logger.Warnf("mount bind failed: ", msg, err)
 				errs = append(errs, err)
 				// continue
 			}
@@ -290,13 +289,13 @@ func (ts Mounts) DoMountALL() []error {
 		} else if item.TypeLive != "" {
 			_, msg, err = ExecAndWait(10, "mount", item.TypeLive, "-t", item.Type, item.MountPoint)
 			if err != nil {
-				logger.Warnf("mount failed: ", msg, err)
+				Logger.Warnf("mount failed: ", msg, err)
 				errs = append(errs, err)
 			}
 		} else {
 			_, msg, err = ExecAndWait(10, "mount", "-t", item.Type, item.Source, item.MountPoint)
 			if err != nil {
-				logger.Warnf("mount failed: ", msg, err)
+				Logger.Warnf("mount failed: ", msg, err)
 				errs = append(errs, err)
 			}
 		}
@@ -306,17 +305,17 @@ func (ts Mounts) DoMountALL() []error {
 }
 
 func (ts Mounts) DoUmountALL() []error {
-	logger.Debug("mount list: ", len(ts.Mounts))
+	Logger.Debug("mount list: ", len(ts.Mounts))
 	var errs []error
 	if len(ts.Mounts) == 0 {
 		return errs
 	}
 
 	for _, item := range ts.Mounts {
-		logger.Debugf("umount: ", item.MountPoint)
+		Logger.Debugf("umount: ", item.MountPoint)
 		_, msg, err := ExecAndWait(10, "umount", item.MountPoint)
 		if err != nil {
-			logger.Warnf("umount failed: ", msg, err)
+			Logger.Warnf("umount failed: ", msg, err)
 			errs = append(errs, err)
 		} else {
 			delete(ts.Mounts, item.MountPoint)
@@ -328,7 +327,7 @@ func (ts Mounts) DoUmountALL() []error {
 
 func (ts Mounts) DoUmountAOnce() []error {
 	return nil
-	logger.Debug("mount list: ", len(ts.Mounts))
+	Logger.Debug("mount list: ", len(ts.Mounts))
 	var errs []error
 	if len(ts.Mounts) == 0 {
 		return nil
@@ -343,11 +342,11 @@ UMOUNT_ONCE:
 			goto UMOUNT_ONCE
 		}
 	} else {
-		logger.Warnf("umount success: ", msg, err)
+		Logger.Warnf("umount success: ", msg, err)
 		errs = append(errs, nil)
 	}
 	for _, item := range ts.Mounts {
-		logger.Debugf("umount: ", item.MountPoint)
+		Logger.Debugf("umount: ", item.MountPoint)
 		delete(ts.Mounts, item.MountPoint)
 
 	}
@@ -356,19 +355,19 @@ UMOUNT_ONCE:
 
 func (ts *Mounts) FillMountRules() {
 
-	logger.Debug("mount list: ", len(ts.Mounts))
+	Logger.Debug("mount list: ", len(ts.Mounts))
 	ts.Mounts[ConfigInfo.Rootfsdir+"/dev/pts"] = MountItem{ConfigInfo.Rootfsdir + "/dev/pts", "", "devpts", "devpts-live", false}
 	ts.Mounts[ConfigInfo.Rootfsdir+"/sys"] = MountItem{ConfigInfo.Rootfsdir + "/sys", "", "sysfs", "sysfs-live", false}
 	ts.Mounts[ConfigInfo.Rootfsdir+"/proc"] = MountItem{ConfigInfo.Rootfsdir + "/proc", "", "proc", "proc-live", false}
 	ts.Mounts[ConfigInfo.Rootfsdir+"/tmp/"] = MountItem{ConfigInfo.Rootfsdir + "/tmp", "/tmp", "", "", true}
 	ts.Mounts[ConfigInfo.Rootfsdir+"/etc/resolv.conf"] = MountItem{ConfigInfo.Rootfsdir + "/etc/resolv.conf", "/etc/resolv.conf", "", "", true}
 
-	logger.Debug("mount list: ", len(ts.Mounts))
+	Logger.Debug("mount list: ", len(ts.Mounts))
 }
 
 // exec and wait for command
 func ExecAndWait(timeout int, name string, arg ...string) (stdout, stderr string, err error) {
-	logger.Debugf("cmd: %s %+v\n", name, arg)
+	Logger.Debugf("cmd: %s %+v\n", name, arg)
 	cmd := exec.Command(name, arg...)
 	var bufStdout, bufStderr bytes.Buffer
 	cmd.Stdout = &bufStdout
@@ -457,7 +456,7 @@ func (ts *DebInfo) CheckDebHash() bool {
 	}
 	hash, err := GetFileSha256(ts.Path)
 	if err != nil {
-		logger.Warn(err)
+		Logger.Warn(err)
 		return false
 	}
 	if hash == ts.Hash {
@@ -469,27 +468,27 @@ func (ts *DebInfo) CheckDebHash() bool {
 
 func (ts *DebInfo) FetchDebFile(dirPath string) bool {
 
-	logger.Debugf("FetchDebFile :%v", ts)
+	Logger.Debugf("FetchDebFile :%v", ts)
 	if ts.Type == "repo" {
 		// ts.path = fmt.Sprintf("%s/", dirPath)
 
 		_, msg, err := ExecAndWait(1<<20, "wget", "-P", dirPath, ts.Ref)
 		if err != nil {
 
-			logger.Errorf("msg: %+v err:%+v", msg, err)
+			Logger.Errorf("msg: %+v err:%+v", msg, err)
 			return false
 		}
 		debFilePath, err := filepath.Glob(fmt.Sprintf("%s/%s_*.deb", dirPath, ts.Name))
 		if err != nil {
-			logger.Error(debFilePath)
+			Logger.Error(debFilePath)
 			return false
 		}
-		logger.Debugf("debFilePath: %+v [0]:%s", debFilePath, debFilePath[0])
+		Logger.Debugf("debFilePath: %+v [0]:%s", debFilePath, debFilePath[0])
 		if err, msg := CheckFileExits(debFilePath[0]); err {
 			ts.Path = debFilePath[0]
 			return true
 		} else {
-			logger.Errorf("msg: %+v err:%+v", msg, err)
+			Logger.Errorf("msg: %+v err:%+v", msg, err)
 			return false
 		}
 	}
@@ -517,7 +516,7 @@ func (ts *BaseInfo) CheckIsoHash() bool {
 	}
 	hash, err := GetFileSha256(ts.Path)
 	if err != nil {
-		logger.Warn(err)
+		Logger.Warn(err)
 		return false
 	}
 	if hash == ts.Hash {
@@ -536,7 +535,7 @@ func (ts *BaseInfo) FetchIsoFile(workdir, isopath string) bool {
 		ts.Path = isoAbsPath
 		_, msg, err := ExecAndWait(1<<20, "wget", "-O", ts.Path, ts.Ref)
 		if err != nil {
-			logger.Errorf("msg: %+v err:%+v", msg, err)
+			Logger.Errorf("msg: %+v err:%+v", msg, err)
 			return false
 		}
 		return true
@@ -546,11 +545,11 @@ func (ts *BaseInfo) FetchIsoFile(workdir, isopath string) bool {
 
 func (ts *BaseInfo) CheckoutOstree(target string) bool {
 	// ConfigInfo.RuntimeBasedir = fmt.Sprintf("%s/runtimedir", ConfigInfo.Workdir)
-	logger.Debug("ostree checkout %s to %s", ts.Path, target)
+	Logger.Debug("ostree checkout %s to %s", ts.Path, target)
 	_, msg, err := ExecAndWait(10, "ostree", "checkout", "--repo", ts.Path, ts.Ref, target)
 
 	if err != nil {
-		logger.Errorf("msg: %v ,err: %+v", msg, err)
+		Logger.Errorf("msg: %v ,err: %+v", msg, err)
 		return false
 	}
 	return true
@@ -558,25 +557,25 @@ func (ts *BaseInfo) CheckoutOstree(target string) bool {
 
 func (ts *BaseInfo) InitOstree(ostreePath string) bool {
 	if ts.Type == "ostree" {
-		logger.Debug("ostree init")
+		Logger.Debug("ostree init")
 		ts.Path = ostreePath
 		_, msg, err := ExecAndWait(10, "ostree", "init", "--mode=bare-user-only", "--repo", ts.Path)
 		if err != nil {
-			logger.Errorf("msg: %v ,err: %+v", msg, err)
+			Logger.Errorf("msg: %v ,err: %+v", msg, err)
 			return false
 		}
-		logger.Debug("ostree remote add", ts.Remote)
+		Logger.Debug("ostree remote add", ts.Remote)
 
 		_, msg, err = ExecAndWait(10, "ostree", "remote", "add", "runtime", ts.Remote, "--repo", ts.Path, "--no-gpg-verify")
 		if err != nil {
-			logger.Errorf("msg: %+v err:%+v", msg, err)
+			Logger.Errorf("msg: %+v err:%+v", msg, err)
 			return false
 		}
 
-		logger.Debug("ostree pull")
+		Logger.Debug("ostree pull")
 		_, msg, err = ExecAndWait(300, "ostree", "pull", "runtime", "--repo", ts.Path, "--mirror", ts.Ref)
 		if err != nil {
-			logger.Errorf("msg: %+v err:%+v", msg, err)
+			Logger.Errorf("msg: %+v err:%+v", msg, err)
 			return false
 		}
 
@@ -593,18 +592,18 @@ type ExtraInfo struct {
 
 func (ts *ExtraInfo) WriteRootfsRepo(config Config) bool {
 	if ret, err := CheckFileExits(config.Rootfsdir + "/etc/apt/sources.list"); !ret && err != nil {
-		logger.Warnf("rootfs sources.list not exists ! ,err : %+v", err)
+		Logger.Warnf("rootfs sources.list not exists ! ,err : %+v", err)
 		return false
 	}
 	file, err := os.OpenFile(config.Rootfsdir+"/etc/apt/sources.list", os.O_RDWR|os.O_APPEND|os.O_TRUNC, 0644)
 	if err != nil {
-		logger.Warnf("open sources.list failed! err: %+v", err)
+		Logger.Warnf("open sources.list failed! err: %+v", err)
 		return false
 	}
 	defer file.Close()
 	for _, value := range ts.Repo {
 		if _, err := file.WriteString(value + "\n"); err != nil {
-			logger.Warnf("write sources.list failed! err : %+v", err)
+			Logger.Warnf("write sources.list failed! err : %+v", err)
 			return false
 		}
 	}
@@ -614,32 +613,32 @@ func (ts *ExtraInfo) WriteRootfsRepo(config Config) bool {
 }
 
 func GetFileSha256(filename string) (string, error) {
-	logger.Debug("GetFileSha256 :", filename)
+	Logger.Debug("GetFileSha256 :", filename)
 	hasher := sha256.New()
 	s, err := ioutil.ReadFile(filename)
 	if err != nil {
-		logger.Warn(err)
+		Logger.Warn(err)
 		return "", err
 	}
 	_, err = hasher.Write(s)
 	if err != nil {
-		logger.Warn(err)
+		Logger.Warn(err)
 		return "", err
 	}
 
 	sha256Sum := hex.EncodeToString(hasher.Sum(nil))
-	logger.Debug("file hash: ", sha256Sum)
+	Logger.Debug("file hash: ", sha256Sum)
 
 	return sha256Sum, nil
 }
 
 func UmountPath(path string) bool {
-	logger.Debugf("umount path: %s", path)
+	Logger.Debugf("umount path: %s", path)
 	if ret, msg, err := ExecAndWait(10, "umount", path); err != nil {
-		logger.Debugf("umount path failed: %s %v \nout:%s", msg, err, ret)
+		Logger.Debugf("umount path failed: %s %v \nout:%s", msg, err, ret)
 		return false
 	} else {
-		logger.Debugf("umount path %s \nout:%s", msg, ret)
+		Logger.Debugf("umount path %s \nout:%s", msg, ret)
 		return true
 	}
 }
@@ -659,7 +658,7 @@ func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 		"--repo-url", conf.BundleRepoUrl,
 		"--channel", conf.BundleChannel,
 	}
-	logger.Debugf("command args: %v", BundleCommand)
+	Logger.Debugf("command args: %v", BundleCommand)
 	switch t {
 	case BundleLoginWithPassword:
 		BundleCommand = append(BundleCommand, []string{
@@ -682,10 +681,10 @@ func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 	// ll-builder push
 	// ll-builder wait max timeout 3600 seconds wtf
 	if ret, msg, err := ExecAndWait(1<<12, "ll-builder", BundleCommand...); err == nil {
-		logger.Infof("output: %v", ret)
+		Logger.Infof("output: %v", ret)
 		return true, nil
 	} else {
-		logger.Debugf("output: %v", ret, msg)
+		Logger.Debugf("output: %v", ret, msg)
 		return false, err
 	}
 }

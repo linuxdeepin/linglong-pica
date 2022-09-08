@@ -22,15 +22,13 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
-
-	"go.uber.org/zap"
 )
 
-var logger *zap.SugaredLogger
+// var Logger *zap.SugaredLogger
 
-func init() {
-	logger = InitLog()
-}
+// func init() {
+// 	Logger = InitLog()
+// }
 
 /*!
  * @brief 检查是否是目录
@@ -51,12 +49,12 @@ func IsDir(file string) bool {
  */
 func CheckFileExits(file string) (bool, error) {
 
-	logger.Debugf("check file exists: ", file)
+	Logger.Debugf("check file exists: ", file)
 	if _, err := os.Stat(file); os.IsNotExist(err) {
-		logger.Warnf("file not exists and exit", err)
+		Logger.Warnf("file not exists and exit", err)
 		return false, err
 	} else if err == nil {
-		logger.Debug("file exists")
+		Logger.Debug("file exists")
 		return true, nil
 	}
 	return false, nil
@@ -69,12 +67,12 @@ func CheckFileExits(file string) (bool, error) {
  */
 func CreateDir(file string) (bool, error) {
 
-	logger.Debug("create file: ", file)
+	Logger.Debug("create file: ", file)
 	if err := os.MkdirAll(file, 0755); err == nil {
-		logger.Debug("create file: ", file, " mask: 0755")
+		Logger.Debug("create file: ", file, " mask: 0755")
 		return true, nil
 	} else {
-		logger.Error("create file error: ", err)
+		Logger.Error("create file error: ", err)
 		return false, err
 	}
 
@@ -87,13 +85,13 @@ func CreateDir(file string) (bool, error) {
  */
 func RemovePath(file string) (bool, error) {
 
-	logger.Debugf("remove path: %s", file)
+	Logger.Debugf("remove path: %s", file)
 	if ret, _ := CheckFileExits(file); ret {
 		if err := os.RemoveAll(file); err == nil {
-			logger.Debugf("remove path: %s", file)
+			Logger.Debugf("remove path: %s", file)
 			return true, nil
 		} else {
-			logger.Debugf("remove path error: ", err)
+			Logger.Debugf("remove path error: ", err)
 			return false, err
 		}
 	}
@@ -130,7 +128,7 @@ func GetFilePPath(file string) string {
  */
 func MoveFileOrDir(src, dst string) (bool, error) {
 	if ret, err := CheckFileExits(src); !ret {
-		logger.Warnw(src, " no existd!")
+		Logger.Warnw(src, " no existd!")
 		return false, err
 	}
 	dstDirPath := GetFilePPath(dst)
@@ -186,12 +184,12 @@ func CopyFile(src, dst string) (bool, error) {
 func CopyDir(src, dst string) bool {
 	//检查源目录是否存在
 	if ret, _ := CheckFileExits(src); !ret {
-		logger.Warnw(src, " no existd!")
+		Logger.Warnw(src, " no existd!")
 		return false
 	}
 
 	if strings.TrimSpace(src) == strings.TrimSpace(dst) {
-		logger.Warnw("源路径与目标路径一样")
+		Logger.Warnw("源路径与目标路径一样")
 		return false
 	}
 
@@ -298,7 +296,7 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 		return err
 	}
 	if !si.IsDir() {
-		logger.Warnf("source only support directory")
+		Logger.Warnf("source only support directory")
 		return fmt.Errorf("source is not a directory")
 	}
 
@@ -308,7 +306,7 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 	}
 	if err == nil && !os.IsNotExist(err) {
 		if !force {
-			logger.Warnf("destination already exists failed")
+			Logger.Warnf("destination already exists failed")
 			return fmt.Errorf("destination already exists")
 		} else {
 			if err := os.RemoveAll(dst); err != nil {
@@ -348,12 +346,12 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 				}
 				realPath, err := filepath.Abs(srcPath)
 				if err != nil {
-					logger.Warnf("link failed to read link data: %v %s %s", err, realPath, srcPath)
+					Logger.Warnf("link failed to read link data: %v %s %s", err, realPath, srcPath)
 					return err
 				}
 				if realPathFileInfo, err := os.Stat(realPath); err != nil {
 					// broken link
-					logger.Warnf("link failed to stat link data: %v %s %s", err, realPath, srcPath)
+					Logger.Warnf("link failed to stat link data: %v %s %s", err, realPath, srcPath)
 					continue
 				} else {
 					if realPathFileInfo.IsDir() {
@@ -363,7 +361,7 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 					} else {
 						// copy data drop the mod and owner
 						if err = CopyFileKeepPermission(srcPath, dstPath, false, false); err != nil {
-							logger.Warnf("link %s to %s failed: %v", srcPath, dstPath, err)
+							Logger.Warnf("link %s to %s failed: %v", srcPath, dstPath, err)
 							return err
 						}
 					}
@@ -396,7 +394,7 @@ func FindBundlePath(flie string) ([]string, error) {
 			return nil
 		})
 		if err != nil {
-			logger.Debugf("get bundle file failed: %v", err)
+			Logger.Debugf("get bundle file failed: %v", err)
 			return nil, err
 		}
 		if len(bundleList) > 0 {
@@ -424,12 +422,12 @@ const (
 
 func DesktopInit(desktopFilePath string) (bool, DesktopData) {
 	if ret, err := CheckFileExits(desktopFilePath); !ret && err != nil {
-		logger.Errorw("desktop file not exists：", desktopFilePath)
+		Logger.Errorw("desktop file not exists：", desktopFilePath)
 		return false, nil
 	}
 	file, err := os.Open(desktopFilePath)
 	if err != nil {
-		logger.Errorw("open file failed: ", desktopFilePath)
+		Logger.Errorw("open file failed: ", desktopFilePath)
 		return false, nil
 	}
 	defer file.Close()
@@ -472,10 +470,10 @@ func DesktopInit(desktopFilePath string) (bool, DesktopData) {
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
-				logger.Debug("File read ok! : ", desktopFilePath)
+				Logger.Debug("File read ok! : ", desktopFilePath)
 				break
 			} else {
-				logger.Errorw("Read file error! : ", desktopFilePath)
+				Logger.Errorw("Read file error! : ", desktopFilePath)
 				return false, nil
 			}
 		}
@@ -508,7 +506,7 @@ func DesktopInit(desktopFilePath string) (bool, DesktopData) {
 func DesktopGroupname(desktopFile string) []string {
 	ok, data := DesktopInit(desktopFile)
 	if !ok && data == nil {
-		logger.Errorw("Init dekstop failed! : ", desktopFile)
+		Logger.Errorw("Init dekstop failed! : ", desktopFile)
 		return nil
 	}
 	groupNmaeList := []string{}

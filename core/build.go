@@ -17,15 +17,13 @@ import (
 	. "ll-pica/utils/log"
 	"os"
 	"strings"
-
-	"go.uber.org/zap"
 )
 
-var logger *zap.SugaredLogger
+// var Logger *zap.SugaredLogger
 
-func init() {
-	logger = InitLog()
-}
+// func init() {
+// 	Logger = InitLog()
+// }
 
 type BinFormatReactor struct {
 	SearchPath      string   // search dir
@@ -133,16 +131,16 @@ func (ts *BinFormatReactor) CopyElfNeedPath(prefix, dst string) bool {
 			}
 
 			dstParentPath := GetFilePPath(dstPath)
-			logger.Debugf("Copying path %s ", dstParentPath)
+			Logger.Debugf("Copying path %s ", dstParentPath)
 			if ret, _ := CheckFileExits(dstParentPath); !ret {
 				CreateDir(dstParentPath)
 			}
 			if err := CopyFileKeepPermission(srcPath, dstPath, true, true); err != nil {
-				logger.Warnf("copy file failed %v", err)
+				Logger.Warnf("copy file failed %v", err)
 				continue
 			}
 		}
-		logger.Debugf("Copying src path %s not found", srcPath)
+		Logger.Debugf("Copying src path %s not found", srcPath)
 		continue
 	}
 	// CopyFileKeepPermission()
@@ -155,10 +153,10 @@ func (ts *BinFormatReactor) CopyElfNeedPath(prefix, dst string) bool {
  * @return 返回elf列表
  */
 func (ts *BinFormatReactor) GetElfList(exclude string) bool {
-	logger.Debugf("get find elf miss depends: ", ts.SearchPath, "exclude: ", exclude)
+	Logger.Debugf("get find elf miss depends: ", ts.SearchPath, "exclude: ", exclude)
 	elf_binary_path, err := GetElfWithPath(ts.SearchPath)
 	if err != nil {
-		logger.Debugf("get elf with path failed! %s", err)
+		Logger.Debugf("get elf with path failed! %s", err)
 		return false
 	}
 
@@ -172,7 +170,7 @@ func (ts *BinFormatReactor) GetElfList(exclude string) bool {
 		if len(filterResut) > 0 && ts.ElfLDDPath == nil {
 			ts.ElfLDDPath = make(map[string]uint)
 		}
-		//logger.Debugf("filter resut: ", filterResut)
+		//Logger.Debugf("filter resut: ", filterResut)
 		for _, v := range filterResut {
 			ts.ElfLDDPath[v] = 1
 		}
@@ -204,11 +202,11 @@ ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq | sed '/^$/d' >> {{.Outpu
 func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) {
 
 	// init template
-	logger.Debug("render elf with ldd : ", ts.SearchPath)
+	Logger.Debug("render elf with ldd : ", ts.SearchPath)
 	tpl, err := template.New("elfldd").Parse(TMPL_ELF_LDD)
 
 	if err != nil {
-		logger.Fatalf("parse deb shell template failed! ", err)
+		Logger.Fatalf("parse deb shell template failed! ", err)
 		return false, nil
 	}
 
@@ -221,16 +219,16 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 	}
 
 	// create save file
-	logger.Debug("create save file: ", save)
+	Logger.Debug("create save file: ", save)
 	saveFd, ret := os.Create(save)
 	if ret != nil {
-		logger.Fatalf("save to %s failed!", save)
+		Logger.Fatalf("save to %s failed!", save)
 		return false, nil
 	}
 	defer saveFd.Close()
 
 	// render template
-	// logger.Debug("render template: ", elfLDDShell)
+	// Logger.Debug("render template: ", elfLDDShell)
 	tpl.Execute(saveFd, elfLDDShell)
 
 	return true, nil
@@ -244,7 +242,7 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 // }
 
 func GetElfNeedWithLDD(elfSearchDir string) (string, error) {
-	logger.Debug("get elf need with ldd: ", elfSearchDir)
+	Logger.Debug("get elf need with ldd: ", elfSearchDir)
 	return "", nil
 }
 
@@ -252,39 +250,39 @@ func GetFindElfMissDepends(elfSearchDir string) (bool, error, []string) {
 
 	// find . -type f  -exec file {} \; | grep  ELF | awk -F: '{print $1}' | xargs -I{} ldd {} | grep -i "not found"
 
-	logger.Debug("get find elf miss depends: ", elfSearchDir)
+	Logger.Debug("get find elf miss depends: ", elfSearchDir)
 	elf_binary_path, err := GetElfWithPath(elfSearchDir)
 	if err != nil {
-		logger.Debugf("get elf with path failed! %s", err)
+		Logger.Debugf("get elf with path failed! %s", err)
 	}
-	logger.Debug("elf binary path: ", elf_binary_path)
+	Logger.Debug("elf binary path: ", elf_binary_path)
 	// fixme:(heysion) fix get elf binary path with depend list
 	return false, nil, nil
 
 }
 
 func GetElfNeedWithStrace(elf string) (string, error) {
-	logger.Debug("get elf need with strace: ", elf)
+	Logger.Debug("get elf need with strace: ", elf)
 	return "", nil
 }
 
 func ChrootExecShell(chrootDirPath, shell string, bindMounts []string) (bool, string, error) {
-	logger.Debugf("chroot exec shell: %s shell: %s", chrootDirPath, shell)
+	Logger.Debugf("chroot exec shell: %s shell: %s", chrootDirPath, shell)
 
 	// fixme:(heysion) mount /mnt/workdir/debdir/ to chroot /mnt/workdir/debdir
 	if len(bindMounts) > 0 {
 		for _, srcPath := range bindMounts {
 			dstPath := chrootDirPath + srcPath
 			CreateDir(dstPath)
-			logger.Debug("bind mount: ", srcPath, dstPath)
+			Logger.Debug("bind mount: ", srcPath, dstPath)
 			// bind mount src to dst
 			if _, msg, err := ExecAndWait(10, "mount", "-B", srcPath, dstPath); err != nil {
-				logger.Fatalf("mount %s to %s failed! ", srcPath, dstPath, err, msg)
+				Logger.Fatalf("mount %s to %s failed! ", srcPath, dstPath, err, msg)
 			}
 			// defer func() { RemovePath(dstPath) }()
-			defer func() { logger.Debugf("remove %s", dstPath) }()
+			defer func() { Logger.Debugf("remove %s", dstPath) }()
 			defer func() { UmountPath(dstPath) }()
-			defer func() { logger.Debugf("umount %s", dstPath) }()
+			defer func() { Logger.Debugf("umount %s", dstPath) }()
 		}
 
 	}
@@ -294,36 +292,36 @@ func ChrootExecShell(chrootDirPath, shell string, bindMounts []string) (bool, st
 	shellDstPath := chrootDirPath + shellSrcPath
 	shellChrootPath := chrootDirPath + shell
 
-	logger.Debugf("shell src path: %s to %s", shellSrcPath, shellDstPath)
+	Logger.Debugf("shell src path: %s to %s", shellSrcPath, shellDstPath)
 	if ret, _ := CheckFileExits(shellDstPath); !ret {
 		CreateDir(shellDstPath)
 	}
 
 	if _, msg, err := ExecAndWait(10, "mount", "-B", shellSrcPath, shellDstPath); err != nil {
-		logger.Fatalf("mount %s to %s failed! ", shell, shellDstPath, err, msg)
+		Logger.Fatalf("mount %s to %s failed! ", shell, shellDstPath, err, msg)
 		return false, msg, err
 	}
 
 	// CreateDir(shellDstPath)
 	// defer func() { RemovePath(shellDstPath) }()
-	defer func() { logger.Debugf("remove %s", shellDstPath) }()
+	defer func() { Logger.Debugf("remove %s", shellDstPath) }()
 
 	defer func() { UmountPath(shellDstPath) }()
-	defer func() { logger.Debugf("umount %s", shellDstPath) }()
+	defer func() { Logger.Debugf("umount %s", shellDstPath) }()
 
 	// chmod +x shell
 	if _, msg, err := ExecAndWait(10, "chmod", "+x", "-R", shellChrootPath); err != nil {
-		logger.Fatalf("chmod +x %s failed! ", shellChrootPath, err, msg)
+		Logger.Fatalf("chmod +x %s failed! ", shellChrootPath, err, msg)
 		return false, msg, err
 	}
 
 	// chroot shell
-	logger.Debugf("chroot shell: path: %s shell:%s", chrootDirPath, shell)
+	Logger.Debugf("chroot shell: path: %s shell:%s", chrootDirPath, shell)
 	if ret, msg, err := ExecAndWait(1000, "chroot", chrootDirPath, shell); err != nil {
-		logger.Fatalf("chroot exec shell failed! ", err, msg, ret)
+		Logger.Fatalf("chroot exec shell failed! ", err, msg, ret)
 		return false, msg, err
 	} else {
-		logger.Debugf("chroot exec shell msg:", ret, msg)
+		Logger.Debugf("chroot exec shell msg:", ret, msg)
 	}
 	return true, "", nil
 }
@@ -358,11 +356,11 @@ apt_install_deb
 func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 
 	// init template
-	// logger.Debug("render deb config: ", DebConf)
+	// Logger.Debug("render deb config: ", DebConf)
 	tpl, err := template.New("pica").Parse(DEB_SHELL_TMPL)
 
 	if err != nil {
-		logger.Fatalf("parse deb shell template failed! ", err)
+		Logger.Fatalf("parse deb shell template failed! ", err)
 		return false, nil
 	}
 
@@ -370,7 +368,7 @@ func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 
 	for _, debStr := range DebConf.FileElement.Deb {
 
-		// logger.Debugf("deb str: %s path :%s", debStr, debStr.Path)
+		// Logger.Debugf("deb str: %s path :%s", debStr, debStr.Path)
 		debShell.DebString += debStr.Path
 		debShell.DebString += " "
 	}
@@ -382,16 +380,16 @@ func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 	}
 
 	// create save file
-	logger.Debug("create save file: ", save)
+	Logger.Debug("create save file: ", save)
 	saveFd, ret := os.Create(save)
 	if ret != nil {
-		logger.Fatalf("save to %s failed!", save)
+		Logger.Fatalf("save to %s failed!", save)
 		return false, nil
 	}
 	defer saveFd.Close()
 
 	// render template
-	logger.Debug("render template: ", debShell)
+	Logger.Debug("render template: ", debShell)
 	tpl.Execute(saveFd, debShell)
 
 	return true, nil

@@ -18,8 +18,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-
-	"go.uber.org/zap"
 )
 
 type InfoApp struct {
@@ -47,15 +45,9 @@ type InfoPermissions struct {
 	InstalledApps bool `json:"installed_apps"`
 }
 
-var logger *zap.SugaredLogger
-
-func init() {
-	logger = InitLog()
-}
-
 func CreateInfo(infoDir string, debInfo DebConfig) (bool, error) {
 	if ret, err := CheckFileExits(infoDir); !ret && err != nil {
-		logger.Errorw("info.json dir not exists! : ", infoDir)
+		Logger.Errorw("info.json dir not exists! : ", infoDir)
 		return false, err
 	}
 	infoFilePath := filepath.Clean(infoDir) + "/info.json"
@@ -89,7 +81,7 @@ func CreateInfo(infoDir string, debInfo DebConfig) (bool, error) {
 
 	data, err := json.MarshalIndent(infoApp, "", "\t")
 	if err != nil {
-		logger.Errorw("序列化错误： ", infoFilePath)
+		Logger.Errorw("序列化错误： ", infoFilePath)
 		return false, err
 	}
 
@@ -97,7 +89,7 @@ func CreateInfo(infoDir string, debInfo DebConfig) (bool, error) {
 	file, err := os.Create(infoFilePath)
 
 	if err != nil {
-		logger.Errorw("create file error: ", infoFilePath)
+		Logger.Errorw("create file error: ", infoFilePath)
 		return false, err
 	}
 	defer file.Close()
