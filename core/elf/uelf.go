@@ -12,6 +12,8 @@ package elf
 import (
 	"bytes"
 	"fmt"
+	. "ll-pica/core/comm"
+	. "ll-pica/utils/fs"
 	. "ll-pica/utils/log"
 	"os"
 	"path"
@@ -40,6 +42,16 @@ func IsElfWithPath(elfPath string) bool {
 		return false
 	}
 	return bytes.Equal(file_header_data[:4], ELF_MAGIC)
+}
+
+// IsElfEntry check with entry is libc_start_main
+func IsElfEntry(elfPath string) bool {
+	if msg, ret, err := ExecAndWait(10, "nm", "-D", elfPath, "|", "grep", "-q", "libc_start_main"); err != nil {
+		Logger.Debugf("check elf entry failed: %v", err, msg, ret)
+		return false
+	} else {
+		return true
+	}
 }
 
 /*!
@@ -73,6 +85,30 @@ func GetElfWithPath(dir string) ([]string, error) {
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
+	}
+
+	return elf_paths, nil
+}
+
+// GetElfWithEntry
+func GetElfWithEntry(filename string) ([]string, error) {
+
+	var real_path = ""
+	var elf_paths []string
+	if path.IsAbs(filename) {
+		real_path = filename
+	} else {
+		real_path = filepath.Join(os.Getenv("PWD"), filename)
+	}
+	if ret, err := CheckFileExits(real_path); !ret {
+		Logger.Warnf("get elf path failed: %v", err)
+		return nil, err
+	}
+
+	Logger.Debugf("GetElfWithEntry:", real_path)
+
+	if IsElfEntry(real_path) {
+		elf_paths = append(elf_paths, real_path)
 	}
 
 	return elf_paths, nil

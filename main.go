@@ -589,6 +589,9 @@ Convert:
 		}
 		Logger.Debugf("exclude so list:", excludeSoList)
 
+		// check  dlopen if it exists append depends to list
+		binReactor.GetEntryDlopenList(excludeSoList)
+
 		//binReactor.FixElfLDDPath(binReactor.SearchPath + "bin/lib")
 		//
 		// GetFindElfMissDepends(ConfigInfo.Basedir + "/lib")
@@ -615,7 +618,7 @@ Convert:
 		Logger.Debug("read elfldd.log", elfLDDLog)
 		if elfLDDLogFile, err := os.Open(elfLDDLog); err != nil {
 			Logger.Fatal("open elfldd.log failed:", err)
-			//elfLDDLogFile.Close()
+			return
 		} else {
 			defer elfLDDLogFile.Close()
 

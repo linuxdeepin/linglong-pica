@@ -30,6 +30,7 @@ type BinFormatReactor struct {
 	PathFilter      []string // filter with Search result
 	ElfLDDPath      map[string]uint
 	ElfNeedPath     map[string]uint
+	ElfEntrySoPath  map[string]uint
 	DynExcludeList  string // so libary exclude list
 	CheckWithChroot bool   // check with chroot
 	CheckWithStrace bool   // check with strace
@@ -181,6 +182,68 @@ func (ts *BinFormatReactor) GetElfList(exclude string) bool {
 	return false
 }
 
+// GetEntryDlopenList 通过Entry的入口，判断elf文件中Dlopen的依赖清单
+func (ts *BinFormatReactor) GetEntryDlopenList(exclude []string) bool {
+	//
+	IsNotIncluded := func(filename string) bool {
+		for _, v := range exclude {
+			if strings.HasSuffix(v, filename) {
+				return true
+			}
+		}
+		return false
+	}
+
+	IsHaveDlopen := func(filename string) bool {
+		// strings /usr/bin/deepin-movie| grep -i dlopen
+		if msg, ret, err := ExecAndWait(10, "strings", filename, "|", "grep", "-q", "dlopen"); err != nil {
+			Logger.Debugf("check dlopen failed: %v", err, msg, ret)
+			return false
+		} else {
+			return true
+		}
+	}
+
+	Logger.Debugf("get had entry elf list: ", ts.SearchPath, "exclude: ", exclude)
+
+	if len(ts.ElfLDDPath) == 0 {
+		Logger.Warn("Have not elf list??")
+		return false
+	}
+
+	elf_have_entry_list := FilterMap(ts.ElfLDDPath, func(str string) bool {
+		return !IsNotIncluded(str) && IsElfEntry(str) && IsHaveDlopen(str)
+	})
+
+	if len(elf_have_entry_list) == 0 {
+		Logger.Warn("have not search include entry elf file with:", ts.SearchPath)
+		return false
+	}
+
+	ts.ElfEntrySoPath = make(map[string]uint)
+	for _, v := range elf_have_entry_list {
+		Logger.Debugf("process path: %s", v)
+		if ret, err := GetDlopenDepends(v); err != nil {
+			continue
+		} else {
+			Logger.Debugf("%v", ret)
+			if len(ret) == 0 {
+				continue
+			} else {
+				entry_dlopen_so := Filter(ret, func(str string) bool {
+					return !IsNotIncluded(str)
+				})
+
+				for _, idx := range entry_dlopen_so {
+					ts.ElfEntrySoPath[idx] = 1
+				}
+			}
+		}
+	}
+
+	return false
+}
+
 type ElfLDDShellTemplate struct {
 	ELFNameString    string
 	OutputNameString string
@@ -218,6 +281,11 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 		elfLDDShell.ELFNameString += " "
 	}
 
+	for elfStr := range ts.ElfEntrySoPath {
+		elfLDDShell.ELFNameString += elfStr
+		elfLDDShell.ELFNameString += " "
+	}
+
 	// create save file
 	Logger.Debug("create save file: ", save)
 	saveFd, ret := os.Create(save)
@@ -240,7 +308,16 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 // 	}
 // 	return nil
 // }
-
+func GetDlopenDepends(path string) ([]string, error) {
+	// strings /bin/bash | grep  "\.so"
+	if msg, ret, err := ExecAndWait(10, "strings", path, "|", "grep", "\\.so"); err != nil {
+		Logger.Debugf("check elf entry failed: %v", err, msg, ret)
+		return nil, err
+	} else {
+		return strings.Split(msg, "\n"), nil
+	}
+	// return nil, fmt.Errorf("not found")
+}
 func GetElfNeedWithLDD(elfSearchDir string) (string, error) {
 	Logger.Debug("get elf need with ldd: ", elfSearchDir)
 	return "", nil
@@ -349,7 +426,7 @@ function apt_install_deb {
 }
 
 apt_update
-apt_install_deb
+{{if len .DebString }}apt_install_deb {{end}}
 {{if len .ExtraPackageStr }}apt_install_pkgs{{end}}
 `
 
