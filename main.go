@@ -506,7 +506,7 @@ Convert:
 		// fixme(jianqiang)
 		// make new directory that need to be created for linglong files stucturesk
 		// 定义拷贝的目标目录
-		ConfigInfo.ExportDir = ConfigInfo.Workdir + "/export/runtime"
+		ConfigInfo.ExportDir = ConfigInfo.Workdir + "/" + DebConf.Info.Appid + "/export"
 		// 导出export目录
 		ConfigInfo.Export()
 
@@ -627,7 +627,8 @@ Convert:
 
 		// build uab
 		// ll-builder export --local
-		builder.CreateLinglongBuilder(ConfigInfo.ExportDir)
+		//builder.CreateLinglongBuilder(ConfigInfo.ExportDir)
+		builder.LinglongExport(ConfigInfo.ExportDir)
 
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {

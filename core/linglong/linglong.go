@@ -97,3 +97,27 @@ func (ts *LinglongBuder) CreateLinglongBuilder(path string) bool {
 		return true
 	}
 }
+
+func (ts *LinglongBuder) LinglongExport(path string) bool {
+	Logger.Debugf("ll-builder export : ", ts.Appid)
+	appExportPath := GetFilePPath(path)
+	// check workstation
+	if ret, _ := CheckFileExits(path); !ret {
+		Logger.Errorf("workstation witch convert not found: %s", path)
+		return false
+	} else {
+		err := os.Chdir(appExportPath)
+		if err != nil {
+			Logger.Errorf("workstation can not enter directory: %s", appExportPath)
+			return false
+		}
+	}
+	// caller ll-builder export --local
+	if ret, msg, err := ExecAndWait(120, "ll-builder", "export", "--local"); err != nil {
+		Logger.Fatalf("ll-builder export failed: ", err, msg, ret)
+		return false
+	} else {
+		Logger.Infof("ll-builder export succeeded: ", path, ret)
+		return true
+	}
+}
