@@ -81,9 +81,8 @@ func UmountSquashfs(path string) (bool, error) {
 
 	return true, nil
 }
-
-func MountRfsWithOverlayfs(workdir, rfs, upper, tmpdir, lower string) (bool, error) {
-	return MountRfs("overlay", lower, upper, workdir, tmpdir, rfs)
+func MountRfsWithOverlayfs(lowerRuntimeDir, lowerFilesSystem, lowerInitDir, upper, workdir, rootfs string) (bool, error) {
+	return MountRfs("overlay", lowerRuntimeDir, lowerFilesSystem, lowerInitDir, upper, workdir, rootfs)
 }
 
 /*!
@@ -91,21 +90,21 @@ func MountRfsWithOverlayfs(workdir, rfs, upper, tmpdir, lower string) (bool, err
  * @param rfsPath rfs路径，lower,upper,workdir,tmpdir
  * @return 是否成功
  */
-func MountRfs(fstype, lower, upper, workdir, tmpdir, rfsdir string) (bool, error) {
+func MountRfs(fstype, lower, lowerMid, lowerUpper, upper, workdir, rootfs string) (bool, error) {
 
-	Logger.Debug("mount rfs: ", fstype, lower, upper, workdir, tmpdir, rfsdir)
+	Logger.Debug("mount rfs: ", fstype, lower, lowerMid, lowerUpper, upper, workdir, rootfs)
 
 	switch {
 	case fstype == "overlay":
-		Logger.Debug("SetOverlayfs :", lower, upper, workdir)
+		Logger.Debug("SetOverlayfs :", lower, lowerMid, lowerUpper, upper, rootfs)
 		// mount lower dir to upper dir
-		msg := fmt.Sprintf("lowerdir=%s:%s,upperdir=%s,workdir=%s", upper, lower, workdir, tmpdir)
+		msg := fmt.Sprintf("lowerdir=%s:%s:%s,upperdir=%s,workdir=%s", lower, lowerMid, lowerUpper, upper, workdir)
 		Logger.Debug("mount overlayfs flags: ", msg)
-		if _, msg, err := ExecAndWait(10, "mount", "-t", "overlay", "overlay", "-o", msg, rfsdir); err != nil {
+		if _, msg, err := ExecAndWait(10, "mount", "-t", "overlay", "overlay", "-o", msg, rootfs); err != nil {
 			Logger.Error("mount overlayfs failed: ", msg, err)
 			return false, err
 		}
-		Logger.Debug("mount overlayfs success: ", rfsdir)
+		Logger.Debug("mount overlayfs success: ", rootfs)
 		return true, nil
 	case fstype == "mount":
 		Logger.Debug("SetMountfs :", lower, upper, workdir)

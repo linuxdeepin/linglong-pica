@@ -236,8 +236,24 @@ var initCmd = &cobra.Command{
 			}
 		}
 
-		ConfigInfo.Basedir = ConfigInfo.Workdir + "/basedir"
-		Logger.Debug("set basedir: ", ConfigInfo.Basedir)
+		ConfigInfo.Initdir = ConfigInfo.Workdir + "/initdir"
+		Logger.Debug("set initdir: ", ConfigInfo.Initdir)
+		// 不读取缓存文件时，需清理initdir
+		if ret, err := CheckFileExits(ConfigInfo.Initdir); ret && err == nil && !ConfigInfo.IsInited {
+			ret, err = RemovePath(ConfigInfo.Initdir)
+			if !ret || err != nil {
+				Logger.Errorf("failed to remove %s\n", ConfigInfo.Initdir)
+			}
+			ret, err = CreateDir(ConfigInfo.Initdir)
+			if !ret || err != nil {
+				Logger.Errorf("failed to create %s\n", ConfigInfo.Initdir)
+			}
+		} else {
+			ret, err = CreateDir(ConfigInfo.Initdir)
+			if !ret || err != nil {
+				Logger.Errorf("failed to create %s\n", ConfigInfo.Initdir)
+			}
+		}
 
 		// extra
 		Logger.Debug("extra init")
@@ -293,14 +309,12 @@ var initCmd = &cobra.Command{
 			Logger.Error("mkdir rootfsdir failed!", err)
 		}
 
-		err = os.Mkdir(ConfigInfo.Basedir, 0755)
-
 		if os.IsNotExist(err) {
 			Logger.Error("mkdir runtime basedir failed!", err)
 		}
 
 		// mount overlay to base dir
-		SetOverlayfs(baseDir, ConfigInfo.RuntimeBasedir, ConfigInfo.Basedir)
+		SetOverlayfs(baseDir, ConfigInfo.RuntimeBasedir, ConfigInfo.Initdir)
 
 		UmountRootfsDir := func() {
 			ExecAndWait(10, "umount", ConfigInfo.Rootfsdir)
@@ -439,10 +453,39 @@ Convert:
 		// 	ConfigInfo.DebWorkdir = TransInfo.DebWorkdir
 		// }
 
-		if ConfigInfo.DebWorkdir == "" {
-			ConfigInfo.DebWorkdir = ConfigInfo.Workdir + "/debdir"
-			if ret, _ := CheckFileExits(ConfigInfo.DebWorkdir); !ret {
-				CreateDir(ConfigInfo.DebWorkdir)
+		// 创建debdir
+		ConfigInfo.DebWorkdir = ConfigInfo.Workdir + "/debdir"
+		if ret, err := CheckFileExits(ConfigInfo.DebWorkdir); ret && err == nil {
+			ret, err = RemovePath(ConfigInfo.DebWorkdir)
+			if !ret || err != nil {
+				Logger.Errorf("failed to remove %s\n", ConfigInfo.DebWorkdir)
+			}
+			ret, err = CreateDir(ConfigInfo.DebWorkdir)
+			if !ret || err != nil {
+				Logger.Errorf("failed to create %s\n", ConfigInfo.DebWorkdir)
+			}
+		} else {
+			ret, err = CreateDir(ConfigInfo.DebWorkdir)
+			if !ret || err != nil {
+				Logger.Errorf("failed to create %s\n", ConfigInfo.DebWorkdir)
+			}
+		}
+
+		// 新建basedir
+		ConfigInfo.Basedir = ConfigInfo.Workdir + "/basedir"
+		if ret, err := CheckFileExits(ConfigInfo.Basedir); ret && err == nil {
+			ret, err = RemovePath(ConfigInfo.Basedir)
+			if !ret || err != nil {
+				Logger.Errorf("failed to remove %s\n", ConfigInfo.Basedir)
+			}
+			ret, err = CreateDir(ConfigInfo.Basedir)
+			if !ret || err != nil {
+				Logger.Errorf("failed to create %s\n", ConfigInfo.Basedir)
+			}
+		} else {
+			ret, err = CreateDir(ConfigInfo.Basedir)
+			if !ret || err != nil {
+				Logger.Errorf("failed to create %s\n", ConfigInfo.Basedir)
 			}
 		}
 
@@ -458,7 +501,8 @@ Convert:
 		Logger.Debug("Rootfsdir:", ConfigInfo.Rootfsdir, "runtimeBasedir:", ConfigInfo.RuntimeBasedir, "basedir:", ConfigInfo.Basedir, "workdir:", ConfigInfo.Workdir)
 
 		CreateDir(ConfigInfo.Workdir + "/tmpdir")
-		if ret, err := rfs.MountRfsWithOverlayfs(ConfigInfo.Basedir, ConfigInfo.Rootfsdir, ConfigInfo.RuntimeBasedir, ConfigInfo.Workdir+"/tmpdir", ConfigInfo.Workdir+"/iso/live"); !ret {
+
+		if ret, err := rfs.MountRfsWithOverlayfs(ConfigInfo.RuntimeBasedir, ConfigInfo.Workdir+"/iso/live", ConfigInfo.Initdir, ConfigInfo.Basedir, ConfigInfo.Workdir+"/tmpdir", ConfigInfo.Rootfsdir); !ret {
 			Logger.Error("mount iso failed!", err)
 		}
 

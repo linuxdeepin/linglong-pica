@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -43,6 +44,7 @@ type Config struct {
 	DebugMode         bool
 	Config            string `yaml:"config"`
 	Workdir           string `yaml:"workdir"`
+	Initdir           string `yaml:"initdir"`
 	Basedir           string `yaml:"basedir"`
 	IsInited          bool   `yaml:"inited"`
 	Cache             bool   `yaml:"cache"`
@@ -96,6 +98,17 @@ func (config *Config) Export() (bool, error) {
 		return ExecAndWait(timeout, "rsync", "-av", src, dst)
 	}
 
+	// 处理 initdir
+	for key, value := range usrDirMap {
+		keyPath := ConfigInfo.Initdir + "/" + key
+		valuePath := ConfigInfo.ExportDir + "/" + value
+		if ret, err := CheckFileExits(keyPath); ret && err == nil {
+			CreateDir(valuePath)
+			rsyncDir(30, keyPath+"/", valuePath)
+		}
+	}
+
+	// 处理 basedir
 	for key, value := range usrDirMap {
 		keyPath := ConfigInfo.Basedir + "/" + key
 		valuePath := ConfigInfo.ExportDir + "/" + value
@@ -109,6 +122,21 @@ func (config *Config) Export() (bool, error) {
 	srcOptPath := ConfigInfo.Basedir + "/opt/apps/" + DebConf.Info.Appid
 	if ret, err := CheckFileExits(srcOptPath); ret && err == nil {
 		rsyncDir(30, srcOptPath+"/", ConfigInfo.ExportDir)
+	}
+
+	// 删除指定文件或者目录
+	removeFileList := []string{
+		"files/etc/apt/sources.list",
+	}
+	for _, dir := range removeFileList {
+		dirPath := ConfigInfo.ExportDir + "/" + dir
+		if ret, err := CheckFileExits(dirPath); ret && err == nil {
+			ret, err = RemovePath(dirPath)
+			if !ret && err != nil {
+				Logger.Errorf("remove %s err! \n", dirPath)
+				return false, errors.New("remove path err!")
+			}
+		}
 	}
 
 	// 特殊处理applications、icons、dbus-1、systemd、mime、autostart、help等目录
