@@ -10,6 +10,7 @@
 package core
 
 import (
+	"fmt"
 	"html/template"
 	. "ll-pica/core/comm"
 	. "ll-pica/core/elf"
@@ -196,7 +197,8 @@ func (ts *BinFormatReactor) GetEntryDlopenList(exclude []string) bool {
 
 	IsHaveDlopen := func(filename string) bool {
 		// strings /usr/bin/deepin-movie| grep -i dlopen
-		if msg, ret, err := ExecAndWait(10, "strings", filename, "|", "grep", "-q", "dlopen"); err != nil {
+		cmd := fmt.Sprintf("strings %s | grep -q dlopen", filename)
+		if msg, ret, err := ExecAndWait(10, "bash", "-c", cmd); err != nil {
 			Logger.Debugf("check dlopen failed: %v", err, msg, ret)
 			return false
 		} else {
@@ -246,6 +248,7 @@ func (ts *BinFormatReactor) GetEntryDlopenList(exclude []string) bool {
 
 type ElfLDDShellTemplate struct {
 	ELFNameString    string
+	DlopenNameString []string
 	OutputNameString string
 	Verbose          bool
 }
@@ -253,7 +256,16 @@ type ElfLDDShellTemplate struct {
 // fixme: ldd not found case
 const TMPL_ELF_LDD = `#!/bin/bash
 set -x
-ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq | sed '/^$/d' >> {{.OutputNameString}}
+ldconfig -p > /tmp/aa.db
+{{range $idx, $element := .DlopenNameString}}
+aa=$(cat /tmp/aa.db | grep {{ $element }} | awk '{print $4}'|head -n 1)
+[[ -f $aa ]] && echo $aa >> /tmp/aa
+ldd $aa | awk '{print $3}' | sort| uniq | sed '/^$/d' >> /tmp/aa
+{{end}}
+ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq | sed '/^$/d' >> /tmp/aa
+cat /tmp/aa | sort | uniq | sed '/^$/d' >>  {{.OutputNameString}}
+rm /tmp/aa.db
+rm /tmp/aa
 `
 
 /*!
@@ -273,7 +285,7 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 		return false, nil
 	}
 
-	elfLDDShell := ElfLDDShellTemplate{"", output, false}
+	elfLDDShell := ElfLDDShellTemplate{"", make([]string, 0), output, false}
 
 	for elfStr := range ts.ElfLDDPath {
 
@@ -282,8 +294,7 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 	}
 
 	for elfStr := range ts.ElfEntrySoPath {
-		elfLDDShell.ELFNameString += elfStr
-		elfLDDShell.ELFNameString += " "
+		elfLDDShell.DlopenNameString = append(elfLDDShell.DlopenNameString, elfStr)
 	}
 
 	// create save file
@@ -310,7 +321,8 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 // }
 func GetDlopenDepends(path string) ([]string, error) {
 	// strings /bin/bash | grep  "\.so"
-	if msg, ret, err := ExecAndWait(10, "strings", path, "|", "grep", "\\.so"); err != nil {
+	cmd := fmt.Sprintf("strings %s | grep \\\\.so ", path)
+	if msg, ret, err := ExecAndWait(10, "bash", "-c", cmd); err != nil {
 		Logger.Debugf("check elf entry failed: %v", err, msg, ret)
 		return nil, err
 	} else {

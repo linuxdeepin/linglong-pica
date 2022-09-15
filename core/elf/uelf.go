@@ -46,7 +46,8 @@ func IsElfWithPath(elfPath string) bool {
 
 // IsElfEntry check with entry is libc_start_main
 func IsElfEntry(elfPath string) bool {
-	if msg, ret, err := ExecAndWait(10, "nm", "-D", elfPath, "|", "grep", "-q", "libc_start_main"); err != nil {
+	cmd := fmt.Sprintf("nm -D %s | grep -q 'libc_start_main' ", elfPath)
+	if ret, msg, err := ExecAndWait(10, "bash", "-c", cmd); err != nil {
 		Logger.Debugf("check elf entry failed: %v", err, msg, ret)
 		return false
 	} else {

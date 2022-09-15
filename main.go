@@ -314,7 +314,11 @@ var initCmd = &cobra.Command{
 		}
 
 		// mount overlay to base dir
-		SetOverlayfs(baseDir, ConfigInfo.RuntimeBasedir, ConfigInfo.Initdir)
+		if ret, _ := CheckFileExits(ConfigInfo.RuntimeBasedir + "/files"); ret {
+			SetOverlayfs(baseDir, ConfigInfo.RuntimeBasedir+"/files", ConfigInfo.Initdir)
+		} else {
+			SetOverlayfs(baseDir, ConfigInfo.RuntimeBasedir, ConfigInfo.Initdir)
+		}
 
 		UmountRootfsDir := func() {
 			ExecAndWait(10, "umount", ConfigInfo.Rootfsdir)
@@ -358,6 +362,15 @@ Convert:
 	`,
 
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		Logger.Debugf("workdir %s ,cache file %s", TransInfo.Workdir, TransInfo.CachePath)
+
+		if TransInfo.CachePath == "" {
+			if ret, err := CheckFileExits(TransInfo.Workdir + "/cache.yaml"); !ret {
+				Logger.Fatal("cache-file required failed", err)
+				return
+			}
+			TransInfo.CachePath = TransInfo.Workdir + "/cache.yaml"
+		}
 		// fmt.Printf("Inside rootCmd PersistentPreRun with args: %v\n", args)
 	},
 	PreRun: func(cmd *cobra.Command, args []string) {
@@ -501,9 +514,14 @@ Convert:
 		Logger.Debug("Rootfsdir:", ConfigInfo.Rootfsdir, "runtimeBasedir:", ConfigInfo.RuntimeBasedir, "basedir:", ConfigInfo.Basedir, "workdir:", ConfigInfo.Workdir)
 
 		CreateDir(ConfigInfo.Workdir + "/tmpdir")
-
-		if ret, err := rfs.MountRfsWithOverlayfs(ConfigInfo.RuntimeBasedir, ConfigInfo.Workdir+"/iso/live", ConfigInfo.Initdir, ConfigInfo.Basedir, ConfigInfo.Workdir+"/tmpdir", ConfigInfo.Rootfsdir); !ret {
-			Logger.Error("mount iso failed!", err)
+		if ret, _ := CheckFileExits(ConfigInfo.RuntimeBasedir + "/files"); ret {
+			if ret, err := rfs.MountRfsWithOverlayfs(ConfigInfo.RuntimeBasedir+"/files", ConfigInfo.Workdir+"/iso/live", ConfigInfo.Initdir, ConfigInfo.Basedir, ConfigInfo.Workdir+"/tmpdir", ConfigInfo.Rootfsdir); !ret {
+				Logger.Error("mount iso failed!", err)
+			}
+		} else {
+			if ret, err := rfs.MountRfsWithOverlayfs(ConfigInfo.RuntimeBasedir, ConfigInfo.Workdir+"/iso/live", ConfigInfo.Initdir, ConfigInfo.Basedir, ConfigInfo.Workdir+"/tmpdir", ConfigInfo.Rootfsdir); !ret {
+				Logger.Error("mount iso failed!", err)
+			}
 		}
 
 		ConfigInfo.MountsItem.DoMountALL()
@@ -590,7 +608,9 @@ Convert:
 		Logger.Debugf("exclude so list:", excludeSoList)
 
 		// check  dlopen if it exists append depends to list
+		Logger.Debug("call GetEntryDlopenList:")
 		binReactor.GetEntryDlopenList(excludeSoList)
+		Logger.Debug("call GetEntryDlopenList: %v", binReactor.ElfEntrySoPath)
 
 		//binReactor.FixElfLDDPath(binReactor.SearchPath + "bin/lib")
 		//
@@ -713,7 +733,7 @@ var rootCmd = &cobra.Command{
 	Long: `Convert the deb to uab. For example:
 Simple:
 	ll-pica init 
-	ll-pica convert abc.deb --config config.yaml --cache-file=/mnt/workdir/cache.yaml
+	ll-pica convert -d abc.deb --config config.yaml -w /mnt/workdir
 	ll-pica help
 
 
@@ -838,13 +858,19 @@ func main() {
 	rootCmd.AddCommand(convertCmd)
 	convertCmd.Flags().StringVarP(&TransInfo.Yamlconfig, "config", "c", "", "config")
 	convertCmd.Flags().StringVarP(&TransInfo.Workdir, "workdir", "w", "", "work directory")
-	convertCmd.Flags().StringVarP(&TransInfo.CachePath, "cache-file", "f", "", "cache yaml file")
+	// convertCmd.Flags().StringVarP(&TransInfo.CachePath, "cache-file", "f", "", "cache yaml file")
 	convertCmd.Flags().StringVarP(&TransInfo.DebPath, "deb-file", "d", "", "deb file")
 
 	err = convertCmd.MarkFlagRequired("config")
 	if err != nil {
 		Logger.Fatal("yaml config required failed", err)
 	}
+
+	if err := convertCmd.MarkFlagRequired("workdir"); err != nil {
+		Logger.Fatal("workdir required failed", err)
+		return
+	}
+
 	// err = convertCmd.MarkFlagRequired("deb-file")
 	// if err != nil {
 	// 	Logger.Fatal("deb file required failed", err)
@@ -865,17 +891,17 @@ func main() {
 	// root cmd add
 	rootCmd.PersistentFlags().BoolVarP(&ConfigInfo.Verbose, "verbose", "", false, "verbose output")
 
-	if ConfigInfo.Workdir == "" {
-		ConfigInfo.Workdir = "/mnt/workdir"
-	}
+	// if ConfigInfo.Workdir == "" {
+	// 	ConfigInfo.Workdir = "/mnt/workdir"
+	// }
 
-	if TransInfo.Workdir == "" {
-		TransInfo.Workdir = "/mnt/workdir"
-	}
-	// fix cache path
-	if TransInfo.CachePath == "" {
-		TransInfo.CachePath = TransInfo.Workdir + "/cache.yaml"
-	}
+	// if TransInfo.Workdir == "" {
+	// 	TransInfo.Workdir = "/mnt/workdir"
+	// }
+	// // fix cache path
+	// if TransInfo.CachePath == "" {
+	// 	TransInfo.CachePath = TransInfo.Workdir + "/cache.yaml"
+	// }
 
 	// go build -ldflags '-X ll-pica/utils/log.disableLogDebug=yes -X main.disableDevelop=yes'
 	// fmt.Printf("disableDevelop: %s\n", disableDevelop)
