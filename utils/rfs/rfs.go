@@ -124,9 +124,14 @@ func MountRfs(fstype, lower, lowerMid, lowerUpper, upper, workdir, rootfs string
 func UmountRfs(workdir string) (bool, error) {
 	Logger.Debug("umountRfs :", workdir)
 	// umount upper dir
-	_, msg, err := ExecAndWait(10, "umount", workdir)
-	if err != nil {
-		Logger.Error("umount rootfs failed: ", msg, err)
+
+	if ret, msg, err := ExecAndWait(10, "umount", workdir); err != nil {
+		Logger.Warnf("umount rootfs failed: ", workdir, msg, err, ret)
+		if ret, msg, err := ExecAndWait(10, "umount", "-R", workdir); err == nil {
+			return true, nil
+		} else {
+			Logger.Warnf("umount -R rootfs failed: ", workdir, msg, err, ret)
+		}
 		return false, err
 	}
 	return true, nil
