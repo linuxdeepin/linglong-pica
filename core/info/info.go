@@ -11,13 +11,19 @@
 package info
 
 import (
+	"bufio"
 	"encoding/json"
+	"fmt"
 	. "ll-pica/core/comm"
+	. "ll-pica/core/linglong"
 	. "ll-pica/utils/fs"
 	. "ll-pica/utils/log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
+	"strings"
 )
 
 type InfoApp struct {
@@ -45,12 +51,16 @@ type InfoPermissions struct {
 	InstalledApps bool `json:"installed_apps"`
 }
 
-func CreateInfo(infoDir string, debInfo DebConfig) (bool, error) {
-	if ret, err := CheckFileExits(infoDir); !ret && err != nil {
-		Logger.Errorw("info.json dir not exists! : ", infoDir)
+func CreateInfo(info Config, debInfo DebConfig, lb LinglongBuder) (bool, error) {
+	if ret, err := CheckFileExits(info.ExportDir); !ret && err != nil {
+		Logger.Errorw("info.json dir not exists! : ", info.ExportDir)
 		return false, err
 	}
-	infoFilePath := filepath.Clean(infoDir) + "/info.json"
+	infoFilePath := filepath.Clean(info.ExportDir) + "/info.json"
+	hostArch := runtime.GOARCH
+	if hostArch == "amd64" {
+		hostArch = "x86_64"
+	}
 
 	infoApp := &InfoApp{
 		Appid:       debInfo.Info.Appid,
@@ -58,8 +68,80 @@ func CreateInfo(infoDir string, debInfo DebConfig) (bool, error) {
 		Version:     debInfo.Info.Version,
 		Kind:        "app",
 		Description: debInfo.Info.Description,
-		// fixme(liujianqiang) get runtime from yaml file?
-		Runtime: "org.deepin.Runtime/20.5.0/x86_64",
+		// "org.deepin.Runtime/20.5.0/x86_64",
+		Runtime: fmt.Sprintf("%s/%s/%s", lb.Runtime, lb.Rversion, hostArch),
+	}
+	if debInfo.Info.Version == "" || debInfo.Info.Description == "" {
+		// Package: deepin-calculator
+		// Version: 5.7.16-1
+		// Description: Calculator for UOS
+		// /var/lib/dpkg/status
+		dpkgStatus := info.Basedir + "/var/lib/dpkg/status"
+		if ret, err := CheckFileExits(dpkgStatus); !ret {
+			Logger.Warnf("can not found dpkg info %s , %v", dpkgStatus, err)
+		}
+		if dpkgStatusFile, err := os.Open(dpkgStatus); err != nil {
+			Logger.Warnf("open status failed:", err)
+
+		} else {
+			defer dpkgStatusFile.Close()
+
+			LogFileItor := bufio.NewScanner(dpkgStatusFile)
+			LogFileItor.Split(bufio.ScanLines)
+			var ReadLine string
+			strHeader := fmt.Sprintf("Package: %s", debInfo.Info.Name)
+			for LogFileItor.Scan() {
+				ReadLine = LogFileItor.Text()
+
+				if ReadLine == strHeader {
+
+					for LogFileItor.Scan() {
+						ReadLine = LogFileItor.Text()
+
+						if ReadLine != "" {
+							// Version
+							if debInfo.Info.Version == "" && strings.HasPrefix(ReadLine, "Version:") {
+								ReadVersion := strings.Split(ReadLine, "Version: ")[1]
+
+								if ret := strings.Index(ReadVersion, ":"); ret != -1 {
+									ReadVersion = strings.Split(ReadVersion, ":")[1]
+								}
+								if ret := strings.Index(ReadVersion, "-"); ret != -1 {
+									ReadVersion = strings.Split(ReadVersion, "-")[0]
+								}
+								if ret := strings.Index(ReadVersion, "+"); ret != -1 {
+									ReadVersion = strings.Split(ReadVersion, "+")[0]
+								}
+
+								verList := []string{}
+
+								regexVer := regexp.MustCompile(`^[-+]?\d+`)
+								for _, ver := range strings.Split(ReadVersion, ".")[0:] {
+									strVer := regexVer.FindString(ver)
+									if strVer == "" {
+										verList = append(verList, "0")
+									}
+									if ret, err := strconv.ParseInt(strVer, 10, 64); err != nil {
+										verList = append(verList, "0")
+									} else {
+										verList = append(verList, fmt.Sprintf("%d", ret))
+									}
+								}
+								infoApp.Version = strings.Join(verList, ".")
+							}
+							// Description
+							if debInfo.Info.Description == "" && strings.HasPrefix(ReadLine, "Description:") {
+								infoApp.Description = strings.Split(ReadLine, "Description: ")[1]
+							}
+
+						} else {
+							break
+						}
+					}
+				}
+
+			}
+		}
 	}
 	infoApp.Permissions.AutoStart = false
 	infoApp.Permissions.Notification = false
@@ -71,10 +153,6 @@ func CreateInfo(infoDir string, debInfo DebConfig) (bool, error) {
 	infoApp.Permissions.AudioRecord = false
 	infoApp.Permissions.InstalledApps = false
 
-	hostArch := runtime.GOARCH
-	if hostArch == "amd64" {
-		hostArch = "x86_64"
-	}
 	infoApp.Arch = append(infoApp.Arch, hostArch)
 	infoApp.SupportPlugins = make([]string, 0)
 	infoApp.Plugins = make([]string, 0)
