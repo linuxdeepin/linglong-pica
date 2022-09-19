@@ -10,7 +10,9 @@
 package linglong
 
 import (
+	"encoding/json"
 	"html/template"
+	"io/ioutil"
 	. "ll-pica/core/comm"
 	. "ll-pica/utils/fs"
 	. "ll-pica/utils/log"
@@ -23,6 +25,45 @@ type LinglongBuder struct {
 	Runtime     string
 	Rversion    string
 	Description string
+}
+
+type RuntimeJson struct {
+	Appid       string   `json:"appid"`
+	Arch        []string `json:"arch"`
+	Base        string   `json:"base"`
+	Description string   `json:"description"`
+	Kind        string   `json:"kind"`
+	Name        string   `json:"name"`
+	Runtime     string   `json:"runtime"`
+	Version     string   `json:"version"`
+}
+
+// LoadRuntimeInfo
+func (ts *LinglongBuder) LoadRuntimeInfo(path string) bool {
+	// load runtime info from file
+	if ret, err := CheckFileExits(path); !ret {
+		Logger.Warnf("load runtime info failed: %v", err)
+		return false
+	}
+	var runtimedir RuntimeJson
+	runtimedirFd, err := ioutil.ReadFile(path)
+	if err != nil {
+		Logger.Errorf("get %s error: %v", path, err)
+		return false
+	}
+	err = json.Unmarshal(runtimedirFd, &runtimedir)
+	if err != nil {
+		Logger.Errorf("error: %v", err)
+		return false
+	}
+	// copy to LinglongBuder
+	if runtimedir.Appid != "" && runtimedir.Version != "" {
+		ts.Runtime = runtimedir.Appid
+		ts.Rversion = runtimedir.Version
+		return true
+	}
+
+	return false
 }
 
 const LinglongBuilderTMPL = `

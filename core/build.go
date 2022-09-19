@@ -218,7 +218,7 @@ func (ts *BinFormatReactor) GetEntryDlopenList(exclude []string) bool {
 	})
 
 	if len(elf_have_entry_list) == 0 {
-		Logger.Warn("have not search include entry elf file with:", ts.SearchPath)
+		Logger.Warnf("have not search include entry elf file with:", ts.SearchPath)
 		return false
 	}
 
@@ -288,7 +288,6 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 	elfLDDShell := ElfLDDShellTemplate{"", make([]string, 0), output, false}
 
 	for elfStr := range ts.ElfLDDPath {
-
 		elfLDDShell.ELFNameString += elfStr
 		elfLDDShell.ELFNameString += " "
 	}

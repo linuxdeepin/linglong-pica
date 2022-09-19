@@ -670,6 +670,9 @@ Convert:
 		// 	Logger.Debug("get elf need failed: ", msg)
 		// }
 
+		// run.sh
+		// fixme:(heysion) 依据kind 字段生成 run.sh 的模板
+
 		// fix desktop
 		// FixDesktop()
 		ConfigInfo.FixDesktop(DebConf.Info.Appid)
@@ -688,6 +691,10 @@ Convert:
 		builder.Rversion = "20.6"
 
 		Logger.Debugf("update linglong builder: %v", builder)
+
+		// load runtime.json
+		Logger.Debugf("loader runtimedir %s", ConfigInfo.RuntimeBasedir)
+		builder.LoadRuntimeInfo(ConfigInfo.RuntimeBasedir + "info.json")
 
 		// create linglong.yaml
 		builder.CreateLinglongYamlBuilder(ConfigInfo.ExportDir + "/linglong.yaml")
