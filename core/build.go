@@ -256,16 +256,22 @@ type ElfLDDShellTemplate struct {
 // fixme: ldd not found case
 const TMPL_ELF_LDD = `#!/bin/bash
 set -x
-ldconfig -p > /tmp/aa.db
+
+ldconfig -p > /tmp/libcache.db
+
 {{range $idx, $element := .DlopenNameString}}
-aa=$(cat /tmp/aa.db | grep {{ $element }} | awk '{print $4}'|head -n 1)
-[[ -f $aa ]] && echo $aa >> /tmp/aa
-ldd $aa | awk '{print $3}' | sort| uniq | sed '/^$/d' >> /tmp/aa
+DLOPEN_SOPATH=$(cat /tmp/libcache.db | grep {{ $element }} | awk '{print $4}'|head -n 1)
+[[ -f ${DLOPEN_SOPATH} ]] && (echo ${DLOPEN_SOPATH} >> /tmp/elfsonamelist)
+[[ -f ${DLOPEN_SOPATH} ]] && (ldd ${DLOPEN_SOPATH} | awk '{print $3}' | sort| uniq | sed '/^$/d' >> /tmp/elfsonamelist)
 {{end}}
-ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq | sed '/^$/d' >> /tmp/aa
-cat /tmp/aa | sort | uniq | sed '/^$/d' >>  {{.OutputNameString}}
-rm /tmp/aa.db
-rm /tmp/aa
+
+ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq | sed '/^$/d' >> /tmp/elfsonamelist
+cat /tmp/elfsonamelist | sort | uniq | sed '/^$/d' >>  {{.OutputNameString}}
+
+rm -v /tmp/libcache.db
+rm -v /tmp/elfsonamelist
+
+echo end
 `
 
 /*!
