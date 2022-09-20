@@ -116,7 +116,8 @@ func CreateInfo(info Config, debInfo DebConfig, lb LinglongBuder) (bool, error) 
 								verList := []string{}
 
 								regexVer := regexp.MustCompile(`^[-+]?\d+`)
-								for _, ver := range strings.Split(ReadVersion, ".")[0:] {
+								regexVerList := strings.Split(ReadVersion, ".")[0:]
+								for _, ver := range regexVerList[:4] {
 									strVer := regexVer.FindString(ver)
 									if strVer == "" {
 										verList = append(verList, "0")

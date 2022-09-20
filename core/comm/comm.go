@@ -135,7 +135,7 @@ func (config *Config) Export() (bool, error) {
 
 	// 特殊处理applications、icons、dbus-1、systemd、mime、autostart、help等目录
 	specialDirList := []string{
-		"files/share/applications",
+		"files/share/applications", // desktop
 		"files/share/icons",
 		"files/share/dbus-1",
 		"files/lib/systemd",
@@ -514,6 +514,10 @@ func (ts *DebInfo) FetchDebFile(dirPath string) bool {
 		debFilePath, err := filepath.Glob(fmt.Sprintf("%s/%s_*.deb", dirPath, ts.Name))
 		if err != nil {
 			Logger.Error(debFilePath)
+			return false
+		}
+		if len(debFilePath) == 0 {
+			Logger.Errorf("deb file name not regular file path")
 			return false
 		}
 		Logger.Debugf("debFilePath: %+v [0]:%s", debFilePath, debFilePath[0])

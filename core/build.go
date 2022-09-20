@@ -260,7 +260,7 @@ set -x
 ldconfig -p > /tmp/libcache.db
 
 {{range $idx, $element := .DlopenNameString}}
-DLOPEN_SOPATH=$(cat /tmp/libcache.db | grep {{ $element }} | awk '{print $4}'|head -n 1)
+DLOPEN_SOPATH=$(cat /tmp/libcache.db | grep "{{ $element }}" | awk '{print $4}'|head -n 1)
 [[ -f ${DLOPEN_SOPATH} ]] && (echo ${DLOPEN_SOPATH} >> /tmp/elfsonamelist)
 [[ -f ${DLOPEN_SOPATH} ]] && (ldd ${DLOPEN_SOPATH} | awk '{print $3}' | sort| uniq | sed '/^$/d' >> /tmp/elfsonamelist)
 {{end}}
