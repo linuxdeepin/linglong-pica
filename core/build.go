@@ -327,9 +327,9 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 // func (ts *BinFormatReactor) GetElfWithLDD(exclude string) []string {
 // 	if len(ts.ElfLDDPath) > 0 {
 
-// 	}
-// 	return nil
-// }
+//		}
+//		return nil
+//	}
 func GetDlopenDepends(path string) ([]string, error) {
 	// strings /bin/bash | grep  "\.so"
 	cmd := fmt.Sprintf("strings %s | grep \\\\.so ", path)
@@ -417,7 +417,7 @@ func ChrootExecShell(chrootDirPath, shell string, bindMounts []string) (bool, st
 
 	// chroot shell
 	Logger.Debugf("chroot shell: path: %s shell:%s", chrootDirPath, shell)
-	if ret, msg, err := ExecAndWait(1000, "chroot", chrootDirPath, shell); err != nil {
+	if ret, msg, err := ExecAndWait(4096, "chroot", chrootDirPath, shell); err != nil {
 		Logger.Fatalf("chroot exec shell failed! ", err, msg, ret)
 		return false, msg, err
 	} else {
