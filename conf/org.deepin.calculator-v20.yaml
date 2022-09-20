@@ -13,7 +13,7 @@ file:
       hash: 0ffd3af5467acf71320bd2e2267e989c5c4c41abc9a512242d4c37cd42777af5
   add-package:
     - libicu63
-build:
+chroot:
   pre-command:
     - "uname -m"
   post-command:

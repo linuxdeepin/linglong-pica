@@ -417,6 +417,8 @@ func ChrootExecShell(chrootDirPath, shell string, bindMounts []string) (bool, st
 type DebShellTemplate struct {
 	ExtraPackageStr string
 	DebString       string
+	PreCommand      []string
+	PostCommand     []string
 	Verbose         bool
 }
 
@@ -436,9 +438,24 @@ function apt_install_deb {
     DEBIAN_FRONTEND=noninteractive apt-get install -f -y
 }
 
+function pre_command {
+	{{range $idx, $element := .PreCommand}}
+	{{$element}}
+	{{end}}
+	echo OK
+}
+
+function post_command {
+	{{range $idx, $element := .PostCommand}}
+	{{$element}}
+	{{end}}
+	echo OK
+}
+pre_command
 apt_update
 {{if len .DebString }}apt_install_deb {{end}}
 {{if len .ExtraPackageStr }}apt_install_pkgs{{end}}
+post_command
 `
 
 func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
@@ -452,7 +469,7 @@ func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 		return false, nil
 	}
 
-	debShell := DebShellTemplate{"", "", false}
+	debShell := DebShellTemplate{"", "", make([]string, 0), make([]string, 0), false}
 
 	for _, debStr := range DebConf.FileElement.Deb {
 
@@ -465,6 +482,19 @@ func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 		debShell.ExtraPackageStr = strings.Join(DebConf.FileElement.Package, " ")
 	} else {
 		debShell.ExtraPackageStr = ""
+	}
+
+	// PreCommand
+	if len(DebConf.ChrootInfo.PreCmd) > 0 {
+		for _, cmd := range DebConf.ChrootInfo.PreCmd {
+			debShell.PreCommand = append(debShell.PreCommand, cmd)
+		}
+	}
+	// PostCommand
+	if len(DebConf.ChrootInfo.PostCmd) > 0 {
+		for _, cmd := range DebConf.ChrootInfo.PostCmd {
+			debShell.PostCommand = append(debShell.PostCommand, cmd)
+		}
 	}
 
 	// create save file

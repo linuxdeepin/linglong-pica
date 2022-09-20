@@ -447,7 +447,10 @@ type DebConfig struct {
 		Deb     []DebInfo `yaml:"deb"`
 		Package []string  `yaml:"add-package"`
 	} `yaml:"file"`
-	BuildInfo struct{} `yaml:"build"`
+	ChrootInfo struct {
+		PreCmd  []string `yaml:"pre-command"`
+		PostCmd []string `yaml:"post-command"`
+	} `yaml:"chroot"`
 }
 
 func (ts *DebConfig) MergeInfo(t *DebConfig) bool {

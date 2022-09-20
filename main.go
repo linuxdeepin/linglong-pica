@@ -553,7 +553,7 @@ Convert:
 		}
 
 		// render DebConfig to template save to pica.sh
-		Logger.Debugf("render berfore %s:", DebConf.FileElement.Deb)
+		Logger.Debugf("render berfore %+v:", DebConf)
 		RenderDebConfig(DebConf, ConfigInfo.DebWorkdir+"/pica.sh")
 
 		// chroot
