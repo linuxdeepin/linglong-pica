@@ -680,7 +680,7 @@ Convert:
 
 		// load runtime.json
 		Logger.Debugf("loader runtimedir %s", ConfigInfo.RuntimeBasedir)
-		builder.LoadRuntimeInfo(ConfigInfo.RuntimeBasedir + "info.json")
+		builder.LoadRuntimeInfo(ConfigInfo.RuntimeBasedir + "/info.json")
 
 		// run.sh
 		// fixme:(heysion) 依据kind 字段生成 run.sh 的模板
