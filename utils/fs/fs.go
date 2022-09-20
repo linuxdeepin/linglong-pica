@@ -558,6 +558,15 @@ func TransIconToLl(iconValue string) string {
 		iconValue = GetFileName(iconValue)
 		iconValue = strings.Replace(iconValue, ".png", "", -1)
 	}
+	// 如果icon以/opt开头
+	if strings.HasPrefix(iconValue, "/opt/apps") && strings.HasSuffix(iconValue, ".svg") {
+		iconValue = GetFileName(iconValue)
+		iconValue = strings.Replace(iconValue, ".svg", "", -1)
+	}
+	if strings.HasPrefix(iconValue, "/opt/apps") && strings.HasSuffix(iconValue, ".png") {
+		iconValue = GetFileName(iconValue)
+		iconValue = strings.Replace(iconValue, ".png", "", -1)
+	}
 
 	return iconValue
 }
