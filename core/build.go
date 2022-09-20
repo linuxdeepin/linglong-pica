@@ -264,9 +264,15 @@ DLOPEN_SOPATH=$(cat /tmp/libcache.db | grep {{ $element }} | awk '{print $4}'|he
 [[ -f ${DLOPEN_SOPATH} ]] && (echo ${DLOPEN_SOPATH} >> /tmp/elfsonamelist)
 [[ -f ${DLOPEN_SOPATH} ]] && (ldd ${DLOPEN_SOPATH} | awk '{print $3}' | sort| uniq | sed '/^$/d' >> /tmp/elfsonamelist)
 {{end}}
-
+{{ if len .ELFNameString }}
 ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq | sed '/^$/d' >> /tmp/elfsonamelist
-cat /tmp/elfsonamelist | sort | uniq | sed '/^$/d' >>  {{.OutputNameString}}
+{{end}}
+
+{{ if len .OutputNameString}}
+touch {{.OutputNameString}}
+{{end}}
+
+[[ -f /tmp/elfsonamelist ]] && (cat /tmp/elfsonamelist | sort | uniq | sed '/^$/d' >>  {{.OutputNameString}})
 
 rm -v /tmp/libcache.db
 rm -v /tmp/elfsonamelist
@@ -457,11 +463,11 @@ function post_command {
 	{{end}}
 	echo OK
 }
-pre_command
+{{if len .PreCommand }}pre_command{{end}}
 apt_update
 {{if len .DebString }}apt_install_deb {{end}}
 {{if len .ExtraPackageStr }}apt_install_pkgs{{end}}
-post_command
+{{if len .PostCommand }}post_command{{end}}
 `
 
 func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {

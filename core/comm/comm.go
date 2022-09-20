@@ -118,14 +118,6 @@ func (config *Config) Export() (bool, error) {
 		}
 	}
 
-	// 拷贝处理/opt目录
-
-	srcOptPath := ConfigInfo.Basedir + "/opt/apps/" + DebConf.Info.Appid
-	Logger.Debugf("srcOptPath %s", srcOptPath)
-	if ret, err := CheckFileExits(srcOptPath); ret && err == nil {
-		rsyncDir(30, srcOptPath+"/", ConfigInfo.ExportDir)
-	}
-
 	// 删除指定文件或者目录
 	removeFileList := []string{
 		"files/etc/apt/sources.list",
@@ -160,6 +152,14 @@ func (config *Config) Export() (bool, error) {
 			os.RemoveAll(srcPath)
 		}
 	}
+
+	// 拷贝处理/opt目录
+	srcOptPath := ConfigInfo.Basedir + "/opt/apps/" + DebConf.Info.Appid
+	Logger.Debugf("srcOptPath %s", srcOptPath)
+	if ret, err := CheckFileExits(srcOptPath); ret && err == nil {
+		rsyncDir(30, srcOptPath+"/", ConfigInfo.ExportDir)
+	}
+
 	ConfigInfo.FilesSearchPath = ConfigInfo.ExportDir + "/files"
 	return true, nil
 }
