@@ -500,33 +500,28 @@ func (ts *DebInfo) CheckDebHash() bool {
 	return false
 }
 
-func (ts *DebInfo) FetchDebFile(dirPath string) bool {
+// FetchDebFile
+func (ts *DebInfo) FetchDebFile(dstPath string) bool {
 
-	Logger.Debugf("FetchDebFile :%v", ts)
+	Logger.Debugf("FetchDebFile %s,ts:%v", dstPath, ts)
+
 	if ts.Type == "repo" {
-		// ts.path = fmt.Sprintf("%s/", dirPath)
 
-		_, msg, err := ExecAndWait(1<<20, "wget", "-P", dirPath, ts.Ref)
-		if err != nil {
+		CreateDir(GetFilePPath(dstPath))
 
-			Logger.Errorf("msg: %+v err:%+v", msg, err)
+		if ret, msg, err := ExecAndWait(1<<20, "wget", "-O", dstPath, ts.Ref); err != nil {
+
+			Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
 			return false
+		} else {
+			Logger.Debugf("ret: %+v", ret)
 		}
-		debFilePath, err := filepath.Glob(fmt.Sprintf("%s/%s_*.deb", dirPath, ts.Name))
-		if err != nil {
-			Logger.Error(debFilePath)
-			return false
-		}
-		if len(debFilePath) == 0 {
-			Logger.Errorf("deb file name not regular file path")
-			return false
-		}
-		Logger.Debugf("debFilePath: %+v [0]:%s", debFilePath, debFilePath[0])
-		if err, msg := CheckFileExits(debFilePath[0]); err {
-			ts.Path = debFilePath[0]
+
+		if ret, err := CheckFileExits(dstPath); ret {
+			ts.Path = dstPath
 			return true
 		} else {
-			Logger.Errorf("msg: %+v err:%+v", msg, err)
+			Logger.Warnf("downalod %s , err:%+v", dstPath, err)
 			return false
 		}
 	}
@@ -571,12 +566,20 @@ func (ts *BaseInfo) FetchIsoFile(workdir, isopath string) bool {
 	CreateDir(GetFilePPath(isoAbsPath))
 	if ts.Type == "iso" {
 		ts.Path = isoAbsPath
-		_, msg, err := ExecAndWait(1<<20, "wget", "-O", ts.Path, ts.Ref)
-		if err != nil {
-			Logger.Errorf("msg: %+v err:%+v", msg, err)
+
+		if ret, msg, err := ExecAndWait(1<<20, "wget", "-O", ts.Path, ts.Ref); err != nil {
+			Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
+			return false
+		} else {
+			Logger.Debugf("ret: %+v", ret)
+		}
+
+		if ret, err := CheckFileExits(ts.Path); ret {
+			return true
+		} else {
+			Logger.Warnf("downalod %s , err:%+v", ts.Path, err)
 			return false
 		}
-		return true
 	}
 	return false
 }

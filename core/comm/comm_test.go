@@ -14,6 +14,7 @@ import (
 	. "ll-pica/utils/fs"
 	"log"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -161,4 +162,11 @@ func TestFixCachePath(t *testing.T) {
 	if testDataFixCachePath[2].cachePath != config.CachePath {
 		t.Errorf("Failed test for TestFixCache! Error :  fix cache path failed. ")
 	}
+}
+
+func TestGetRefName(t *testing.T) {
+	refs := "https://mirrors.ustc.edu.cn/deepin/pool/main/d/deepin-calculator/deepin-calculator_1:5.7.20-1_amd64.deb"
+	t.Logf(refs)
+
+	t.Logf(filepath.Base(refs))
 }

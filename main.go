@@ -104,12 +104,12 @@ var initCmd = &cobra.Command{
 
 		ClearIso := func() {
 			Logger.Debug("begin clear iso")
-			if _, err := os.Stat(isoDir); !os.IsNotExist(err) {
+			if ret, _ := CheckFileExits(isoDir); ret {
 				Logger.Debugf("remove iso: %s", isoDir)
-				err = os.RemoveAll(isoDir)
-				if err != nil {
-					Logger.Errorf("remove error", err)
-				}
+				// err = os.RemoveAll(isoDir)
+				// if err != nil {
+				// 	Logger.Errorf("remove error", err)
+				// }
 			}
 		}
 
@@ -130,6 +130,7 @@ var initCmd = &cobra.Command{
 
 			Logger.Debug("clear runtime: ", ConfigInfo.IsRuntimeFetch)
 			if !ConfigInfo.IsRuntimeFetch {
+				// fixme:(heysion) double fetch with ostree cached
 				ClearRuntime()
 			}
 
@@ -140,12 +141,13 @@ var initCmd = &cobra.Command{
 
 			Logger.Debug("clear iso: ", ConfigInfo.IsIsoDownload)
 			if !ConfigInfo.IsIsoDownload {
+				// fixme:(heysion) dobule fetch iso with this
 				ClearIso()
 			}
 
 			err = os.Mkdir(isoDir, 0755)
 			if err != nil {
-				Logger.Info("create iso dir error: ", err)
+				Logger.Warn("create iso dir error: ", err)
 			}
 
 			return // Config Cache exist
@@ -182,21 +184,22 @@ var initCmd = &cobra.Command{
 			switch context.Type {
 			case "ostree":
 				if !ConfigInfo.IsRuntimeFetch {
-					Logger.Debug("ostree init")
+					Logger.Debugf("ostree init %s", ConfigInfo.IsRuntimeFetch)
+
 					ConfigInfo.RuntimeOstreeDir = ConfigInfo.Workdir + "/runtime"
 					if ret := SdkConf.SdkInfo.Base[idx].InitOstree(ConfigInfo.RuntimeOstreeDir); !ret {
-						Logger.Error("init ostree failed")
+						Logger.Warn("init ostree failed")
 						ConfigInfo.IsRuntimeFetch = false
-						return
+						continue
 					} else {
 						ConfigInfo.IsRuntimeFetch = true
 					}
 
 					ConfigInfo.RuntimeBasedir = ConfigInfo.Workdir + "/runtimedir"
 					if ret := SdkConf.SdkInfo.Base[idx].CheckoutOstree(ConfigInfo.RuntimeBasedir); !ret {
-						Logger.Error("checkout ostree failed")
+						Logger.Warn("checkout ostree failed")
 						ConfigInfo.IsRuntimeCheckout = false
-						return
+						continue
 					} else {
 						ConfigInfo.IsRuntimeCheckout = true
 					}
@@ -207,9 +210,22 @@ var initCmd = &cobra.Command{
 			case "iso":
 
 				if !ConfigInfo.IsIsoDownload {
-					Logger.Debug("iso download")
+					Logger.Debugf("iso download %s", ConfigInfo.IsIsoDownload)
 
 					ConfigInfo.IsoPath = ConfigInfo.Workdir + "/iso/base.iso"
+
+					if ret, _ := CheckFileExits(ConfigInfo.IsoPath); ret {
+						SdkConf.SdkInfo.Base[idx].Path = ConfigInfo.IsoPath
+						if ret := SdkConf.SdkInfo.Base[idx].CheckIsoHash(); !ret {
+							ConfigInfo.IsIsoChecked = false
+							RemovePath(ConfigInfo.IsoPath)
+							SdkConf.SdkInfo.Base[idx].Path = ""
+						} else {
+							Logger.Debugf("download skipped because of %s cached", ConfigInfo.IsoPath)
+							ConfigInfo.IsIsoChecked = true
+							continue
+						}
+					}
 
 					if ret := SdkConf.SdkInfo.Base[idx].FetchIsoFile(ConfigInfo.Workdir, ConfigInfo.IsoPath); !ret {
 						ConfigInfo.IsIsoDownload = false
@@ -466,28 +482,18 @@ Convert:
 		ConfigInfo.Verbose = TransInfo.Verbose
 		ConfigInfo.CachePath = TransInfo.CachePath
 		ConfigInfo.DebugMode = TransInfo.DebugMode
-		// ConfigInfo.Workdir = TransInfo.Workdir
-		// ConfigInfo.Rootfsdir = TransInfo.Rootfsdir
-
-		// Logger.Debug("ConfigInfo:", ConfigInfo)
-		// Logger.Debug("TransInfo:", TransInfo)
-		// Logger.Debug("DebConf:", DebConf)
-
-		// if TransInfo.DebWorkdir != "" && ConfigInfo.DebWorkdir == "" {
-		// 	ConfigInfo.DebWorkdir = TransInfo.DebWorkdir
-		// }
 
 		// 创建debdir
 		ConfigInfo.DebWorkdir = ConfigInfo.Workdir + "/debdir"
 		if ret, err := CheckFileExits(ConfigInfo.DebWorkdir); ret && err == nil {
-			ret, err = RemovePath(ConfigInfo.DebWorkdir)
-			if !ret || err != nil {
-				Logger.Errorf("failed to remove %s\n", ConfigInfo.DebWorkdir)
-			}
-			ret, err = CreateDir(ConfigInfo.DebWorkdir)
-			if !ret || err != nil {
-				Logger.Errorf("failed to create %s\n", ConfigInfo.DebWorkdir)
-			}
+			// ret, err = RemovePath(ConfigInfo.DebWorkdir)
+			// if !ret || err != nil {
+			// 	Logger.Errorf("failed to remove %s\n", ConfigInfo.DebWorkdir)
+			// }
+			// ret, err = CreateDir(ConfigInfo.DebWorkdir)
+			// if !ret || err != nil {
+			// 	Logger.Errorf("failed to create %s\n", ConfigInfo.DebWorkdir)
+			// }
 		} else {
 			ret, err = CreateDir(ConfigInfo.DebWorkdir)
 			if !ret || err != nil {
@@ -554,17 +560,38 @@ Convert:
 		Logger.Debugf("debConfig deb:%v", DebConf.FileElement.Deb)
 		for idx, _ := range DebConf.FileElement.Deb {
 			// fetch deb file
-			DebConf.FileElement.Deb[idx].FetchDebFile(ConfigInfo.DebWorkdir)
-			Logger.Debugf("fetch deb path:[%d] %s", idx, DebConf.FileElement.Deb[idx].Path)
-			// check deb hash
-			if ret := DebConf.FileElement.Deb[idx].CheckDebHash(); !ret {
-				Logger.Fatal("check deb hash failed! : ", DebConf.FileElement.Deb[idx].Name)
-				return
+			if len(DebConf.FileElement.Deb[idx].Ref) > 0 {
+				// NOTE: work with go1.15 but feature not sure .
+				debFilePath := ConfigInfo.DebWorkdir + "/" + filepath.Base(DebConf.FileElement.Deb[idx].Ref)
+				Logger.Debugf("deb file :%s", debFilePath)
+				if ret, _ := CheckFileExits(debFilePath); ret {
+					DebConf.FileElement.Deb[idx].Path = debFilePath
+					if ret := DebConf.FileElement.Deb[idx].CheckDebHash(); ret {
+						Logger.Debugf("download skipped because of %s cached", debFilePath)
+						continue
+					} else {
+						RemovePath(debFilePath)
+						DebConf.FileElement.Deb[idx].Path = ""
+					}
+				}
+				// fetch deb file
+				DebConf.FileElement.Deb[idx].FetchDebFile(debFilePath)
+				Logger.Debugf("fetch deb path:[%d] %s", idx, debFilePath)
+				// check deb hash
+				if ret := DebConf.FileElement.Deb[idx].CheckDebHash(); !ret {
+					Logger.Fatal("check deb hash failed! : ", DebConf.FileElement.Deb[idx].Name)
+					continue
+				} else {
+					Logger.Info("download %s success.", DebConf.FileElement.Deb[idx].Path)
+				}
+
+			} else {
+				continue
 			}
 		}
 
 		// render DebConfig to template save to pica.sh
-		Logger.Debugf("render berfore %+v:", DebConf)
+		// Logger.Debugf("render berfore %+v:", DebConf)
 		RenderDebConfig(DebConf, ConfigInfo.DebWorkdir+"/pica.sh")
 
 		// chroot
@@ -628,6 +655,15 @@ Convert:
 		// GetFindElfMissDepends(ConfigInfo.Basedir + "/lib")
 		elfLDDLog := ConfigInfo.DebWorkdir + "/elfldd.log"
 		elfLDDShell := ConfigInfo.DebWorkdir + "/elfldd.sh"
+
+		// clear history
+		if ret, _ := CheckFileExits(elfLDDLog); ret {
+			RemovePath(elfLDDLog)
+		}
+
+		if ret, _ := CheckFileExits(elfLDDShell); ret {
+			RemovePath(elfLDDShell)
+		}
 
 		Logger.Debugf("out: %s , sh: %s", elfLDDLog, elfLDDShell)
 

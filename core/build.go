@@ -269,7 +269,7 @@ ldd {{.ELFNameString}} | awk '{print $3}' | sort| uniq | sed '/^$/d' >> /tmp/elf
 {{end}}
 
 {{ if len .OutputNameString}}
-touch {{.OutputNameString}}
+echo > {{.OutputNameString}}
 {{end}}
 
 [[ -f /tmp/elfsonamelist ]] && (cat /tmp/elfsonamelist | sort | uniq | sed '/^$/d' >>  {{.OutputNameString}})
@@ -380,7 +380,7 @@ func ChrootExecShell(chrootDirPath, shell string, bindMounts []string) (bool, st
 				Logger.Fatalf("mount %s to %s failed! ", srcPath, dstPath, err, msg)
 			}
 			// defer func() { RemovePath(dstPath) }()
-			defer func() { Logger.Debugf("remove %s", dstPath) }()
+			defer func() { Logger.Debugf("Umount %s", dstPath) }()
 			defer func() { UmountPath(dstPath) }()
 			defer func() { Logger.Debugf("umount %s", dstPath) }()
 		}
