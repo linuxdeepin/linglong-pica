@@ -15,5 +15,7 @@ sdk:
       - "deb [trusted=yes] http://pools.uniontech.com/desktop-professional/ eagle main contrib non-free"
     package:
       - libicu63
-    command:
-      - "apt update"
+    command: |
+      apt update
+      # disable dde triggers
+      [[ -f /var/lib/dpkg/triggers/File ]] && ( sed -i 's|/opt/apps\s\S*$||' /var/lib/dpkg/triggers/File )

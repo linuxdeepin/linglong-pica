@@ -11,12 +11,12 @@ package linglong
 
 import (
 	"encoding/json"
-	"html/template"
 	"io/ioutil"
 	. "ll-pica/core/comm"
 	. "ll-pica/utils/fs"
 	. "ll-pica/utils/log"
 	"os"
+	"text/template"
 )
 
 type LinglongBuder struct {

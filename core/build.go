@@ -11,13 +11,13 @@ package core
 
 import (
 	"fmt"
-	"html/template"
 	. "ll-pica/core/comm"
 	. "ll-pica/core/elf"
 	. "ll-pica/utils/fs"
 	. "ll-pica/utils/log"
 	"os"
 	"strings"
+	"text/template"
 )
 
 // var Logger *zap.SugaredLogger
@@ -277,7 +277,7 @@ touch {{.OutputNameString}}
 rm -v /tmp/libcache.db
 rm -v /tmp/elfsonamelist
 
-echo end
+echo elfldd
 `
 
 /*!
@@ -426,11 +426,32 @@ func ChrootExecShell(chrootDirPath, shell string, bindMounts []string) (bool, st
 	return true, "", nil
 }
 
+func ChrootExecShellBare(chroot string, shell string) (bool, string, error) {
+	// chmod +x shell
+	if _, msg, err := ExecAndWait(10, "chmod", "+x", "-R", shell); err != nil {
+		Logger.Fatalf("chmod +x %s failed! ", shell, err, msg)
+		return false, msg, err
+	}
+
+	// chroot shell
+	if strings.HasPrefix(shell, chroot) {
+		shell = strings.Replace(shell, chroot, "", 1)
+	}
+	Logger.Debugf("chroot shell: path: %s shell:%s", chroot, shell)
+	if ret, msg, err := ExecAndWait(4096, "chroot", chroot, shell); err != nil {
+		Logger.Fatalf("chroot exec shell failed! ", err, msg, ret)
+		return false, msg, err
+	} else {
+		Logger.Debugf("chroot exec shell msg:", ret, msg)
+	}
+	return true, "", nil
+}
+
 type DebShellTemplate struct {
 	ExtraPackageStr string
 	DebString       string
-	PreCommand      []string
-	PostCommand     []string
+	PreCommand      string
+	PostCommand     string
 	Verbose         bool
 }
 
@@ -451,18 +472,15 @@ function apt_install_deb {
 }
 
 function pre_command {
-	{{range $idx, $element := .PreCommand}}
-	{{$element}}
-	{{end}}
-	echo OK
+	{{if len .PreCommand }}{{.PreCommand}}{{end}}
+	echo pre_command
 }
 
 function post_command {
-	{{range $idx, $element := .PostCommand}}
-	{{$element}}
-	{{end}}
-	echo OK
+	{{if len .PreCommand }}{{.PostCommand}}{{end}}
+	echo post_command
 }
+
 {{if len .PreCommand }}pre_command{{end}}
 apt_update
 {{if len .DebString }}apt_install_deb {{end}}
@@ -481,7 +499,7 @@ func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 		return false, nil
 	}
 
-	debShell := DebShellTemplate{"", "", make([]string, 0), make([]string, 0), false}
+	debShell := DebShellTemplate{"", "", "", "", false}
 
 	for _, debStr := range DebConf.FileElement.Deb {
 
@@ -498,15 +516,15 @@ func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 
 	// PreCommand
 	if len(DebConf.ChrootInfo.PreCmd) > 0 {
-		for _, cmd := range DebConf.ChrootInfo.PreCmd {
-			debShell.PreCommand = append(debShell.PreCommand, cmd)
-		}
+
+		debShell.PreCommand = DebConf.ChrootInfo.PreCmd
+
 	}
 	// PostCommand
 	if len(DebConf.ChrootInfo.PostCmd) > 0 {
-		for _, cmd := range DebConf.ChrootInfo.PostCmd {
-			debShell.PostCommand = append(debShell.PostCommand, cmd)
-		}
+
+		debShell.PostCommand = DebConf.ChrootInfo.PostCmd
+
 	}
 
 	// create save file

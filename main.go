@@ -49,7 +49,7 @@ func SetOverlayfs(lower string, upper string, workdir string) error {
 		Logger.Error("mkdir failed: ", err)
 		return err
 	}
-	msg := fmt.Sprintf("lowerdir=%s:%s,upperdir=%s,workdir=%s", upper, lower, workdir, tempDir)
+	msg := fmt.Sprintf("lowerdir=%s:%s,upperdir=%s,workdir=%s", lower, upper, workdir, tempDir)
 	_, msg, err = ExecAndWait(10, "mount", "-t", "overlay", "overlay", "-o", msg, ConfigInfo.Rootfsdir)
 	if err != nil {
 		Logger.Error("mount overlayfs failed: ", msg, err)
@@ -347,6 +347,17 @@ var initCmd = &cobra.Command{
 		if ret := SdkConf.SdkInfo.Extra.WriteRootfsRepo(ConfigInfo); !ret {
 			Logger.Errorf("Write sources.list failed!")
 		}
+
+		// write extra shell
+		if len(SdkConf.SdkInfo.Extra.Cmd) > 0 {
+
+			SdkConf.SdkInfo.Extra.RenderExtraShell(ConfigInfo.Rootfsdir + "/init.sh")
+
+			defer func() { RemovePath(ConfigInfo.Rootfsdir + "/init.sh") }()
+
+			ChrootExecShellBare(ConfigInfo.Rootfsdir, ConfigInfo.Rootfsdir+"/init.sh")
+		}
+
 		ConfigInfo.MountsItem.DoUmountALL()
 	},
 }

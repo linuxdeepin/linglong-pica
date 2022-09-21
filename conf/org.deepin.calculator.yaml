@@ -14,7 +14,7 @@ file:
   add-package:
     - libicu63
 chroot:
-  pre-command:
-    - "uname -m"
-  post-command:
-    - "uname -a"
+  pre-command: |
+    uname -m
+  post-command: |
+    uname -a

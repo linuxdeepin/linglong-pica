@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"text/template"
 	"time"
 )
 
@@ -448,8 +449,8 @@ type DebConfig struct {
 		Package []string  `yaml:"add-package"`
 	} `yaml:"file"`
 	ChrootInfo struct {
-		PreCmd  []string `yaml:"pre-command"`
-		PostCmd []string `yaml:"post-command"`
+		PreCmd  string `yaml:"pre-command"`
+		PostCmd string `yaml:"post-command"`
 	} `yaml:"chroot"`
 }
 
@@ -624,7 +625,7 @@ func (ts *BaseInfo) InitOstree(ostreePath string) bool {
 type ExtraInfo struct {
 	Repo    []string `yaml:"repo"`
 	Package []string `yaml:"package"`
-	Cmd     []string `yaml:"command"`
+	Cmd     string   `yaml:"command"`
 }
 
 func (ts *ExtraInfo) WriteRootfsRepo(config Config) bool {
@@ -647,6 +648,53 @@ func (ts *ExtraInfo) WriteRootfsRepo(config Config) bool {
 	file.Sync()
 
 	return true
+}
+
+type ExtraShellTemplate struct {
+	ExtraCommand string
+	Verbose      bool
+}
+
+const EXTRA_COMMAND_TMPL = `#!/bin/bash
+{{if .Verbose }}set -x {{end}}
+function extra_command {
+	{{if len .ExtraCommand }}{{.ExtraCommand}}{{end}}
+	echo extra_command
+}
+{{if len .ExtraCommand }}extra_command{{end}}
+echo init
+`
+
+func (ts *ExtraInfo) RenderExtraShell(save string) (bool, error) {
+	tpl, err := template.New("init").Parse(EXTRA_COMMAND_TMPL)
+
+	if err != nil {
+		Logger.Fatalf("parse deb shell template failed! ", err)
+		return false, nil
+	}
+
+	extraShell := ExtraShellTemplate{"", false}
+
+	// PostCommand
+	Logger.Debugf("cmd: %s", ts.Cmd)
+	if len(ts.Cmd) > 0 {
+		extraShell.ExtraCommand = ts.Cmd
+	}
+
+	// create save file
+	Logger.Debug("extra shell save file: ", save)
+	saveFd, ret := os.Create(save)
+	if ret != nil {
+		Logger.Warnf("save to %s failed!", save)
+		return false, ret
+	}
+	defer saveFd.Close()
+
+	// render template
+	Logger.Debug("render template: ", extraShell)
+	tpl.Execute(saveFd, extraShell)
+
+	return true, nil
 }
 
 func GetFileSha256(filename string) (string, error) {
