@@ -115,9 +115,18 @@ func CreateInfo(info Config, debInfo DebConfig, lb LinglongBuder) (bool, error) 
 
 								verList := []string{}
 
+								regexFP := func() []string {
+
+									regexVerList := strings.Split(ReadVersion, ".")[0:]
+									if len(regexVerList) > 3 {
+										return regexVerList[:4]
+									} else {
+										return regexVerList
+									}
+
+								}
 								regexVer := regexp.MustCompile(`^[-+]?\d+`)
-								regexVerList := strings.Split(ReadVersion, ".")[0:]
-								for _, ver := range regexVerList[:4] {
+								for _, ver := range regexFP() {
 									strVer := regexVer.FindString(ver)
 									if strVer == "" {
 										verList = append(verList, "0")

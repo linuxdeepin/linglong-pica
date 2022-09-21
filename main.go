@@ -592,6 +592,10 @@ Convert:
 
 		// render DebConfig to template save to pica.sh
 		// Logger.Debugf("render berfore %+v:", DebConf)
+		// clear pica.sh cache
+		if ret, _ := CheckFileExits(ConfigInfo.DebWorkdir + "/pica.sh"); ret {
+			RemovePath(ConfigInfo.DebWorkdir + "/pica.sh")
+		}
 		RenderDebConfig(DebConf, ConfigInfo.DebWorkdir+"/pica.sh")
 
 		// chroot
