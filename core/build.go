@@ -233,7 +233,7 @@ func (ts *BinFormatReactor) GetEntryDlopenList(exclude []string) bool {
 				continue
 			} else {
 				entry_dlopen_so := Filter(ret, func(str string) bool {
-					return !IsNotIncluded(str)
+					return !IsNotIncluded(str) && len(str) < 255
 				})
 
 				for _, idx := range entry_dlopen_so {
@@ -332,7 +332,7 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 //	}
 func GetDlopenDepends(path string) ([]string, error) {
 	// strings /bin/bash | grep  "\.so"
-	cmd := fmt.Sprintf("strings %s | grep \\\\.so ", path)
+	cmd := fmt.Sprintf("strings %s | egrep '^\\S+\\.so[.0-9]*$'", path)
 	if msg, ret, err := ExecAndWait(10, "bash", "-c", cmd); err != nil {
 		Logger.Debugf("check elf entry failed: %v", err, msg, ret)
 		return nil, err
