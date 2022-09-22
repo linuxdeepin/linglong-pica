@@ -142,6 +142,7 @@ func (ts *LinglongBuder) CreateLinglongBuilder(path string) bool {
 func (ts *LinglongBuder) LinglongExport(path string) bool {
 	Logger.Debugf("ll-builder export : ", ts.Appid)
 	appExportPath := GetFilePPath(path)
+	appExportPath = GetFilePPath(appExportPath)
 	// check workstation
 	if ret, _ := CheckFileExits(path); !ret {
 		Logger.Errorf("workstation witch convert not found: %s", path)
