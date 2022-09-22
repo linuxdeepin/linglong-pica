@@ -33,7 +33,6 @@ type InfoApp struct {
 	Kind           string          `json:"kind"`
 	Description    string          `json:"description"`
 	Runtime        string          `json:"runtime"`
-	Module         string          `json:"module"`
 	Arch           []string        `json:"arch"`
 	Permissions    InfoPermissions `json:"permissions"`
 	SupportPlugins []string        `json:"support-plugins"`
@@ -71,7 +70,6 @@ func CreateInfo(info Config, debInfo DebConfig, lb LinglongBuder) (bool, error) 
 		Description: debInfo.Info.Description,
 		// "org.deepin.Runtime/20.5.0/x86_64",
 		Runtime: fmt.Sprintf("%s/%s/%s", lb.Runtime, lb.Rversion, hostArch),
-		Module:  "runtime",
 	}
 	if debInfo.Info.Version == "" || debInfo.Info.Description == "" {
 		// Package: deepin-calculator
