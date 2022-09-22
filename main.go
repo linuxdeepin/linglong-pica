@@ -610,7 +610,7 @@ Convert:
 		// fixme(jianqiang)
 		// make new directory that need to be created for linglong files stucturesk
 		// 定义拷贝的目标目录
-		ConfigInfo.ExportDir = ConfigInfo.Workdir + "/" + DebConf.Info.Appid + "/export"
+		ConfigInfo.ExportDir = ConfigInfo.Workdir + "/" + DebConf.Info.Appid + "/runtime/export"
 		// 导出export目录
 		ConfigInfo.Export()
 
