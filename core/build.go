@@ -477,7 +477,7 @@ function pre_command {
 }
 
 function post_command {
-	{{if len .PreCommand }}{{.PostCommand}}{{end}}
+	{{if len .PostCommand }}{{.PostCommand}}{{end}}
 	echo post_command
 }
 
@@ -514,6 +514,7 @@ func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 		debShell.ExtraPackageStr = ""
 	}
 
+	Logger.Debugf("chroot info command: %+v", DebConf.ChrootInfo)
 	// PreCommand
 	if len(DebConf.ChrootInfo.PreCmd) > 0 {
 
