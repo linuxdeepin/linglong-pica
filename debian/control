@@ -5,12 +5,16 @@ Maintainer: Deepin Packages Builder <packages@deepin.com>
 Build-Depends:
  debhelper (>= 11),
  golang-dlib-dev (>> 1.8.0+),
- golang-go,
+ golang-go (> 2:1.16),
 Standards-Version: 4.1.3
 Homepage: http://www.deepin.org
 
 Package: linglong-pica
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, rsync
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ rsync,
+ linglong-builder,
 Description: Linglong transform package tools.
  Linglong transform package command line tool from deb.
