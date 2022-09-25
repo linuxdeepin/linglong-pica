@@ -3,15 +3,31 @@
 ### 手动编译安装
 - 配置go环境
 参考 [配置go开发环境](https://blog.csdn.net/qq_41648043/article/details/117782776)
+或者：安装deb配置go环境。
+```
+sudo apt update
+sudo apt install golang-go golang-dlib-dev
+```
 - 下载代码
 源码[linglong-pica](https://gitlabwh.uniontech.com/wuhan/v23/linglong/linglong-pica)
+- 安装release版本（未开启开发者模式，日志调试模式关闭。）
 ```
 git clone https://gitlabwh.uniontech.com/wuhan/v23/linglong/linglong-pica.git
 git checkout develop/snipe
 cd linglong-pica
-make -j8
-make install
+make
+sudo make install
 ```
+
+- 安装debug版本（开启开发者模式，日志调试模式开启。）
+```
+git clone https://gitlabwh.uniontech.com/wuhan/v23/linglong/linglong-pica.git
+git checkout develop/snipe
+cd linglong-pica
+make debug
+sudo make install
+```
+
 - 手动安装使用依赖包，当deb包安装时无需手动下载
 ```
 sudo apt update
