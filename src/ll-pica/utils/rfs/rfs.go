@@ -85,7 +85,7 @@ func MountRfsWithOverlayfs(lowerRuntimeDir, lowerFilesSystem, lowerInitDir, uppe
 	// lowerRuntimeDir , runtimedir/files have bug for first lowdir that can not chroot .
 	// fixme:(heysion)
 	// MountRfs("overlay", lowerRuntimeDir, lowerFilesSystem, lowerInitDir, upper, workdir, rootfs)
-	return MountRfs("overlay", lowerFilesSystem, lowerInitDir, lowerRuntimeDir, upper, workdir, rootfs)
+	return MountRfs("overlay", lowerInitDir, lowerFilesSystem, lowerRuntimeDir, upper, workdir, rootfs)
 }
 
 /*!
@@ -93,15 +93,15 @@ func MountRfsWithOverlayfs(lowerRuntimeDir, lowerFilesSystem, lowerInitDir, uppe
  * @param rfsPath rfs路径，lower,upper,workdir,tmpdir
  * @return 是否成功
  */
-func MountRfs(fstype, lower, lowerMid, lowerUpper, upper, workdir, rootfs string) (bool, error) {
+func MountRfs(fstype, lowerTop, lowerMid, lowerBottom, upper, workdir, rootfs string) (bool, error) {
 
-	Logger.Debug("mount rfs: ", fstype, lower, lowerMid, lowerUpper, upper, workdir, rootfs)
+	Logger.Debugf("mount rfs: ", fstype, lowerTop, lowerMid, lowerBottom, upper, workdir, rootfs)
 
 	switch {
 	case fstype == "overlay":
-		Logger.Debug("SetOverlayfs :", lower, lowerMid, lowerUpper, upper, rootfs)
+		Logger.Debug("SetOverlayfs :", lowerTop, lowerMid, lowerBottom, upper, rootfs)
 		// mount lower dir to upper dir
-		msg := fmt.Sprintf("lowerdir=%s:%s:%s,upperdir=%s,workdir=%s", lower, lowerMid, lowerUpper, upper, workdir)
+		msg := fmt.Sprintf("lowerdir=%s:%s:%s,upperdir=%s,workdir=%s", lowerTop, lowerMid, lowerBottom, upper, workdir)
 		Logger.Debug("mount overlayfs flags: ", msg)
 		if _, msg, err := ExecAndWait(10, "mount", "-t", "overlay", "overlay", "-o", msg, rootfs); err != nil {
 			Logger.Error("mount overlayfs failed: ", msg, err)
@@ -110,7 +110,7 @@ func MountRfs(fstype, lower, lowerMid, lowerUpper, upper, workdir, rootfs string
 		Logger.Debug("mount overlayfs success: ", rootfs)
 		return true, nil
 	case fstype == "mount":
-		Logger.Debug("SetMountfs :", lower, upper, workdir)
+		Logger.Debug("SetMountfs :", lowerTop, upper, workdir)
 		Logger.Fatal("not support mountfs")
 	}
 	return false, nil
