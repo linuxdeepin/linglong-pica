@@ -161,6 +161,23 @@ func (config *Config) Export() (bool, error) {
 		rsyncDir(30, srcOptPath+"/", ConfigInfo.ExportDir)
 	}
 
+	// 处理icons目录下多余的icon-theme.cache文件
+	iconsPath := ConfigInfo.ExportDir + "/entries/icons"
+	if ret, err := CheckFileExits(iconsPath); ret && err == nil {
+		// 遍历icons下的icon-theme.cache
+		filepath.Walk(iconsPath, func(path string, f os.FileInfo, err error) error {
+			if f == nil {
+				return err
+			}
+
+			if ret := strings.HasPrefix(f.Name(), "icon-theme.cache"); ret {
+				os.RemoveAll(path)
+			}
+
+			return nil
+		})
+	}
+
 	ConfigInfo.FilesSearchPath = ConfigInfo.ExportDir + "/files"
 	return true, nil
 }
