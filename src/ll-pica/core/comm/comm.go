@@ -678,8 +678,8 @@ type ExtraShellTemplate struct {
 const EXTRA_COMMAND_TMPL = `#!/bin/bash
 {{if .Verbose }}set -x {{end}}
 function extra_command {
-	{{if len .ExtraCommand }}{{.ExtraCommand}}{{end}}
-	echo extra_command
+    {{if len .ExtraCommand }}{{.ExtraCommand}}{{end}}
+    echo extra_command
 }
 {{if len .ExtraCommand }}extra_command{{end}}
 echo init
@@ -693,7 +693,7 @@ func (ts *ExtraInfo) RenderExtraShell(save string) (bool, error) {
 		return false, nil
 	}
 
-	extraShell := ExtraShellTemplate{"", false}
+	extraShell := ExtraShellTemplate{"", ConfigInfo.Verbose}
 
 	// PostCommand
 	Logger.Debugf("cmd: %s", ts.Cmd)
@@ -786,10 +786,21 @@ func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 	// ll-builder push
 	// ll-builder wait max timeout 3600 seconds wtf
 	if ret, msg, err := ExecAndWait(1<<12, "ll-builder", BundleCommand...); err == nil {
-		Logger.Infof("output: %v", ret)
+		// if ConfigInfo.Verbose {
+		// 	Logger.Infof("output: %v", ret)
+		// }
+		LoggerVerbose("output: %v", ret)
 		return true, nil
 	} else {
 		Logger.Debugf("output: %v", ret, msg)
 		return false, err
+	}
+
+}
+
+// logger verbose
+func LoggerVerbose(k string, s ...interface{}) {
+	if ConfigInfo.Verbose || ConfigInfo.DebugMode {
+		Logger.Infof(k, s)
 	}
 }

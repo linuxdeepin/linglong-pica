@@ -297,7 +297,7 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 		return false, nil
 	}
 
-	elfLDDShell := ElfLDDShellTemplate{"", make([]string, 0), output, false}
+	elfLDDShell := ElfLDDShellTemplate{"", make([]string, 0), output, ConfigInfo.Verbose}
 
 	for elfStr := range ts.ElfLDDPath {
 		elfLDDShell.ELFNameString += elfStr
@@ -334,7 +334,7 @@ func GetDlopenDepends(path string) ([]string, error) {
 	// strings /bin/bash | grep  "\.so"
 	cmd := fmt.Sprintf("strings %s | egrep '^\\S+\\.so[.0-9]*$'", path)
 	if msg, ret, err := ExecAndWait(10, "bash", "-c", cmd); err != nil {
-		Logger.Debugf("check elf entry failed: %v", err, msg, ret)
+		LoggerVerbose("check elf entry failed: %v", err, msg, ret)
 		return nil, err
 	} else {
 		return strings.Split(msg, "\n"), nil
@@ -419,11 +419,11 @@ func ChrootExecShell(chrootDirPath, shell string, bindMounts []string) (bool, st
 	Logger.Debugf("chroot shell: path: %s shell:%s", chrootDirPath, shell)
 	if ret, msg, err := ExecAndWait(4096, "chroot", chrootDirPath, shell); err != nil {
 		Logger.Fatalf("chroot exec shell failed! ", err, msg, ret)
-		return false, msg, err
+		return false, msg + ret, err
 	} else {
-		Logger.Debugf("chroot exec shell msg:", ret, msg)
+		Logger.Info("chroot %s end.", shell)
+		return true, ret, nil
 	}
-	return true, "", nil
 }
 
 func ChrootExecShellBare(chroot string, shell string) (bool, string, error) {
@@ -460,6 +460,7 @@ const DEB_SHELL_TMPL = `#!/bin/bash
 function apt_install_pkgs {
     DEBIAN_FRONTEND=noninteractive apt-get install -y {{.ExtraPackageStr}}
     DEBIAN_FRONTEND=noninteractive apt-get install -f -y
+    echo apt_install_pkgs
 }
 
 function apt_update {
@@ -469,16 +470,17 @@ function apt_update {
 function apt_install_deb {
     DEBIAN_FRONTEND=noninteractive apt-get install -y {{.DebString}}
     DEBIAN_FRONTEND=noninteractive apt-get install -f -y
+    echo apt_install_deb
 }
 
 function pre_command {
-	{{if len .PreCommand }}{{.PreCommand}}{{end}}
-	echo pre_command
+    {{if len .PreCommand }}{{.PreCommand}}{{end}}
+    echo pre_command
 }
 
 function post_command {
-	{{if len .PostCommand }}{{.PostCommand}}{{end}}
-	echo post_command
+    {{if len .PostCommand }}{{.PostCommand}}{{end}}
+    echo post_command
 }
 
 {{if len .PreCommand }}pre_command{{end}}
@@ -499,7 +501,7 @@ func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 		return false, nil
 	}
 
-	debShell := DebShellTemplate{"", "", "", "", false}
+	debShell := DebShellTemplate{"", "", "", "", ConfigInfo.Verbose}
 
 	for _, debStr := range DebConf.FileElement.Deb {
 

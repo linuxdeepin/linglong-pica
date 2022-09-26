@@ -29,7 +29,7 @@ import (
 func MountIso(path, iso string) (bool, error) {
 	_, msg, err := ExecAndWait(10, "mount", "-o", "loop", iso, path)
 	if err != nil {
-		Logger.Error("mount iso failed!", msg, err)
+		Logger.Warnf("mount iso failed!", msg, err)
 		return false, err
 	}
 	return true, nil

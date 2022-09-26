@@ -295,7 +295,7 @@ var initCmd = &cobra.Command{
 		var msg string
 		_, msg, err = ExecAndWait(10, "mount", "-o", "loop", ConfigInfo.IsoPath, ConfigInfo.IsoMountDir)
 		if err != nil {
-			Logger.Error("mount iso failed!", msg, err)
+			Logger.Warnf("mount iso failed!", msg, err)
 		}
 		UmountIsoDir := func() {
 			ExecAndWait(10, "umount", ConfigInfo.IsoMountDir)
@@ -401,6 +401,12 @@ Convert:
 		// fmt.Printf("Inside rootCmd PersistentPreRun with args: %v\n", args)
 	},
 	PreRun: func(cmd *cobra.Command, args []string) {
+
+		if ConfigInfo.Verbose {
+			Logger.Info("verbose mode enabled")
+			TransInfo.Verbose = true
+		}
+
 		// 转换获取路径为绝对路径
 		if yamlPath, err := filepath.Abs(TransInfo.Yamlconfig); err != nil {
 			Logger.Errorf("Trans %s err: %s ", TransInfo.Yamlconfig, err)
@@ -423,10 +429,6 @@ Convert:
 		// 修复CachePath参数
 		if ret, err := TransInfo.FixCachePath(); !ret || err != nil {
 			Logger.Fatal("can not found: ", TransInfo.Workdir)
-		}
-
-		if TransInfo.Verbose {
-			fmt.Println(TransInfo.Verbose)
 		}
 
 		Logger.Debug("load yaml config", TransInfo.Yamlconfig)
@@ -520,11 +522,11 @@ Convert:
 		}
 
 		if ret, err := rfs.MountIso(ConfigInfo.Workdir+"/iso/mount", ConfigInfo.IsoPath); !ret {
-			Logger.Error("mount iso failed!", err)
+			Logger.Warnf("mount iso failed!", err)
 		}
 
 		if ret, err := rfs.MountSquashfs(ConfigInfo.Workdir+"/iso/live", ConfigInfo.Workdir+"/iso/mount/live/filesystem.squashfs"); !ret {
-			Logger.Error("mount iso failed!", err)
+			Logger.Warnf("mount live failed!", err)
 		}
 
 		// mount overlay to base dir
@@ -533,11 +535,11 @@ Convert:
 		CreateDir(ConfigInfo.Workdir + "/tmpdir")
 		if ret, _ := CheckFileExits(ConfigInfo.RuntimeBasedir + "/files"); ret {
 			if ret, err := rfs.MountRfsWithOverlayfs(ConfigInfo.RuntimeBasedir+"/files", ConfigInfo.Workdir+"/iso/live", ConfigInfo.Initdir, ConfigInfo.Basedir, ConfigInfo.Workdir+"/tmpdir", ConfigInfo.Rootfsdir); !ret {
-				Logger.Error("mount iso failed!", err)
+				Logger.Warnf("mount rootfs failed!", err)
 			}
 		} else {
 			if ret, err := rfs.MountRfsWithOverlayfs(ConfigInfo.RuntimeBasedir, ConfigInfo.Workdir+"/iso/live", ConfigInfo.Initdir, ConfigInfo.Basedir, ConfigInfo.Workdir+"/tmpdir", ConfigInfo.Rootfsdir); !ret {
-				Logger.Error("mount iso failed!", err)
+				Logger.Warnf("mount rootfs failed!", err)
 			}
 		}
 
@@ -552,7 +554,7 @@ Convert:
 		// check enter deb file
 		Logger.Debug("check DebPath:", ConfigInfo.DebPath)
 		if ret, msg := CheckFileExits(ConfigInfo.DebPath); !ret {
-			Logger.Debug("can not found: ", msg)
+			Logger.Warnf("can not found: ", msg)
 		}
 
 		// fetch deb file
@@ -563,11 +565,11 @@ Convert:
 			if len(DebConf.FileElement.Deb[idx].Ref) > 0 {
 				// NOTE: work with go1.15 but feature not sure .
 				debFilePath := ConfigInfo.DebWorkdir + "/" + filepath.Base(DebConf.FileElement.Deb[idx].Ref)
-				Logger.Debugf("deb file :%s", debFilePath)
+				Logger.Warnf("deb file :%s", debFilePath)
 				if ret, _ := CheckFileExits(debFilePath); ret {
 					DebConf.FileElement.Deb[idx].Path = debFilePath
 					if ret := DebConf.FileElement.Deb[idx].CheckDebHash(); ret {
-						Logger.Debugf("download skipped because of %s cached", debFilePath)
+						Logger.Infof("download skipped because of %s cached", debFilePath)
 						continue
 					} else {
 						RemovePath(debFilePath)
@@ -579,7 +581,7 @@ Convert:
 				Logger.Debugf("fetch deb path:[%d] %s", idx, debFilePath)
 				// check deb hash
 				if ret := DebConf.FileElement.Deb[idx].CheckDebHash(); !ret {
-					Logger.Fatal("check deb hash failed! : ", DebConf.FileElement.Deb[idx].Name)
+					Logger.Warnf("check deb hash failed! : ", DebConf.FileElement.Deb[idx].Name)
 					continue
 				} else {
 					Logger.Info("download %s success.", DebConf.FileElement.Deb[idx].Path)
@@ -593,15 +595,21 @@ Convert:
 		// render DebConfig to template save to pica.sh
 		// Logger.Debugf("render berfore %+v:", DebConf)
 		// clear pica.sh cache
-		if ret, _ := CheckFileExits(ConfigInfo.DebWorkdir + "/pica.sh"); ret {
-			RemovePath(ConfigInfo.DebWorkdir + "/pica.sh")
+		picaShellPath := ConfigInfo.DebWorkdir + "/pica.sh"
+		if ret, _ := CheckFileExits(picaShellPath); ret {
+			RemovePath(picaShellPath)
 		}
-		RenderDebConfig(DebConf, ConfigInfo.DebWorkdir+"/pica.sh")
+
+		Logger.Infof("render %s script.", picaShellPath)
+		RenderDebConfig(DebConf, picaShellPath)
 
 		// chroot
-		if ret, msg, err := ChrootExecShell(ConfigInfo.Rootfsdir, ConfigInfo.DebWorkdir+"/pica.sh", []string{ConfigInfo.DebWorkdir}); !ret {
-			Logger.Fatal("chroot exec shell failed:", msg, err)
+		Logger.Info("exec script in chroot")
+		if ret, msg, err := ChrootExecShell(ConfigInfo.Rootfsdir, picaShellPath, []string{ConfigInfo.DebWorkdir}); !ret {
+			Logger.Fatal("exec pica script in chroot failed! :", msg, err)
 			return
+		} else {
+			LoggerVerbose("exec pica script in chroot output: %s", msg)
 		}
 
 		// copy deb data
@@ -763,24 +771,21 @@ Convert:
 		// umount overlayfs
 		Logger.Debug("umount rootfs")
 		if ret, err := rfs.UmountRfs(ConfigInfo.Rootfsdir); !ret {
-			Logger.Error("mount iso failed!", err)
+			Logger.Warnf("umount rootfs failed!", err)
 		}
 
 		// umount squashfs
 		Logger.Debug("umount squashfs")
 		if ret, err := rfs.UmountSquashfs(ConfigInfo.Workdir + "/iso/live"); !ret {
-			Logger.Error("mount iso failed!", err)
+			Logger.Warnf("umount squashfs failed!", err)
 		}
 
 		// umount iso
 		Logger.Debug("umount iso")
 		if ret, err := rfs.UmountIso(ConfigInfo.Workdir + "/iso/mount"); !ret {
-			Logger.Error("mount iso failed!", err)
+			Logger.Warnf("umount iso failed!", err)
 		}
 
-	},
-	PersistentPostRun: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Inside rootCmd PersistentPostRun with args: %v\n", args)
 	},
 }
 
@@ -901,11 +906,15 @@ func main() {
 	defer Logger.Sync()
 
 	// init cmd add
+
 	rootCmd.AddCommand(initCmd)
+	rootCmd.PersistentFlags().BoolVarP(&ConfigInfo.Verbose, "verbose", "v", false, "verbose output")
 
 	initCmd.Flags().StringVarP(&ConfigInfo.Config, "config", "c", "", "config")
 	initCmd.Flags().StringVarP(&ConfigInfo.Workdir, "workdir", "w", "", "work directory")
 	initCmd.Flags().BoolVarP(&ConfigInfo.Cache, "keep-cached", "k", true, "keep cached")
+	//initCmd.Flags().BoolVarP(&ConfigInfo.Verbose, "verbose", "v", false, "verbose output")
+
 	err := initCmd.MarkFlagRequired("config")
 	if err != nil {
 		Logger.Fatal("config required failed", err)
@@ -918,6 +927,7 @@ func main() {
 	convertCmd.Flags().StringVarP(&TransInfo.Workdir, "workdir", "w", "", "work directory")
 	// convertCmd.Flags().StringVarP(&TransInfo.CachePath, "cache-file", "f", "", "cache yaml file")
 	convertCmd.Flags().StringVarP(&TransInfo.DebPath, "deb-file", "d", "", "deb file")
+	//convertCmd.Flags().BoolVarP(&TransInfo.Verbose, "verbose", "v", false, "verbose output")
 
 	err = convertCmd.MarkFlagRequired("config")
 	if err != nil {
@@ -941,13 +951,14 @@ func main() {
 	pushCmd.Flags().StringVarP(&ConfigInfo.BundlePath, "uab", "d", "", "bundle path")
 	pushCmd.Flags().StringVarP(&ConfigInfo.BundleChannel, "channel", "c", "linglong", "bundle channel")
 	pushCmd.Flags().StringVarP(&ConfigInfo.BundleRepoUrl, "repo", "r", "", "bundle repo url")
+	//pushCmd.Flags().BoolVarP(&ConfigInfo.Verbose, "verbose", "v", false, "verbose output")
 
 	pushCmd.MarkFlagsMutuallyExclusive("keyfile", "username")
 
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
 	// root cmd add
-	rootCmd.PersistentFlags().BoolVarP(&ConfigInfo.Verbose, "verbose", "", false, "verbose output")
+	//pushCmd.PersistentFlags().BoolVarP(&ConfigInfo.Verbose, "verbose", "v", false, "verbose output")
 
 	// if ConfigInfo.Workdir == "" {
 	// 	ConfigInfo.Workdir = "/mnt/workdir"
@@ -971,6 +982,9 @@ func main() {
 		Logger.Debugf("develop mode enabled")
 		TransInfo.DebugMode = true
 		ConfigInfo.DebugMode = true
+		// debug mode enable verbose mode
+		TransInfo.Verbose = true
+		ConfigInfo.Verbose = true
 	}
 
 	ConfigInfo.MountsItem.Mounts = make(map[string]MountItem)
