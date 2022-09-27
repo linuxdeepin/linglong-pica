@@ -525,6 +525,10 @@ func TransExecToLl(exec, appid string) string {
 	}
 	// 去掉首尾空格
 	exec = strings.TrimSpace(exec)
+
+	// 去掉“”号
+	exec = strings.Replace(exec, "\"", "", -1)
+
 	// 添加 ll-cli run appid --exec
 	exec = "ll-cli run " + appid + " --exec " + "\"" + exec + "\""
 
