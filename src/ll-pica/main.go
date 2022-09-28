@@ -654,6 +654,8 @@ Convert:
 			"libX11.so.6",
 			"libX11-xcb.so.1",
 			"libselinux.so.1",
+			"libnssutil3.so",
+			"libnss3.so",
 		}
 		Logger.Debugf("exclude so list:", excludeSoList)
 
