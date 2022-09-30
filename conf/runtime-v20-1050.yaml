@@ -17,5 +17,5 @@ sdk:
       - libicu63
     command: |
       apt update
-      # disable dde triggers
       [[ -f /var/lib/dpkg/triggers/File ]] && ( sed -i 's|/opt/apps\s\S*$||' /var/lib/dpkg/triggers/File )
+      [[ -f /var/lib/dpkg/triggers/File ]] && ( sed -i '/^\s*$/d' /var/lib/dpkg/triggers/File )
