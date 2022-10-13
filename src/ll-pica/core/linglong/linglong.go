@@ -160,6 +160,20 @@ func (ts *LinglongBuder) LinglongExport(path string) bool {
 		return false
 	} else {
 		Logger.Infof("ll-builder export succeeded: ", path, ret)
-		return true
 	}
+
+	// chmod 755 uab
+	if bundleList, err := FindBundlePath(appExportPath); err != nil {
+		Logger.Errorf("not found bundle")
+		return false
+	} else {
+		for _, bundle := range bundleList {
+			Logger.Infof("chmod 0755 for %s", bundle)
+			if err := os.Chmod(bundle, 0755); err != nil {
+				Logger.Errorf("chmod 0755 for %s failed！", bundle)
+				return false
+			}
+		}
+	}
+	return true
 }
