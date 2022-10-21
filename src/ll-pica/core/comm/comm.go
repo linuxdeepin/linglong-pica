@@ -520,7 +520,7 @@ func (ts *DebInfo) CheckDebHash() bool {
 // FetchDebFile
 func (ts *DebInfo) FetchDebFile(dstPath string) bool {
 
-	Logger.Debugf("FetchDebFile %s,ts:%v", dstPath, ts)
+	Logger.Debugf("FetchDebFile %s,ts:%v type:%s", dstPath, ts, ts.Type)
 
 	if ts.Type == "repo" {
 
@@ -528,6 +528,28 @@ func (ts *DebInfo) FetchDebFile(dstPath string) bool {
 
 		if ret, msg, err := ExecAndWait(1<<20, "wget", "-O", dstPath, ts.Ref); err != nil {
 
+			Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
+			return false
+		} else {
+			Logger.Debugf("ret: %+v", ret)
+		}
+
+		if ret, err := CheckFileExits(dstPath); ret {
+			ts.Path = dstPath
+			return true
+		} else {
+			Logger.Warnf("downalod %s , err:%+v", dstPath, err)
+			return false
+		}
+	} else if ts.Type == "localfs" {
+
+		if ret, err := CheckFileExits(ts.Ref); !ret {
+			Logger.Warnf("not exist ! %s , err:%+v", ts.Ref, err)
+			return false
+		}
+
+		CreateDir(GetFilePPath(dstPath))
+		if ret, msg, err := ExecAndWait(1<<8, "cp", "-v", ts.Ref, dstPath); err != nil {
 			Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
 			return false
 		} else {
