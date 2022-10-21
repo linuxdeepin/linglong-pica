@@ -52,7 +52,7 @@ type InfoPermissions struct {
 	InstalledApps bool `json:"installed_apps"`
 }
 
-func CreateInfo(info Config, debInfo DebConfig, lb LinglongBuder) (bool, error) {
+func CreateInfo(info Config, debInfo *DebConfig, lb LinglongBuder) (bool, error) {
 	if ret, err := CheckFileExits(info.ExportDir); !ret && err != nil {
 		Logger.Errorw("info.json dir not exists! : ", info.ExportDir)
 		return false, err
@@ -140,6 +140,7 @@ func CreateInfo(info Config, debInfo DebConfig, lb LinglongBuder) (bool, error) 
 									}
 								}
 								infoApp.Version = strings.Join(verList, ".")
+								debInfo.Info.Version = strings.Join(verList, ".")
 							}
 							// Description
 							if debInfo.Info.Description == "" && strings.HasPrefix(ReadLine, "Description:") {

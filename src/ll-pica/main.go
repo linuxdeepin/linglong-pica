@@ -751,7 +751,10 @@ Convert:
 		ConfigInfo.FixDesktop(DebConf.Info.Appid)
 
 		// update info.json
-		CreateInfo(ConfigInfo, DebConf, builder)
+		CreateInfo(ConfigInfo, &DebConf, builder)
+
+		// 修正版本号
+		builder.Version = DebConf.Info.Version
 
 		// umount
 
