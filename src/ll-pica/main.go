@@ -357,6 +357,7 @@ var initCmd = &cobra.Command{
 		}
 
 		ConfigInfo.MountsItem.DoMountALL()
+		defer ConfigInfo.MountsItem.DoUmountALL()
 
 		// write source.list
 		Logger.Debugf("Start write sources.list !")
@@ -373,8 +374,6 @@ var initCmd = &cobra.Command{
 
 			ChrootExecShellBare(ConfigInfo.Rootfsdir, ConfigInfo.Rootfsdir+"/init.sh")
 		}
-
-		ConfigInfo.MountsItem.DoUmountALL()
 	},
 }
 
