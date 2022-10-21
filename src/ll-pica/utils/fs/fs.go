@@ -18,6 +18,7 @@ import (
 	"io/ioutil"
 	. "ll-pica/utils/log"
 	"os"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -573,4 +574,14 @@ func TransIconToLl(iconValue string) string {
 	}
 
 	return iconValue
+}
+
+// 获取家目录路径
+func GetHomePath() string {
+	u, err := user.Current()
+	if err != nil {
+		Logger.Fatal(err)
+		return ""
+	}
+	return u.HomeDir
 }

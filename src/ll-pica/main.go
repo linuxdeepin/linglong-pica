@@ -765,7 +765,7 @@ Convert:
 		// build uab
 		// ll-builder export --local
 		//builder.CreateLinglongBuilder(ConfigInfo.ExportDir)
-		builder.LinglongExport(ConfigInfo.ExportDir)
+		//builder.LinglongExport(ConfigInfo.ExportDir)
 
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
@@ -818,86 +818,122 @@ Simple:
 
 var pushCmd = &cobra.Command{
 	Use:   "push",
-	Short: "push uab to repo",
-	Long: `Push uab to repo that used ll-builder push For example:
+	Short: "push app to repo",
+	Long: `Push app to repo that used ll-builder push For example:
 push:
-	ll-pica push -u deepin -p deepin -d org.deepin.calculator_x86-64.uab
+	ll-pica push -u deepin -p deepin -i appid -w workdir
 	`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	PreRun: func(cmd *cobra.Command, args []string) {
-		Logger.Infof("parse input:", ConfigInfo.BundleKeyFile, ConfigInfo.BundlePath)
-		// keyfile
-		if ConfigInfo.BundleKeyFile != "" {
-			if ret, _ := CheckFileExits(ConfigInfo.BundleKeyFile); !ret {
-				ConfigInfo.BundleAuthType = BundleLoginFailed
-				Logger.Errorf("not found keyfile %v", ConfigInfo.BundleKeyFile)
-				return
+		Logger.Infof("parse input app:", ConfigInfo.AppId)
 
-			} else {
-				ConfigInfo.BundleAuthType = BundleLoginWithKeyfile
-				return
-			}
+		// 转化工作目录为绝对路径
+		if workPath, err := filepath.Abs(ConfigInfo.Workdir); err != nil {
+			Logger.Errorf("Trans %s err: %s ", ConfigInfo.Workdir, err)
+		} else {
+			ConfigInfo.Workdir = workPath
 		}
 
 		// auth username
-		if ConfigInfo.BundleUsername == "" || ConfigInfo.BundlePasswords == "" {
-			ConfigInfo.BundleAuthType = BundleLoginFailed
-			Logger.Errorf("need bundle repo auth username and passwords")
-			return
+		if ConfigInfo.AppUsername == "" || ConfigInfo.AppPasswords == "" {
+			ConfigInfo.AppAuthType = AppLoginWithKeyfile
 		} else {
-			ConfigInfo.BundleAuthType = BundleLoginWithPassword
+			Logger.Infof("app login with password")
+			ConfigInfo.AppAuthType = AppLoginWithPassword
+		}
+
+		// AppKeyFile path
+		ConfigInfo.AppKeyFile = GetHomePath() + "/.linglong/.user.json"
+		// keyfile
+		if ret, _ := CheckFileExits(ConfigInfo.AppKeyFile); !ret && ConfigInfo.AppAuthType == AppLoginWithKeyfile {
+			Logger.Errorf("not found keyfile %v, please push with user and password!", ConfigInfo.AppKeyFile)
+			ConfigInfo.AppAuthType = AppLoginFailed
+			return
+
+		} else {
+			ConfigInfo.AppAuthType = AppLoginWithKeyfile
 		}
 
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		Logger.Infof("bundle path %v", ConfigInfo.BundlePath)
-		if ConfigInfo.BundlePath == "" {
-			if workdirPath, err := os.Getwd(); err != nil {
-				Logger.Debugf("get working directory: %v", err)
-				return
-			} else {
-				Logger.Debugf("working directory: %v", workdirPath)
-				if bundleList, err := FindBundlePath(workdirPath); err == nil {
-					Logger.Debugf("found bundle file %v", bundleList)
-					// mutiple bundles
-
-					for _, bundle := range bundleList {
-						ConfigInfo.BundlePath = bundle
-
-						if ret, err := LinglongBuilderWarp(ConfigInfo.BundleAuthType, &ConfigInfo); !ret {
-							Logger.Infof("push failed: %v", err, bundle)
-							continue
-						}
-					}
-
-					return
-
-				} else {
-					Logger.Errorf("not found bundle")
-					return
-				}
-			}
-		} else {
-			//
-			if ret, _ := CheckFileExits(ConfigInfo.BundlePath); ret {
-				if ret := HasBundleName(ConfigInfo.BundlePath); ret {
-					// run push
-
-					if ret, err := LinglongBuilderWarp(ConfigInfo.BundleAuthType, &ConfigInfo); !ret {
-						Logger.Errorf("push failed: %v", err)
-						return
-					}
-
-				} else {
-					Logger.Errorf("need bundle file %s", ConfigInfo.BundlePath)
-					return
-				}
-			} else {
-				Logger.Errorf("not found bundle %s", ConfigInfo.BundlePath)
-				return
-			}
+		Logger.Infof("app path %v", ConfigInfo.Workdir+"/"+ConfigInfo.AppId+"/export/runtime")
+		appDataPath := ConfigInfo.Workdir + "/" + ConfigInfo.AppId + "/export/runtime"
+		if ret, _ := CheckFileExits(appDataPath); !ret {
+			Logger.Errorf("app data dir not exist : %v", appDataPath)
+			return
 		}
+		// 执行上传操作
+		// 获取当前路径
+		cwdPath, err := os.Getwd()
+		if err != nil {
+			Logger.Errorf("get cwd path Failed %v", err)
+			return
+		}
+		// 进入appDataPath
+		err = os.Chdir(appDataPath)
+		if err != nil {
+			Logger.Errorf("chdir failed: %s", err)
+			return
+		}
+
+		if ret, err := LinglongBuilderWarp(ConfigInfo.AppAuthType, &ConfigInfo); !ret {
+			Logger.Errorf("%v push failed: %v", appDataPath, err)
+			return
+		}
+		// 退出appDatapath
+		err = os.Chdir(cwdPath)
+		if err != nil {
+			Logger.Errorf("chdir failed: %s", err)
+			return
+		}
+
+		// if ConfigInfo.BundlePath == "" {
+		// 	if workdirPath, err := os.Getwd(); err != nil {
+		// 		Logger.Debugf("get working directory: %v", err)
+		// 		return
+		// 	} else {
+		// 		Logger.Debugf("working directory: %v", workdirPath)
+		// 		if bundleList, err := FindBundlePath(workdirPath); err == nil {
+		// 			Logger.Debugf("found bundle file %v", bundleList)
+		// 			// mutiple bundles
+
+		// 			for _, bundle := range bundleList {
+		// 				ConfigInfo.BundlePath = bundle
+
+		// 				if ret, err := LinglongBuilderWarp(ConfigInfo.BundleAuthType, &ConfigInfo); !ret {
+		// 					Logger.Infof("push failed: %v", err, bundle)
+		// 					continue
+		// 				}
+		// 			}
+
+		// 			return
+
+		// 		} else {
+		// 			Logger.Errorf("not found bundle")
+		// 			return
+		// 		}
+		// 	}
+		// } else {
+		// 	//
+		// 	if ret, _ := CheckFileExits(ConfigInfo.BundlePath); ret {
+		// 		if ret := HasBundleName(ConfigInfo.BundlePath); ret {
+		// 			// run push
+
+		// 			if ret, err := LinglongBuilderWarp(ConfigInfo.BundleAuthType, &ConfigInfo); !ret {
+		// 				Logger.Errorf("push failed: %v", err)
+		// 				return
+		// 			}
+
+		// 		} else {
+		// 			Logger.Errorf("need bundle file %s", ConfigInfo.BundlePath)
+		// 			return
+		// 		}
+		// 	} else {
+		// 		Logger.Errorf("not found bundle %s", ConfigInfo.BundlePath)
+		// 		return
+		// 	}
+		// }
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
 
@@ -949,15 +985,25 @@ func main() {
 	// }
 
 	rootCmd.AddCommand(pushCmd)
-	pushCmd.Flags().StringVarP(&ConfigInfo.BundleKeyFile, "keyfile", "k", "", "auth key file")
-	pushCmd.Flags().StringVarP(&ConfigInfo.BundleUsername, "username", "u", "", "username")
-	pushCmd.Flags().StringVarP(&ConfigInfo.BundlePasswords, "passwords", "p", "", "passwords")
-	pushCmd.Flags().StringVarP(&ConfigInfo.BundlePath, "uab", "d", "", "bundle path")
-	pushCmd.Flags().StringVarP(&ConfigInfo.BundleChannel, "channel", "c", "linglong", "bundle channel")
-	pushCmd.Flags().StringVarP(&ConfigInfo.BundleRepoUrl, "repo", "r", "", "bundle repo url")
+	pushCmd.Flags().StringVarP(&ConfigInfo.AppUsername, "username", "u", "", "username")
+	pushCmd.Flags().StringVarP(&ConfigInfo.AppPasswords, "passwords", "p", "", "passwords")
+	pushCmd.Flags().StringVarP(&ConfigInfo.AppId, "appid", "i", "", "app id")
+	pushCmd.Flags().StringVarP(&ConfigInfo.AppChannel, "channel", "c", "linglong", "app channel")
+	pushCmd.Flags().StringVarP(&ConfigInfo.AppRepoUrl, "repo", "r", "", "repo url")
+	pushCmd.Flags().StringVarP(&ConfigInfo.Workdir, "workdir", "w", "", "work directory")
+
+	if err := pushCmd.MarkFlagRequired("workdir"); err != nil {
+		Logger.Fatal("workdir required failed", err)
+		return
+	}
+
+	if err := pushCmd.MarkFlagRequired("appid"); err != nil {
+		Logger.Fatal("appid required failed", err)
+		return
+	}
 	//pushCmd.Flags().BoolVarP(&ConfigInfo.Verbose, "verbose", "v", false, "verbose output")
 
-	pushCmd.MarkFlagsMutuallyExclusive("keyfile", "username")
+	//pushCmd.MarkFlagsMutuallyExclusive("keyfile", "username")
 
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 

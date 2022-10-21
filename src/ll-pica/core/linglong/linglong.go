@@ -140,7 +140,7 @@ func (ts *LinglongBuder) CreateLinglongBuilder(path string) bool {
 }
 
 func (ts *LinglongBuder) LinglongExport(path string) bool {
-	Logger.Debugf("ll-builder export : ", ts.Appid)
+	Logger.Debugf("ll-builder import : ", ts.Appid)
 	appExportPath := GetFilePPath(path)
 	appExportPath = GetFilePPath(appExportPath)
 	// check workstation

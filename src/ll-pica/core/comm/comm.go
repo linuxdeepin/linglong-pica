@@ -65,13 +65,13 @@ type Config struct {
 	Yamlconfig        string
 	ExportDir         string `yaml:"exportdir"`
 	FilesSearchPath   string `yaml:"files-search-path"`
-	BundleKeyFile     string
-	BundleAuthType    int8
-	BundleUsername    string
-	BundlePasswords   string
-	BundlePath        string
-	BundleRepoUrl     string
-	BundleChannel     string
+	AppUsername       string
+	AppPasswords      string
+	AppId             string
+	AppRepoUrl        string
+	AppChannel        string
+	AppKeyFile        string
+	AppAuthType       int8
 }
 
 func (config *Config) Export() (bool, error) {
@@ -775,43 +775,60 @@ func UmountPath(path string) bool {
 }
 
 const (
-	BundleLoginFailed       int8 = -1
-	BundleLoginWithPassword int8 = iota
-	BundleLoginWithKeyfile
+	AppLoginFailed       int8 = -1
+	AppLoginWithPassword int8 = iota
+	AppLoginWithKeyfile
 )
 
-// Bundle push with ll-builder
+// App push with ll-builder
 func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 	// ll-builder push --repo-url  http://repo-dev.linglong.space --channel linglong *.uab
 	// max wait time for two MTL
-	BundleCommand := []string{
+	AppCommand := []string{
 		"push",
-		"--repo-url", conf.BundleRepoUrl,
-		"--channel", conf.BundleChannel,
 	}
-	Logger.Debugf("command args: %v", BundleCommand)
+	if conf.AppChannel != "" {
+		AppCommand = append(AppCommand, []string{
+			"--channel",
+			conf.AppChannel,
+		}...)
+	}
+	if conf.AppRepoUrl != "" {
+		AppCommand = append(AppCommand, []string{
+			"--repo-url",
+			conf.AppRepoUrl,
+		}...)
+	}
+
 	switch t {
-	case BundleLoginWithPassword:
-		BundleCommand = append(BundleCommand, []string{
+	case AppLoginWithPassword:
+		AppCommand = append(AppCommand, []string{
 			"--username",
-			conf.BundleUsername,
+			conf.AppUsername,
 			"--password",
-			conf.BundlePasswords}...)
+			conf.AppPasswords}...)
 		break
-	case BundleLoginWithKeyfile:
-		BundleCommand = append(BundleCommand, []string{
-			"--auth",
-			conf.BundleKeyFile}...)
+	case AppLoginWithKeyfile:
 		break
 	default:
 		return false, fmt.Errorf("not support")
 	}
 
-	BundleCommand = append(BundleCommand, conf.BundlePath)
+	AppCommand = append(AppCommand, string("--no-devel"))
+
+	Logger.Debugf("command args: %v", AppCommand)
+
+	// ll-builder import
+	if ret, msg, err := ExecAndWait(1<<12, "ll-builder", "import"); err == nil {
+		LoggerVerbose("output: %v", ret)
+	} else {
+		Logger.Debugf("output: %v", ret, msg)
+		return false, err
+	}
 
 	// ll-builder push
 	// ll-builder wait max timeout 3600 seconds wtf
-	if ret, msg, err := ExecAndWait(1<<12, "ll-builder", BundleCommand...); err == nil {
+	if ret, msg, err := ExecAndWait(1<<12, "ll-builder", AppCommand...); err == nil {
 		// if ConfigInfo.Verbose {
 		// 	Logger.Infof("output: %v", ret)
 		// }
