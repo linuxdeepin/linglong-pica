@@ -787,6 +787,9 @@ func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 	AppCommand := []string{
 		"push",
 	}
+	AppConfigCommand := []string{
+		"config",
+	}
 	if conf.AppChannel != "" {
 		AppCommand = append(AppCommand, []string{
 			"--channel",
@@ -802,11 +805,18 @@ func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 
 	switch t {
 	case AppLoginWithPassword:
-		AppCommand = append(AppCommand, []string{
+		AppConfigCommand = append(AppCommand, []string{
 			"--username",
 			conf.AppUsername,
 			"--password",
 			conf.AppPasswords}...)
+		// ll-builder config
+		if ret, msg, err := ExecAndWait(1<<12, "ll-builder", AppConfigCommand...); err == nil {
+			LoggerVerbose("output: %v", ret)
+		} else {
+			Logger.Debugf("output: %v", ret, msg)
+			return false, err
+		}
 		break
 	case AppLoginWithKeyfile:
 		break
