@@ -212,6 +212,8 @@ func (config *Config) fixDesktop(desktopFile, appid string) (bool, error) {
 				return false, err
 			}
 		}
+		// 去掉首尾空格
+		line = strings.TrimSpace(line)
 		// 处理Exec
 		if strings.HasPrefix(line, "Exec=") {
 			valueList := strings.Split(line, "=")
@@ -231,7 +233,9 @@ func (config *Config) fixDesktop(desktopFile, appid string) (bool, error) {
 			byteLine := []byte("Icon=" + newLine + "\n")
 			newFile.Write(byteLine)
 		} else {
-			newFile.Write([]byte(line))
+			newLine := strings.TrimRight(line, "\r\n")
+			byteLine := []byte(newLine + "\n")
+			newFile.Write(byteLine)
 		}
 	}
 	newFile.Sync()
