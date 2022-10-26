@@ -811,16 +811,17 @@ func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 
 	switch t {
 	case AppLoginWithPassword:
-		AppConfigCommand = append(AppCommand, []string{
-			"--username",
+		AppConfigCommand = append(AppConfigCommand, []string{
+			"--name",
 			conf.AppUsername,
 			"--password",
 			conf.AppPasswords}...)
 		// ll-builder config
+		Logger.Infof("ll-builder %v", AppConfigCommand)
 		if ret, msg, err := ExecAndWait(1<<12, "ll-builder", AppConfigCommand...); err == nil {
-			LoggerVerbose("output: %v", ret)
+			Logger.Debugf("output: %v", ret)
 		} else {
-			Logger.Debugf("output: %v", ret, msg)
+			Logger.Errorf("Exec stdout ret: %v,stderr msg %v", ret, msg)
 			return false, err
 		}
 		break
@@ -835,23 +836,25 @@ func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 	Logger.Debugf("command args: %v", AppCommand)
 
 	// ll-builder import
+	Logger.Infof("ll-builder import")
 	if ret, msg, err := ExecAndWait(1<<12, "ll-builder", "import"); err == nil {
-		LoggerVerbose("output: %v", ret)
+		Logger.Debugf("output: %v", ret)
 	} else {
-		Logger.Debugf("output: %v", ret, msg)
+		Logger.Errorf("Exec stdout ret: %v,stderr msg %v", ret, msg)
 		return false, err
 	}
 
 	// ll-builder push
 	// ll-builder wait max timeout 3600 seconds wtf
+	Logger.Infof("ll-builder %v", AppCommand)
 	if ret, msg, err := ExecAndWait(1<<12, "ll-builder", AppCommand...); err == nil {
 		// if ConfigInfo.Verbose {
 		// 	Logger.Infof("output: %v", ret)
 		// }
-		LoggerVerbose("output: %v", ret)
+		Logger.Debugf("output: %v", ret)
 		return true, nil
 	} else {
-		Logger.Debugf("output: %v", ret, msg)
+		Logger.Errorf("Exec stdout ret: %v,stderr msg %v", ret, msg)
 		return false, err
 	}
 

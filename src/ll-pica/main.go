@@ -852,8 +852,6 @@ push:
 			ConfigInfo.AppAuthType = AppLoginFailed
 			return
 
-		} else {
-			ConfigInfo.AppAuthType = AppLoginWithKeyfile
 		}
 
 	},
