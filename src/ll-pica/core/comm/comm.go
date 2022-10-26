@@ -69,6 +69,7 @@ type Config struct {
 	AppPasswords      string
 	AppId             string
 	AppRepoUrl        string
+	AppRepoName       string
 	AppChannel        string
 	AppKeyFile        string
 	AppAuthType       int8
@@ -782,7 +783,6 @@ const (
 
 // App push with ll-builder
 func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
-	// ll-builder push --repo-url  http://repo-dev.linglong.space --channel linglong *.uab
 	// max wait time for two MTL
 	AppCommand := []string{
 		"push",
@@ -800,6 +800,12 @@ func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 		AppCommand = append(AppCommand, []string{
 			"--repo-url",
 			conf.AppRepoUrl,
+		}...)
+	}
+	if conf.AppRepoName != "" {
+		AppCommand = append(AppCommand, []string{
+			"--repo-name",
+			conf.AppRepoName,
 		}...)
 	}
 

@@ -990,6 +990,7 @@ func main() {
 	pushCmd.Flags().StringVarP(&ConfigInfo.AppId, "appid", "i", "", "app id")
 	pushCmd.Flags().StringVarP(&ConfigInfo.AppChannel, "channel", "c", "linglong", "app channel")
 	pushCmd.Flags().StringVarP(&ConfigInfo.AppRepoUrl, "repo", "r", "", "repo url")
+	pushCmd.Flags().StringVarP(&ConfigInfo.AppRepoName, "reponame", "n", "", "repo name")
 	pushCmd.Flags().StringVarP(&ConfigInfo.Workdir, "workdir", "w", "", "work directory")
 
 	if err := pushCmd.MarkFlagRequired("workdir"); err != nil {
