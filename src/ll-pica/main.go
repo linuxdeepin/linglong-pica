@@ -384,7 +384,7 @@ var convertCmd = &cobra.Command{
 	Long: `Convert the deb to uab For example:
 Convert:
 	ll-pica init
-	ll-pica convert --deb abc.deb --config config.yaml --workdir=/mnt/workdir
+	ll-pica convert  --config config.yaml --workdir=/mnt/workdir
 	`,
 
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -551,10 +551,10 @@ Convert:
 		// fmt.Printf("Inside rootCmd Run with args: %v\n", args)
 
 		// check enter deb file
-		Logger.Debug("check DebPath:", ConfigInfo.DebPath)
-		if ret, msg := CheckFileExits(ConfigInfo.DebPath); !ret {
-			Logger.Warnf("can not found: ", msg)
-		}
+		// Logger.Debug("check DebPath:", ConfigInfo.DebPath)
+		// if ret, msg := CheckFileExits(ConfigInfo.DebPath); !ret {
+		// 	Logger.Warnf("can not found: ", msg)
+		// }
 
 		// fetch deb file
 		// DebConfig
@@ -799,8 +799,9 @@ var rootCmd = &cobra.Command{
 	Short: "debian package convert linglong package",
 	Long: `Convert the deb to uab. For example:
 Simple:
-	ll-pica init 
-	ll-pica convert -d abc.deb --config config.yaml -w /mnt/workdir
+	ll-pica init -c runtime.yaml -w work-dir
+	ll-pica convert -c app.yaml -w work-dir
+	ll-pica push -i appid -w work-dir
 	ll-pica help
 
 
@@ -887,53 +888,6 @@ push:
 			Logger.Errorf("chdir failed: %s", err)
 			return
 		}
-
-		// if ConfigInfo.BundlePath == "" {
-		// 	if workdirPath, err := os.Getwd(); err != nil {
-		// 		Logger.Debugf("get working directory: %v", err)
-		// 		return
-		// 	} else {
-		// 		Logger.Debugf("working directory: %v", workdirPath)
-		// 		if bundleList, err := FindBundlePath(workdirPath); err == nil {
-		// 			Logger.Debugf("found bundle file %v", bundleList)
-		// 			// mutiple bundles
-
-		// 			for _, bundle := range bundleList {
-		// 				ConfigInfo.BundlePath = bundle
-
-		// 				if ret, err := LinglongBuilderWarp(ConfigInfo.BundleAuthType, &ConfigInfo); !ret {
-		// 					Logger.Infof("push failed: %v", err, bundle)
-		// 					continue
-		// 				}
-		// 			}
-
-		// 			return
-
-		// 		} else {
-		// 			Logger.Errorf("not found bundle")
-		// 			return
-		// 		}
-		// 	}
-		// } else {
-		// 	//
-		// 	if ret, _ := CheckFileExits(ConfigInfo.BundlePath); ret {
-		// 		if ret := HasBundleName(ConfigInfo.BundlePath); ret {
-		// 			// run push
-
-		// 			if ret, err := LinglongBuilderWarp(ConfigInfo.BundleAuthType, &ConfigInfo); !ret {
-		// 				Logger.Errorf("push failed: %v", err)
-		// 				return
-		// 			}
-
-		// 		} else {
-		// 			Logger.Errorf("need bundle file %s", ConfigInfo.BundlePath)
-		// 			return
-		// 		}
-		// 	} else {
-		// 		Logger.Errorf("not found bundle %s", ConfigInfo.BundlePath)
-		// 		return
-		// 	}
-		// }
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
 
@@ -952,7 +906,7 @@ func main() {
 
 	initCmd.Flags().StringVarP(&ConfigInfo.Config, "config", "c", "", "config")
 	initCmd.Flags().StringVarP(&ConfigInfo.Workdir, "workdir", "w", "", "work directory")
-	initCmd.Flags().BoolVarP(&ConfigInfo.Cache, "keep-cached", "k", true, "keep cached")
+	//initCmd.Flags().BoolVarP(&ConfigInfo.Cache, "keep-cached", "k", true, "keep cached")
 	//initCmd.Flags().BoolVarP(&ConfigInfo.Verbose, "verbose", "v", false, "verbose output")
 
 	err := initCmd.MarkFlagRequired("config")
@@ -966,7 +920,7 @@ func main() {
 	convertCmd.Flags().StringVarP(&TransInfo.Yamlconfig, "config", "c", "", "config")
 	convertCmd.Flags().StringVarP(&TransInfo.Workdir, "workdir", "w", "", "work directory")
 	// convertCmd.Flags().StringVarP(&TransInfo.CachePath, "cache-file", "f", "", "cache yaml file")
-	convertCmd.Flags().StringVarP(&TransInfo.DebPath, "deb-file", "d", "", "deb file")
+	//convertCmd.Flags().StringVarP(&TransInfo.DebPath, "deb-file", "d", "", "deb file")
 	//convertCmd.Flags().BoolVarP(&TransInfo.Verbose, "verbose", "v", false, "verbose output")
 
 	err = convertCmd.MarkFlagRequired("config")
