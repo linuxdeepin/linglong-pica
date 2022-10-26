@@ -53,8 +53,9 @@ ll-pica帮助信息显示如下：
 ```
 Convert the deb to uab. For example:
 Simple:
-        ll-pica init 
-        ll-pica convert -d abc.deb --config config.yaml -w /mnt/workdir
+        ll-pica init -c runtime.yaml -w work-dir
+        ll-pica convert -c app.yaml -w work-dir
+        ll-pica push -i appid -w work-dir
         ll-pica help
 
 Usage:
@@ -65,11 +66,11 @@ Available Commands:
   convert     Convert deb to uab
   help        Help about any command
   init        init sdk runtime env
-  push        push uab to repo
+  push        push app to repo
 
 Flags:
   -h, --help      help for ll-pica
-      --verbose   verbose output
+  -v, --verbose   verbose output
 
 Use "ll-pica [command] --help" for more information about a command.
 ```
@@ -91,11 +92,10 @@ Usage:
 Flags:
   -c, --config string    config
   -h, --help             help for init
-  -k, --keep-cached      keep cached (default true)
   -w, --workdir string   work directory
 
 Global Flags:
-      --verbose   verbose output
+  -v, --verbose   verbose output
 ```
 运行ll-pica init命令初始化runtime环境：
 `ll-pica init -c runtime.yaml  -w  workdir`
@@ -132,7 +132,6 @@ sdk:
 - command备选配置，需要对runtime环境进行的命令参数。
 
 -w, --workdir 指定工作目录
--k, --keep-cached 读取缓存初始化环境
 
 ### deb转玲珑包
 ll-pica convert命令用于deb转玲珑包。
@@ -144,24 +143,21 @@ ll-pica convert帮助信息显示如下：
 Convert the deb to uab For example:
 Convert:
         ll-pica init
-        ll-pica convert --deb abc.deb --config config.yaml --workdir=/mnt/workdir
+        ll-pica convert  --config config.yaml --workdir=/mnt/workdir
 
 Usage:
   ll-pica convert [flags]
 
 Flags:
-  -c, --config string     config
-  -d, --deb-file string   deb file
-  -h, --help              help for convert
-  -w, --workdir string    work directory
+  -c, --config string    config
+  -h, --help             help for convert
+  -w, --workdir string   work directory
 
 Global Flags:
-      --verbose   verbose output
+  -v, --verbose   verbose output
 ```
 运行ll-pica convert命令如下：
-`ll-pica convert -d abc.deb -c config.yaml -w /mnt/workdir`
-
--d, --deb-file 指定本地deb包进行转包。注意：当指定本地包时，优先转本地deb包，配置文件中无需指定deb包下载信息。
+`ll-pica convert  -c config.yaml -w /mnt/workdir`
 
 -c, --config 指定deb转包配置文件。
 配置文件模板如下：
@@ -179,7 +175,11 @@ file:
     - type: repo
       ref: http://pools.uniontech.com/desktop-professional/pool/main/d/deepin-calculator/deepin-calculator_5.7.20-1_amd64.deb
       name: deepin-calculator
-      hash: 0ffd3af5467acf71320bd2e2267e989c5c4c41abc9a512242d4c37cd42777af5
+      hash:0ffd3af5467acf71320bd2e2267e989c5c4c41abc9a512242d4c37cd42777af5
+    - type: localfs
+      ref: /tmp/deepin-calculator2_5.7.20-1_amd64.deb
+      name: deepin-calculator2
+      hash: d38913817d727bca31c1295bae87c02ab129a57172561e3ec8caee6687e03796
   add-package:
     - libicu63
 chroot:
@@ -194,7 +194,7 @@ name:  指定软件包名称。
 version:  可根据需求指定，当指定时，以指定版本为准，未指定时，通过deb包获取版本号。
 description: 可根据需求指定，当指定时，以指定描述为准，未指定时，通过deb包获取描述信息。
 kind:  指定软件包类型，qt、python、qt等，以获取对应转包模板，保证转包正确性。
-- file: 指定软件包信息，当转本地deb包时，无需填写此参数。
+- file: 指定软件包信息，当转本地deb包时,采用type:localfs模式。
 type: deb包获取方式。
 ref: deb获取地址。
 name: deb名称。
@@ -213,31 +213,33 @@ ll-pica push命令用于玲珑包上传仓库。
 ll-pica convert帮助信息显示如下：
 
 ```
-Push uab to repo that used ll-builder push For example:
+Push app to repo that used ll-builder push For example:
 push:
-        ll-pica push -u deepin -p deepin -d org.deepin.calculator_x86-64.uab
+        ll-pica push -u deepin -p deepin -i appid -w workdir
 
 Usage:
   ll-pica push [flags]
 
 Flags:
-  -c, --channel string     bundle channel (default "linglong")
+  -i, --appid string       app id
+  -c, --channel string     app channel (default "linglong")
   -h, --help               help for push
-  -k, --keyfile string     auth key file
   -p, --passwords string   passwords
-  -r, --repo string        bundle repo url
-  -d, --uab string         bundle path
+  -r, --repo string        repo url
+  -n, --reponame string    repo name
   -u, --username string    username
+  -w, --workdir string     work directory
 
 Global Flags:
-      --verbose   verbose output
+  -v, --verbose   verbose output
 ```
 运行ll-pica push命令如下：
-`ll-pica push -u deepin -p deepin -d org.deepin.calculator_x86-64.uab`
+`ll-pica push -u deepin -p deepin -i org.deepin.calculator -w work-dir`
 
+-i, --appid 指定app id 名。
 -c, --channel 指定channel,默认为linglong。
--k, --keyfile 指定授权配置文件，当未指定时，需要使用-u -p参数指定。
 -u, --username 指定上传账号。
 -p, --passwords 指定上传账号密码。
 -r, --repo 指定上传仓库url。
--d, --uab 指定需要上传的uab包。
+-n,--reponame 指定上传仓库名。
+-w,--workdir 指定工作目录。
