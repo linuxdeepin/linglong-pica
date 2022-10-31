@@ -380,8 +380,8 @@ var initCmd = &cobra.Command{
 // convertCmd represents the convert command
 var convertCmd = &cobra.Command{
 	Use:   "convert",
-	Short: "Convert deb to uab",
-	Long: `Convert the deb to uab For example:
+	Short: "Convert deb to linglong",
+	Long: `Convert the deb to linglong For example:
 Convert:
 	ll-pica init
 	ll-pica convert  --config config.yaml --workdir=/mnt/workdir
@@ -797,7 +797,7 @@ Convert:
 var rootCmd = &cobra.Command{
 	Use:   "ll-pica",
 	Short: "debian package convert linglong package",
-	Long: `Convert the deb to uab. For example:
+	Long: `Convert the deb to linglong. For example:
 Simple:
 	ll-pica init -c runtime.yaml -w work-dir
 	ll-pica convert -c app.yaml -w work-dir
@@ -937,7 +937,7 @@ func main() {
 	// }
 
 	rootCmd.AddCommand(pushCmd)
-	pushCmd.Flags().StringVarP(&ConfigInfo.AppUsername, "username", "u", "", "username")
+	pushCmd.Flags().StringVarP(&ConfigInfo.AppUsername, "user", "u", "", "username")
 	pushCmd.Flags().StringVarP(&ConfigInfo.AppPasswords, "passwords", "p", "", "passwords")
 	pushCmd.Flags().StringVarP(&ConfigInfo.AppId, "appid", "i", "", "app id")
 	pushCmd.Flags().StringVarP(&ConfigInfo.AppChannel, "channel", "c", "linglong", "app channel")
