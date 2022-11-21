@@ -56,7 +56,7 @@ type consoleEncoder struct {
 // encoder configuration, it will omit any element whose key is set to the empty
 // string.
 func NewConsoleEncoder(cfg EncoderConfig) Encoder {
-	if cfg.ConsoleSeparator == "" {
+	if len(cfg.ConsoleSeparator) == 0 {
 		// Use a default delimiter of '\t' for backwards compatibility
 		cfg.ConsoleSeparator = "\t"
 	}
@@ -125,7 +125,11 @@ func (c consoleEncoder) EncodeEntry(ent Entry, fields []Field) (*buffer.Buffer, 
 		line.AppendString(ent.Stack)
 	}
 
-	line.AppendString(c.LineEnding)
+	if c.LineEnding != "" {
+		line.AppendString(c.LineEnding)
+	} else {
+		line.AppendString(DefaultLineEnding)
+	}
 	return line, nil
 }
 
