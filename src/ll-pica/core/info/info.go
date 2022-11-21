@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author: Jianqiang Liu <liujianqiang@deepin.com>
- *
- * Maintainer: Jianqiang Liu <liujianqiang@deepin.com>
- *
- * SPDX-License-Identifier: GNU General Public License v3.0 or later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 package info

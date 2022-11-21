@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author: Heysion Y. <heysion@deepin.com>
- *
- * Maintainer: Heysion Y. <heysion@deepin.com>
- *
- * SPDX-License-Identifier: GNU General Public License v3.0 or later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 package fs

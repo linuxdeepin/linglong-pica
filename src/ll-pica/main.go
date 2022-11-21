@@ -1,12 +1,9 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author: Heysion Y. <heysion@deepin.com>
- *
- * Maintainer: Heysion Y. <heysion@deepin.com>
- *
- * SPDX-License-Identifier: GNU General Public License v3.0 or later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
+
 package main
 
 import (
@@ -30,14 +27,7 @@ import (
 )
 
 var disableDevelop string
-
-// var Logger *zap.SugaredLogger
-
-// var RootfsMountList Mounts
-
 var SdkConf BaseConfig
-
-// initCmd represents the init command
 
 func SetOverlayfs(lower string, upper string, workdir string) error {
 	Logger.Debug("SetOverlayfs :", lower, upper, workdir)
@@ -67,6 +57,7 @@ func UmountOverlayfs(workdir string) error {
 	return nil
 }
 
+// initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "init sdk runtime env",
@@ -97,19 +88,8 @@ var initCmd = &cobra.Command{
 				err = os.RemoveAll(runtimeDir)
 				if err != nil {
 					Logger.Errorf("remove error", err)
+					return
 				}
-
-			}
-		}
-
-		ClearIso := func() {
-			Logger.Debug("begin clear iso")
-			if ret, _ := CheckFileExits(isoDir); ret {
-				Logger.Debugf("remove iso: %s", isoDir)
-				// err = os.RemoveAll(isoDir)
-				// if err != nil {
-				// 	Logger.Errorf("remove error", err)
-				// }
 			}
 		}
 
@@ -121,6 +101,7 @@ var initCmd = &cobra.Command{
 				Logger.Warnf("read error: %s", err)
 				return
 			}
+
 			err = yaml.Unmarshal(cacheFd, &ConfigInfo)
 			if err != nil {
 				Logger.Warnf("unmarshal error: %s", err)
@@ -139,12 +120,6 @@ var initCmd = &cobra.Command{
 				Logger.Info("create runtime dir error: ", err)
 			}
 
-			Logger.Debug("clear iso: ", ConfigInfo.IsIsoDownload)
-			if !ConfigInfo.IsIsoDownload {
-				// fixme:(heysion) dobule fetch iso with this
-				ClearIso()
-			}
-
 			err = os.Mkdir(isoDir, 0755)
 			if err != nil {
 				Logger.Warn("create iso dir error: ", err)
@@ -159,19 +134,20 @@ var initCmd = &cobra.Command{
 					Logger.Errorf("remove error", err)
 				}
 			}
-
 			return // Config Cache not exist
 		}
 
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		Logger.Debug("begin run: ", ConfigInfo.Config)
+
 		if ConfigInfo.Config != "" {
 			yamlFile, err := ioutil.ReadFile(ConfigInfo.Config)
 			if err != nil {
 				Logger.Errorf("get %s error: %v", ConfigInfo.Config, err)
 				return
 			}
+
 			err = yaml.Unmarshal(yamlFile, &SdkConf)
 			if err != nil {
 				Logger.Errorf("error: %v", err)
@@ -179,9 +155,10 @@ var initCmd = &cobra.Command{
 			}
 		}
 
-		for idx, context := range SdkConf.SdkInfo.Base {
-			Logger.Debugf("get %d %s", idx, context)
-			switch context.Type {
+		for idx, baseInfo := range SdkConf.SdkInfo.Base {
+			Logger.Debugf("get %d %s", idx, baseInfo)
+
+			switch baseInfo.Type {
 			case "ostree":
 				if !ConfigInfo.IsRuntimeFetch {
 					Logger.Debugf("ostree init %s", ConfigInfo.IsRuntimeFetch)
@@ -203,17 +180,13 @@ var initCmd = &cobra.Command{
 					} else {
 						ConfigInfo.IsRuntimeCheckout = true
 					}
-
 				}
 				continue
-
 			case "iso":
-
 				if !ConfigInfo.IsIsoDownload {
 					Logger.Debugf("iso download %s", ConfigInfo.IsIsoDownload)
 
 					ConfigInfo.IsoPath = ConfigInfo.Workdir + "/iso/base.iso"
-
 					if ret, _ := CheckFileExits(ConfigInfo.IsoPath); ret {
 						SdkConf.SdkInfo.Base[idx].Path = ConfigInfo.IsoPath
 						if ret := SdkConf.SdkInfo.Base[idx].CheckIsoHash(); !ret {
@@ -254,6 +227,7 @@ var initCmd = &cobra.Command{
 
 		ConfigInfo.Initdir = ConfigInfo.Workdir + "/initdir"
 		Logger.Debug("set initdir: ", ConfigInfo.Initdir)
+
 		// 不读取缓存文件时，需清理initdir
 		if ret, err := CheckFileExits(ConfigInfo.Initdir); ret && err == nil && !ConfigInfo.IsInited {
 			ret, err = RemovePath(ConfigInfo.Initdir)
@@ -271,20 +245,13 @@ var initCmd = &cobra.Command{
 			}
 		}
 
-		// extra
-		Logger.Debug("extra init")
-		// if SdkConf.SdkInfo.Extra != ExtraInfo{,} {
-		// 	Logger.Debug(SdkConf.SdkInfo.Extra)
-		// }
-
 		Logger.Debug("end init")
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
-		Logger.Debugf("config :%+v", ConfigInfo)
-		err := errors.New("")
 		Logger.Debug("begin mount iso: ", ConfigInfo.IsoPath)
-		ConfigInfo.IsoMountDir = ConfigInfo.Workdir + "/iso/mount"
 
+		ConfigInfo.IsoMountDir = ConfigInfo.Workdir + "/iso/mount"
+		err := errors.New("")
 		if ret, _ := CheckFileExits(ConfigInfo.IsoMountDir); !ret {
 			err = os.Mkdir(ConfigInfo.IsoMountDir, 0755)
 			if os.IsNotExist(err) {
@@ -303,17 +270,17 @@ var initCmd = &cobra.Command{
 
 		defer UmountIsoDir()
 
-		// mount squashfs to base dir
-
 		baseDir := ConfigInfo.Workdir + "/iso/live"
 		err = os.Mkdir(baseDir, 0755)
 		if os.IsNotExist(err) {
 			Logger.Error("mkdir iso mount dir failed!", err)
 		}
+
 		_, msg, err = ExecAndWait(10, "mount", ConfigInfo.IsoMountDir+"/live/filesystem.squashfs", baseDir)
 		if err != nil {
 			Logger.Error("mount squashfs failed!", msg, err)
 		}
+
 		UmountSquashfsDir := func() {
 			ExecAndWait(10, "umount", baseDir)
 		}
@@ -323,10 +290,6 @@ var initCmd = &cobra.Command{
 		err = os.Mkdir(ConfigInfo.Rootfsdir, 0755)
 		if os.IsNotExist(err) {
 			Logger.Error("mkdir rootfsdir failed!", err)
-		}
-
-		if os.IsNotExist(err) {
-			Logger.Error("mkdir runtime basedir failed!", err)
 		}
 
 		// mount overlay to base dir
@@ -350,7 +313,7 @@ var initCmd = &cobra.Command{
 		if err != nil {
 			Logger.Errorf("convert to yaml failed!")
 		}
-		// Logger.Debugf("write Config Cache: %v", string(yamlData))
+
 		err = ioutil.WriteFile(fmt.Sprintf("%s/cache.yaml", ConfigInfo.Workdir), yamlData, 0644)
 		if err != nil {
 			Logger.Error("write cache.yaml failed!")
@@ -367,11 +330,8 @@ var initCmd = &cobra.Command{
 
 		// write extra shell
 		if len(SdkConf.SdkInfo.Extra.Cmd) > 0 {
-
 			SdkConf.SdkInfo.Extra.RenderExtraShell(ConfigInfo.Rootfsdir + "/init.sh")
-
 			defer func() { RemovePath(ConfigInfo.Rootfsdir + "/init.sh") }()
-
 			ChrootExecShellBare(ConfigInfo.Rootfsdir, ConfigInfo.Rootfsdir+"/init.sh")
 		}
 	},
@@ -397,10 +357,8 @@ Convert:
 			}
 			TransInfo.CachePath = TransInfo.Workdir + "/cache.yaml"
 		}
-		// fmt.Printf("Inside rootCmd PersistentPreRun with args: %v\n", args)
 	},
 	PreRun: func(cmd *cobra.Command, args []string) {
-
 		if ConfigInfo.Verbose {
 			Logger.Info("verbose mode enabled")
 			TransInfo.Verbose = true
@@ -431,7 +389,6 @@ Convert:
 		}
 
 		Logger.Debug("load yaml config", TransInfo.Yamlconfig)
-
 		if ret, msg := CheckFileExits(TransInfo.Yamlconfig); !ret {
 			Logger.Fatal("can not found: ", msg)
 		} else {
@@ -441,18 +398,14 @@ Convert:
 				Logger.Fatalf("read error: %s %s", err, msg)
 				return
 			}
-			// Logger.Debugf("load: %s", cacheFd)
 			err = yaml.Unmarshal(cacheFd, &DebConf)
 			if err != nil {
 				Logger.Fatalf("unmarshal error: %s", err)
 				return
 			}
-			// Logger.Debugf("loaded %+v", DebConf)
-
 		}
 
 		Logger.Debug("load cache.yaml", TransInfo.CachePath)
-
 		if ret, msg := CheckFileExits(TransInfo.CachePath); ret {
 			// load cache.yaml
 			Logger.Debugf("load cache: %s", TransInfo.CachePath)
@@ -461,22 +414,15 @@ Convert:
 				Logger.Warnf("read error: %s %s", err, msg)
 				return
 			}
-
 			err = yaml.Unmarshal(cacheFd, &ConfigInfo)
 			if err != nil {
 				Logger.Warnf("unmarshal error: %s", err)
 				return
 			}
-			// Logger.Debugf("load config info %v", ConfigInfo)
 		} else {
 			Logger.Fatalf("can not found: %s", msg)
 			return
 		}
-
-		// fmt.Printf("Inside rootCmd PreRun with args: %v\n", args)
-		//Logger.Debug("mount all", ConfigInfo.MountsItem)
-
-		Logger.Debug("configinfo.rootfsdir", ConfigInfo.Rootfsdir)
 
 		ConfigInfo.DebPath = TransInfo.DebPath
 		ConfigInfo.Yamlconfig = TransInfo.Yamlconfig
@@ -486,16 +432,7 @@ Convert:
 
 		// 创建debdir
 		ConfigInfo.DebWorkdir = ConfigInfo.Workdir + "/debdir"
-		if ret, err := CheckFileExits(ConfigInfo.DebWorkdir); ret && err == nil {
-			// ret, err = RemovePath(ConfigInfo.DebWorkdir)
-			// if !ret || err != nil {
-			// 	Logger.Errorf("failed to remove %s\n", ConfigInfo.DebWorkdir)
-			// }
-			// ret, err = CreateDir(ConfigInfo.DebWorkdir)
-			// if !ret || err != nil {
-			// 	Logger.Errorf("failed to create %s\n", ConfigInfo.DebWorkdir)
-			// }
-		} else {
+		if ret, err := CheckFileExits(ConfigInfo.DebWorkdir); !ret && err != nil {
 			ret, err = CreateDir(ConfigInfo.DebWorkdir)
 			if !ret || err != nil {
 				Logger.Errorf("failed to create %s\n", ConfigInfo.DebWorkdir)
@@ -543,19 +480,8 @@ Convert:
 		}
 
 		ConfigInfo.MountsItem.DoMountALL()
-
-		//  umount ConfigInfo.Rootfsdir
-
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		// fmt.Printf("Inside rootCmd Run with args: %v\n", args)
-
-		// check enter deb file
-		// Logger.Debug("check DebPath:", ConfigInfo.DebPath)
-		// if ret, msg := CheckFileExits(ConfigInfo.DebPath); !ret {
-		// 	Logger.Warnf("can not found: ", msg)
-		// }
-
 		// fetch deb file
 		// DebConfig
 		Logger.Debugf("debConfig deb:%v", DebConf.FileElement.Deb)
@@ -582,17 +508,13 @@ Convert:
 				if ret := DebConf.FileElement.Deb[idx].CheckDebHash(); !ret {
 					Logger.Warnf("check deb hash failed! : ", DebConf.FileElement.Deb[idx].Name)
 					continue
-				} else {
-					Logger.Info("download %s success.", DebConf.FileElement.Deb[idx].Path)
 				}
-
-			} else {
-				continue
+				Logger.Info("download %s success.", DebConf.FileElement.Deb[idx].Path)
 			}
+			continue
 		}
 
 		// render DebConfig to template save to pica.sh
-		// Logger.Debugf("render berfore %+v:", DebConf)
 		// clear pica.sh cache
 		picaShellPath := ConfigInfo.DebWorkdir + "/pica.sh"
 		if ret, _ := CheckFileExits(picaShellPath); ret {
@@ -602,34 +524,27 @@ Convert:
 		Logger.Infof("render %s script.", picaShellPath)
 		RenderDebConfig(DebConf, picaShellPath)
 
-		// chroot
+		// exec script in chroot
 		Logger.Info("exec script in chroot")
 		if ret, msg, err := ChrootExecShell(ConfigInfo.Rootfsdir, picaShellPath, []string{ConfigInfo.DebWorkdir}); !ret {
 			Logger.Fatal("exec pica script in chroot failed! :", msg, err)
 			return
 		} else {
+			// 打印详细日志时输出
 			LoggerVerbose("exec pica script in chroot output: %s", msg)
 		}
 
-		// copy deb data
-		// fixme(heysion): todo
-
-		// fixme(jianqiang)
-		// make new directory that need to be created for linglong files stucturesk
 		// 定义拷贝的目标目录
 		ConfigInfo.ExportDir = ConfigInfo.Workdir + "/" + DebConf.Info.Appid + "/export/runtime"
 		// 导出export目录
 		ConfigInfo.Export()
 
-		// find all elf file with path
-		// FilerList := ("libc.so","lib.so")
-
 		var binReactor BinFormatReactor
 
-		// fixme(heysion) set files directory
+		// set files directory
 		binReactor.SearchPath = ConfigInfo.FilesSearchPath
-		// get elf binary  need exclude with self path
 
+		// get elf binary  need exclude with self path
 		binReactor.GetElfList(binReactor.SearchPath + "/lib")
 
 		excludeSoList := []string{
@@ -663,9 +578,6 @@ Convert:
 		binReactor.GetEntryDlopenList(excludeSoList)
 		Logger.Debug("call GetEntryDlopenList: %v", binReactor.ElfEntrySoPath)
 
-		//binReactor.FixElfLDDPath(binReactor.SearchPath + "bin/lib")
-		//
-		// GetFindElfMissDepends(ConfigInfo.Basedir + "/lib")
 		elfLDDLog := ConfigInfo.DebWorkdir + "/elfldd.log"
 		elfLDDShell := ConfigInfo.DebWorkdir + "/elfldd.sh"
 
@@ -703,7 +615,6 @@ Convert:
 			defer elfLDDLogFile.Close()
 
 			binReactor.ElfNeedPath = make(map[string]uint)
-
 			LogFileItor := bufio.NewScanner(elfLDDLogFile)
 			LogFileItor.Split(bufio.ScanLines)
 			var ReadLine string
@@ -716,36 +627,27 @@ Convert:
 			}
 
 			binReactor.FixElfNeedPath(excludeSoList)
-
 			Logger.Debugf("fix exclude so list: %v", binReactor.ElfNeedPath)
 
 		}
-
 		Logger.Debugf("found %d elf need objects", len(binReactor.ElfNeedPath))
-
 		binReactor.CopyElfNeedPath(ConfigInfo.Rootfsdir, ConfigInfo.FilesSearchPath)
 
-		// fix library
-		// if msg, ret := GetElfNeedWithLDD("/bin/bash"); ret != nil {
-		// 	Logger.Debug("get elf need failed: ", msg)
-		// }
-
-		builder := LinglongBuder{}
-
-		builder.Appid = DebConf.Info.Appid
-		builder.Version = DebConf.Info.Version
-		builder.Description = DebConf.Info.Description
-		builder.Runtime = "org.deepin.Runtime"
-		builder.Rversion = "20.6"
+		builder := LinglongBuder{
+			Appid:       DebConf.Info.Appid,
+			Version:     DebConf.Info.Version,
+			Description: DebConf.Info.Description,
+			Runtime:     "org.deepin.Runtime",
+			Rversion:    "",
+		}
 
 		// load runtime.json
 		Logger.Debugf("loader runtimedir %s", ConfigInfo.RuntimeBasedir)
 		builder.LoadRuntimeInfo(ConfigInfo.RuntimeBasedir + "/info.json")
 
 		// run.sh
-		// fixme:(heysion) 依据kind 字段生成 run.sh 的模板
+		// fixme: 依据kind 字段生成 run.sh 的模板
 
-		// fix desktop
 		// FixDesktop()
 		ConfigInfo.FixDesktop(DebConf.Info.Appid)
 
@@ -755,18 +657,10 @@ Convert:
 		// 修正版本号
 		builder.Version = DebConf.Info.Version
 
-		// umount
-
 		Logger.Debugf("update linglong builder: %v", builder)
 
 		// create linglong.yaml
 		builder.CreateLinglongYamlBuilder(ConfigInfo.ExportDir + "/linglong.yaml")
-
-		// build uab
-		// ll-builder export --local
-		//builder.CreateLinglongBuilder(ConfigInfo.ExportDir)
-		//builder.LinglongExport(ConfigInfo.ExportDir)
-
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Inside rootCmd PostRun with args: %v\n", args)
@@ -789,11 +683,9 @@ Convert:
 		if ret, err := rfs.UmountIso(ConfigInfo.Workdir + "/iso/mount"); !ret {
 			Logger.Warnf("umount iso failed!", err)
 		}
-
 	},
 }
 
-// rootCmd represents the convert command
 var rootCmd = &cobra.Command{
 	Use:   "ll-pica",
 	Short: "debian package convert linglong package",
@@ -803,12 +695,7 @@ Simple:
 	ll-pica convert -c app.yaml -w work-dir
 	ll-pica push -i appid -w work-dir
 	ll-pica help
-
-
 	`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(cmd.Use, "1.0.1")
 	},
@@ -824,8 +711,6 @@ var pushCmd = &cobra.Command{
 push:
 	ll-pica push -u deepin -p deepin -i appid -w workdir
 	`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
 	PreRun: func(cmd *cobra.Command, args []string) {
 		Logger.Infof("parse input app:", ConfigInfo.AppId)
 
@@ -851,7 +736,6 @@ push:
 			Logger.Errorf("not found keyfile %v, please push with user and password!", ConfigInfo.AppKeyFile)
 			ConfigInfo.AppAuthType = AppLoginFailed
 			return
-
 		}
 
 	},
@@ -862,6 +746,7 @@ push:
 			Logger.Errorf("app data dir not exist : %v", appDataPath)
 			return
 		}
+
 		// 执行上传操作
 		// 获取当前路径
 		cwdPath, err := os.Getwd()
@@ -880,6 +765,7 @@ push:
 			Logger.Errorf("%v push failed: %v", appDataPath, err)
 			return
 		}
+
 		// 退出appDatapath
 		err = os.Chdir(cwdPath)
 		if err != nil {
@@ -893,34 +779,22 @@ push:
 }
 
 func main() {
-
 	Logger = InitLog()
 	defer Logger.Sync()
 
-	// init cmd add
-
 	rootCmd.AddCommand(initCmd)
 	rootCmd.PersistentFlags().BoolVarP(&ConfigInfo.Verbose, "verbose", "v", false, "verbose output")
-
 	initCmd.Flags().StringVarP(&ConfigInfo.Config, "config", "c", "", "config")
 	initCmd.Flags().StringVarP(&ConfigInfo.Workdir, "workdir", "w", "", "work directory")
-	//initCmd.Flags().BoolVarP(&ConfigInfo.Cache, "keep-cached", "k", true, "keep cached")
-	//initCmd.Flags().BoolVarP(&ConfigInfo.Verbose, "verbose", "v", false, "verbose output")
-
 	err := initCmd.MarkFlagRequired("config")
 	if err != nil {
 		Logger.Fatal("config required failed", err)
 		return
 	}
 
-	// convert cmd add
 	rootCmd.AddCommand(convertCmd)
 	convertCmd.Flags().StringVarP(&TransInfo.Yamlconfig, "config", "c", "", "config")
 	convertCmd.Flags().StringVarP(&TransInfo.Workdir, "workdir", "w", "", "work directory")
-	// convertCmd.Flags().StringVarP(&TransInfo.CachePath, "cache-file", "f", "", "cache yaml file")
-	//convertCmd.Flags().StringVarP(&TransInfo.DebPath, "deb-file", "d", "", "deb file")
-	//convertCmd.Flags().BoolVarP(&TransInfo.Verbose, "verbose", "v", false, "verbose output")
-
 	err = convertCmd.MarkFlagRequired("config")
 	if err != nil {
 		Logger.Fatal("yaml config required failed", err)
@@ -931,11 +805,6 @@ func main() {
 		return
 	}
 
-	// err = convertCmd.MarkFlagRequired("deb-file")
-	// if err != nil {
-	// 	Logger.Fatal("deb file required failed", err)
-	// }
-
 	rootCmd.AddCommand(pushCmd)
 	pushCmd.Flags().StringVarP(&ConfigInfo.AppUsername, "user", "u", "", "username")
 	pushCmd.Flags().StringVarP(&ConfigInfo.AppPasswords, "passwords", "p", "", "passwords")
@@ -944,7 +813,6 @@ func main() {
 	pushCmd.Flags().StringVarP(&ConfigInfo.AppRepoUrl, "repo", "r", "", "repo url")
 	pushCmd.Flags().StringVarP(&ConfigInfo.AppRepoName, "reponame", "n", "", "repo name")
 	pushCmd.Flags().StringVarP(&ConfigInfo.Workdir, "workdir", "w", "", "work directory")
-
 	if err := pushCmd.MarkFlagRequired("workdir"); err != nil {
 		Logger.Fatal("workdir required failed", err)
 		return
@@ -954,26 +822,8 @@ func main() {
 		Logger.Fatal("appid required failed", err)
 		return
 	}
-	//pushCmd.Flags().BoolVarP(&ConfigInfo.Verbose, "verbose", "v", false, "verbose output")
-
-	//pushCmd.MarkFlagsMutuallyExclusive("keyfile", "username")
 
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
-
-	// root cmd add
-	//pushCmd.PersistentFlags().BoolVarP(&ConfigInfo.Verbose, "verbose", "v", false, "verbose output")
-
-	// if ConfigInfo.Workdir == "" {
-	// 	ConfigInfo.Workdir = "/mnt/workdir"
-	// }
-
-	// if TransInfo.Workdir == "" {
-	// 	TransInfo.Workdir = "/mnt/workdir"
-	// }
-	// // fix cache path
-	// if TransInfo.CachePath == "" {
-	// 	TransInfo.CachePath = TransInfo.Workdir + "/cache.yaml"
-	// }
 
 	// go build -ldflags '-X ll-pica/utils/log.disableLogDebug=yes -X main.disableDevelop=yes'
 	// fmt.Printf("disableDevelop: %s\n", disableDevelop)
