@@ -8,19 +8,20 @@ package core
 
 import (
 	"fmt"
-	. "ll-pica/core/comm"
-	. "ll-pica/core/elf"
-	. "ll-pica/utils/fs"
-	. "ll-pica/utils/log"
 	"os"
 	"strings"
 	"text/template"
+
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/core/comm"
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/core/elf"
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/fs"
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/log"
 )
 
-// var Logger *zap.SugaredLogger
+// var log.Logger *zap.SugaredLogger
 
 // func init() {
-// 	Logger = InitLog()
+// 	log.Logger = InitLog()
 // }
 
 type BinFormatReactor struct {
@@ -121,7 +122,7 @@ func (ts *BinFormatReactor) CopyElfNeedPath(prefix, dst string) bool {
 
 	for v := range ts.ElfNeedPath {
 		srcPath := prefix + "/" + v
-		if ret, err := CheckFileExits(srcPath); err != nil && ret {
+		if ret, err := fs.CheckFileExits(srcPath); err != nil && ret {
 			var dstPath string
 			if strings.HasPrefix(v, "/usr/lib") {
 				dstPath = dst + strings.Replace(v, "/usr/lib", "/lib", 1)
@@ -129,20 +130,20 @@ func (ts *BinFormatReactor) CopyElfNeedPath(prefix, dst string) bool {
 				dstPath = dst + v
 			}
 
-			dstParentPath := GetFilePPath(dstPath)
-			Logger.Debugf("Copying path %s ", dstParentPath)
-			if ret, err := CheckFileExits(dstParentPath); err != nil && !ret {
-				CreateDir(dstParentPath)
+			dstParentPath := fs.GetFilePPath(dstPath)
+			log.Logger.Debugf("Copying path %s ", dstParentPath)
+			if ret, err := fs.CheckFileExits(dstParentPath); err != nil && !ret {
+				fs.CreateDir(dstParentPath)
 			}
-			if err := CopyFileKeepPermission(srcPath, dstPath, true, true); err != nil {
-				Logger.Warnf("copy file failed %v", err)
+			if err := fs.CopyFileKeepPermission(srcPath, dstPath, true, true); err != nil {
+				log.Logger.Warnf("copy file failed %v", err)
 				continue
 			}
 		}
-		Logger.Debugf("Copying src path %s not found", srcPath)
+		log.Logger.Debugf("Copying src path %s not found", srcPath)
 		continue
 	}
-	// CopyFileKeepPermission()
+	// fs.CopyFileKeepPermission()
 	return true
 }
 
@@ -152,10 +153,10 @@ func (ts *BinFormatReactor) CopyElfNeedPath(prefix, dst string) bool {
  * @return 返回elf列表
  */
 func (ts *BinFormatReactor) GetElfList(exclude string) bool {
-	Logger.Debugf("get find elf miss depends: ", ts.SearchPath, "exclude: ", exclude)
-	elf_binary_path, err := GetElfWithPath(ts.SearchPath)
+	log.Logger.Debugf("get find elf miss depends: ", ts.SearchPath, "exclude: ", exclude)
+	elf_binary_path, err := elf.GetElfWithPath(ts.SearchPath)
 	if err != nil {
-		Logger.Debugf("get elf with path failed! %s", err)
+		log.Logger.Debugf("get elf with path failed! %s", err)
 		return false
 	}
 
@@ -169,7 +170,7 @@ func (ts *BinFormatReactor) GetElfList(exclude string) bool {
 		if len(filterResut) > 0 && ts.ElfLDDPath == nil {
 			ts.ElfLDDPath = make(map[string]uint)
 		}
-		//Logger.Debugf("filter resut: ", filterResut)
+		//log.Logger.Debugf("filter resut: ", filterResut)
 		for _, v := range filterResut {
 			ts.ElfLDDPath[v] = 1
 		}
@@ -195,37 +196,37 @@ func (ts *BinFormatReactor) GetEntryDlopenList(exclude []string) bool {
 	IsHaveDlopen := func(filename string) bool {
 		// strings /usr/bin/deepin-movie| grep -i dlopen
 		cmd := fmt.Sprintf("strings %s | grep -q dlopen", filename)
-		if msg, ret, err := ExecAndWait(10, "bash", "-c", cmd); err != nil {
-			Logger.Debugf("check dlopen failed: %v", err, msg, ret)
+		if msg, ret, err := comm.ExecAndWait(10, "bash", "-c", cmd); err != nil {
+			log.Logger.Debugf("check dlopen failed: %v", err, msg, ret)
 			return false
 		} else {
 			return true
 		}
 	}
 
-	Logger.Debugf("get had entry elf list: ", ts.SearchPath, "exclude: ", exclude)
+	log.Logger.Debugf("get had entry elf list: ", ts.SearchPath, "exclude: ", exclude)
 
 	if len(ts.ElfLDDPath) == 0 {
-		Logger.Warn("Have not elf list??")
+		log.Logger.Warn("Have not elf list??")
 		return false
 	}
 
 	elf_have_entry_list := FilterMap(ts.ElfLDDPath, func(str string) bool {
-		return !IsNotIncluded(str) && IsElfEntry(str) && IsHaveDlopen(str)
+		return !IsNotIncluded(str) && elf.IsElfEntry(str) && IsHaveDlopen(str)
 	})
 
 	if len(elf_have_entry_list) == 0 {
-		Logger.Warnf("have not search include entry elf file with:", ts.SearchPath)
+		log.Logger.Warnf("have not search include entry elf file with:", ts.SearchPath)
 		return false
 	}
 
 	ts.ElfEntrySoPath = make(map[string]uint)
 	for _, v := range elf_have_entry_list {
-		Logger.Debugf("process path: %s", v)
+		log.Logger.Debugf("process path: %s", v)
 		if ret, err := GetDlopenDepends(v); err != nil {
 			continue
 		} else {
-			Logger.Debugf("%v", ret)
+			log.Logger.Debugf("%v", ret)
 			if len(ret) == 0 {
 				continue
 			} else {
@@ -286,15 +287,15 @@ echo elfldd
 func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) {
 
 	// init template
-	Logger.Debug("render elf with ldd : ", ts.SearchPath)
+	log.Logger.Debug("render elf with ldd : ", ts.SearchPath)
 	tpl, err := template.New("elfldd").Parse(TMPL_ELF_LDD)
 
 	if err != nil {
-		Logger.Fatalf("parse deb shell template failed! ", err)
+		log.Logger.Fatalf("parse deb shell template failed! ", err)
 		return false, nil
 	}
 
-	elfLDDShell := ElfLDDShellTemplate{"", make([]string, 0), output, ConfigInfo.Verbose}
+	elfLDDShell := ElfLDDShellTemplate{"", make([]string, 0), output, comm.ConfigInfo.Verbose}
 
 	for elfStr := range ts.ElfLDDPath {
 		elfLDDShell.ELFNameString += elfStr
@@ -306,16 +307,16 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 	}
 
 	// create save file
-	Logger.Debug("create save file: ", save)
+	log.Logger.Debug("create save file: ", save)
 	saveFd, ret := os.Create(save)
 	if ret != nil {
-		Logger.Fatalf("save to %s failed!", save)
+		log.Logger.Fatalf("save to %s failed!", save)
 		return false, nil
 	}
 	defer saveFd.Close()
 
 	// render template
-	// Logger.Debug("render template: ", elfLDDShell)
+	// log.Logger.Debug("render template: ", elfLDDShell)
 	tpl.Execute(saveFd, elfLDDShell)
 
 	return true, nil
@@ -330,8 +331,8 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 func GetDlopenDepends(path string) ([]string, error) {
 	// strings /bin/bash | grep  "\.so"
 	cmd := fmt.Sprintf("strings %s | egrep '^\\S+\\.so[.0-9]*$'", path)
-	if msg, ret, err := ExecAndWait(10, "bash", "-c", cmd); err != nil {
-		LoggerVerbose("check elf entry failed: %v", err, msg, ret)
+	if msg, ret, err := comm.ExecAndWait(10, "bash", "-c", cmd); err != nil {
+		comm.LoggerVerbose("check elf entry failed: %v", err, msg, ret)
 		return nil, err
 	} else {
 		return strings.Split(msg, "\n"), nil
@@ -339,7 +340,7 @@ func GetDlopenDepends(path string) ([]string, error) {
 	// return nil, fmt.Errorf("not found")
 }
 func GetElfNeedWithLDD(elfSearchDir string) (string, error) {
-	Logger.Debug("get elf need with ldd: ", elfSearchDir)
+	log.Logger.Debug("get elf need with ldd: ", elfSearchDir)
 	return "", nil
 }
 
@@ -347,86 +348,86 @@ func GetFindElfMissDepends(elfSearchDir string) (bool, error, []string) {
 
 	// find . -type f  -exec file {} \; | grep  ELF | awk -F: '{print $1}' | xargs -I{} ldd {} | grep -i "not found"
 
-	Logger.Debug("get find elf miss depends: ", elfSearchDir)
-	elf_binary_path, err := GetElfWithPath(elfSearchDir)
+	log.Logger.Debug("get find elf miss depends: ", elfSearchDir)
+	elf_binary_path, err := elf.GetElfWithPath(elfSearchDir)
 	if err != nil {
-		Logger.Debugf("get elf with path failed! %s", err)
+		log.Logger.Debugf("get elf with path failed! %s", err)
 	}
-	Logger.Debug("elf binary path: ", elf_binary_path)
+	log.Logger.Debug("elf binary path: ", elf_binary_path)
 	// fixme:(heysion) fix get elf binary path with depend list
 	return false, nil, nil
 
 }
 
 func GetElfNeedWithStrace(elf string) (string, error) {
-	Logger.Debug("get elf need with strace: ", elf)
+	log.Logger.Debug("get elf need with strace: ", elf)
 	return "", nil
 }
 
 func ChrootExecShell(chrootDirPath, shell string, bindMounts []string) (bool, string, error) {
-	Logger.Debugf("chroot exec shell: %s shell: %s", chrootDirPath, shell)
+	log.Logger.Debugf("chroot exec shell: %s shell: %s", chrootDirPath, shell)
 
 	// fixme:(heysion) mount /mnt/workdir/debdir/ to chroot /mnt/workdir/debdir
 	if len(bindMounts) > 0 {
 		for _, srcPath := range bindMounts {
 			dstPath := chrootDirPath + srcPath
-			CreateDir(dstPath)
-			Logger.Debug("bind mount: ", srcPath, dstPath)
+			fs.CreateDir(dstPath)
+			log.Logger.Debug("bind mount: ", srcPath, dstPath)
 			// bind mount src to dst
-			if _, msg, err := ExecAndWait(10, "mount", "-B", srcPath, dstPath); err != nil {
-				Logger.Fatalf("mount %s to %s failed! ", srcPath, dstPath, err, msg)
+			if _, msg, err := comm.ExecAndWait(10, "mount", "-B", srcPath, dstPath); err != nil {
+				log.Logger.Fatalf("mount %s to %s failed! ", srcPath, dstPath, err, msg)
 			}
 			// defer func() { RemovePath(dstPath) }()
-			defer func() { Logger.Debugf("Umount %s", dstPath) }()
-			defer func() { UmountPath(dstPath) }()
-			defer func() { Logger.Debugf("umount %s", dstPath) }()
+			defer func() { log.Logger.Debugf("Umount %s", dstPath) }()
+			defer func() { comm.UmountPath(dstPath) }()
+			defer func() { log.Logger.Debugf("umount %s", dstPath) }()
 		}
 
 	}
 
 	// mount shell to chroot
-	shellSrcPath := GetFilePPath(shell)
+	shellSrcPath := fs.GetFilePPath(shell)
 	shellDstPath := chrootDirPath + shellSrcPath
 	shellChrootPath := chrootDirPath + shell
 
-	Logger.Debugf("shell src path: %s to %s", shellSrcPath, shellDstPath)
-	if ret, err := CheckFileExits(shellDstPath); err != nil && !ret {
-		CreateDir(shellDstPath)
+	log.Logger.Debugf("shell src path: %s to %s", shellSrcPath, shellDstPath)
+	if ret, err := fs.CheckFileExits(shellDstPath); err != nil && !ret {
+		fs.CreateDir(shellDstPath)
 	}
 
-	if _, msg, err := ExecAndWait(10, "mount", "-B", shellSrcPath, shellDstPath); err != nil {
-		Logger.Fatalf("mount %s to %s failed! ", shell, shellDstPath, err, msg)
+	if _, msg, err := comm.ExecAndWait(10, "mount", "-B", shellSrcPath, shellDstPath); err != nil {
+		log.Logger.Fatalf("mount %s to %s failed! ", shell, shellDstPath, err, msg)
 		return false, msg, err
 	}
 
-	// CreateDir(shellDstPath)
+	// fs.CreateDir(shellDstPath)
 	// defer func() { RemovePath(shellDstPath) }()
-	defer func() { Logger.Debugf("remove %s", shellDstPath) }()
+	defer func() { log.Logger.Debugf("remove %s", shellDstPath) }()
 
-	defer func() { UmountPath(shellDstPath) }()
-	defer func() { Logger.Debugf("umount %s", shellDstPath) }()
+	defer func() { comm.UmountPath(shellDstPath) }()
+	defer func() { log.Logger.Debugf("umount %s", shellDstPath) }()
 
 	// chmod +x shell
-	if _, msg, err := ExecAndWait(10, "chmod", "+x", "-R", shellChrootPath); err != nil {
-		Logger.Fatalf("chmod +x %s failed! ", shellChrootPath, err, msg)
+	if _, msg, err := comm.ExecAndWait(10, "chmod", "+x", "-R", shellChrootPath); err != nil {
+		log.Logger.Fatalf("chmod +x %s failed! ", shellChrootPath, err, msg)
 		return false, msg, err
 	}
 
 	// chroot shell
-	Logger.Debugf("chroot shell: path: %s shell:%s", chrootDirPath, shell)
-	if ret, msg, err := ExecAndWait(4096, "chroot", chrootDirPath, shell); err != nil {
-		Logger.Fatalf("chroot exec shell failed! ", err, msg, ret)
+	log.Logger.Debugf("chroot shell: path: %s shell:%s", chrootDirPath, shell)
+	if ret, msg, err := comm.ExecAndWait(4096, "chroot", chrootDirPath, shell); err != nil {
+		log.Logger.Fatalf("chroot exec shell failed! ", err, msg, ret)
 		return false, msg + ret, err
 	} else {
-		Logger.Info("chroot %s end.", shell)
+		log.Logger.Info("chroot %s end.", shell)
 		return true, ret, nil
 	}
 }
 
 func ChrootExecShellBare(chroot string, shell string) (bool, string, error) {
 	// chmod +x shell
-	if _, msg, err := ExecAndWait(10, "chmod", "+x", "-R", shell); err != nil {
-		Logger.Fatalf("chmod +x %s failed! ", shell, err, msg)
+	if _, msg, err := comm.ExecAndWait(10, "chmod", "+x", "-R", shell); err != nil {
+		log.Logger.Fatalf("chmod +x %s failed! ", shell, err, msg)
 		return false, msg, err
 	}
 
@@ -434,12 +435,12 @@ func ChrootExecShellBare(chroot string, shell string) (bool, string, error) {
 	if strings.HasPrefix(shell, chroot) {
 		shell = strings.Replace(shell, chroot, "", 1)
 	}
-	Logger.Debugf("chroot shell: path: %s shell:%s", chroot, shell)
-	if ret, msg, err := ExecAndWait(4096, "chroot", chroot, shell); err != nil {
-		Logger.Fatalf("chroot exec shell failed! ", err, msg, ret)
+	log.Logger.Debugf("chroot shell: path: %s shell:%s", chroot, shell)
+	if ret, msg, err := comm.ExecAndWait(4096, "chroot", chroot, shell); err != nil {
+		log.Logger.Fatalf("chroot exec shell failed! ", err, msg, ret)
 		return false, msg, err
 	} else {
-		Logger.Debugf("chroot exec shell msg:", ret, msg)
+		log.Logger.Debugf("chroot exec shell msg:", ret, msg)
 	}
 	return true, "", nil
 }
@@ -487,22 +488,22 @@ apt_update
 {{if len .PostCommand }}post_command{{end}}
 `
 
-func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
+func RenderDebConfig(DebConf comm.DebConfig, save string) (bool, error) {
 
 	// init template
-	// Logger.Debug("render deb config: ", DebConf)
+	// log.Logger.Debug("render deb config: ", DebConf)
 	tpl, err := template.New("pica").Parse(DEB_SHELL_TMPL)
 
 	if err != nil {
-		Logger.Fatalf("parse deb shell template failed! ", err)
+		log.Logger.Fatalf("parse deb shell template failed! ", err)
 		return false, nil
 	}
 
-	debShell := DebShellTemplate{"", "", "", "", ConfigInfo.Verbose}
+	debShell := DebShellTemplate{"", "", "", "", comm.ConfigInfo.Verbose}
 
 	for _, debStr := range DebConf.FileElement.Deb {
 
-		// Logger.Debugf("deb str: %s path :%s", debStr, debStr.Path)
+		// log.Logger.Debugf("deb str: %s path :%s", debStr, debStr.Path)
 		debShell.DebString += debStr.Path
 		debShell.DebString += " "
 	}
@@ -513,7 +514,7 @@ func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 		debShell.ExtraPackageStr = ""
 	}
 
-	Logger.Debugf("chroot info command: %+v", DebConf.ChrootInfo)
+	log.Logger.Debugf("chroot info command: %+v", DebConf.ChrootInfo)
 	// PreCommand
 	if len(DebConf.ChrootInfo.PreCmd) > 0 {
 
@@ -528,16 +529,16 @@ func RenderDebConfig(DebConf DebConfig, save string) (bool, error) {
 	}
 
 	// create save file
-	Logger.Debug("create save file: ", save)
+	log.Logger.Debug("create save file: ", save)
 	saveFd, ret := os.Create(save)
 	if ret != nil {
-		Logger.Fatalf("save to %s failed!", save)
+		log.Logger.Fatalf("save to %s failed!", save)
 		return false, nil
 	}
 	defer saveFd.Close()
 
 	// render template
-	Logger.Debug("render template: ", debShell)
+	log.Logger.Debug("render template: ", debShell)
 	tpl.Execute(saveFd, debShell)
 
 	return true, nil

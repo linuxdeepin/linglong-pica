@@ -9,12 +9,13 @@ package elf
 import (
 	"bytes"
 	"fmt"
-	. "ll-pica/core/comm"
-	. "ll-pica/utils/fs"
-	. "ll-pica/utils/log"
 	"os"
 	"path"
 	"path/filepath"
+
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/core/comm"
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/fs"
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/log"
 )
 
 var ELF_MAGIC = []byte{0x7f, 0x45, 0x4c, 0x46}
@@ -44,8 +45,8 @@ func IsElfWithPath(elfPath string) bool {
 // IsElfEntry check with entry is libc_start_main
 func IsElfEntry(elfPath string) bool {
 	cmd := fmt.Sprintf("nm -D %s | grep -q 'libc_start_main' ", elfPath)
-	if ret, msg, err := ExecAndWait(10, "bash", "-c", cmd); err != nil {
-		Logger.Debugf("check elf entry failed: %v", err, msg, ret)
+	if ret, msg, err := comm.ExecAndWait(10, "bash", "-c", cmd); err != nil {
+		log.Logger.Debugf("check elf entry failed: %v", err, msg, ret)
 		return false
 	} else {
 		return true
@@ -70,7 +71,7 @@ func GetElfWithPath(dir string) ([]string, error) {
 		real_path = real_path + "/"
 	}
 
-	Logger.Debugf("GetElfWithPath:", real_path)
+	log.Logger.Debugf("GetElfWithPath:", real_path)
 
 	err := filepath.Walk(real_path, func(path string, info os.FileInfo, err error) error {
 
@@ -98,12 +99,12 @@ func GetElfWithEntry(filename string) ([]string, error) {
 	} else {
 		real_path = filepath.Join(os.Getenv("PWD"), filename)
 	}
-	if ret, err := CheckFileExits(real_path); err != nil && !ret {
-		Logger.Warnf("get elf path failed: %v", err)
+	if ret, err := fs.CheckFileExits(real_path); err != nil && !ret {
+		log.Logger.Warnf("get elf path failed: %v", err)
 		return nil, err
 	}
 
-	Logger.Debugf("GetElfWithEntry:", real_path)
+	log.Logger.Debugf("GetElfWithEntry:", real_path)
 
 	if IsElfEntry(real_path) {
 		elf_paths = append(elf_paths, real_path)

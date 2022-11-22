@@ -15,14 +15,15 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	. "ll-pica/utils/fs"
-	. "ll-pica/utils/log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"text/template"
 	"time"
+
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/fs"
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/log"
 )
 
 // app config with runtime
@@ -74,11 +75,11 @@ type Config struct {
 
 func (config *Config) Export() (bool, error) {
 	// 检查新建export目录
-	if ret, err := CheckFileExits(config.ExportDir); !ret && err != nil {
-		CreateDir(config.ExportDir)
+	if ret, err := fs.CheckFileExits(config.ExportDir); !ret && err != nil {
+		fs.CreateDir(config.ExportDir)
 	} else {
 		os.RemoveAll(config.ExportDir)
-		CreateDir(config.ExportDir)
+		fs.CreateDir(config.ExportDir)
 	}
 
 	// 定义需要拷贝的usr目录列表并处理
@@ -101,8 +102,8 @@ func (config *Config) Export() (bool, error) {
 	for key, value := range usrDirMap {
 		keyPath := ConfigInfo.Initdir + "/" + key
 		valuePath := ConfigInfo.ExportDir + "/" + value
-		if ret, err := CheckFileExits(keyPath); ret && err == nil {
-			CreateDir(valuePath)
+		if ret, err := fs.CheckFileExits(keyPath); ret && err == nil {
+			fs.CreateDir(valuePath)
 			rsyncDir(30, keyPath+"/", valuePath)
 		}
 	}
@@ -111,8 +112,8 @@ func (config *Config) Export() (bool, error) {
 	for key, value := range usrDirMap {
 		keyPath := ConfigInfo.Basedir + "/" + key
 		valuePath := ConfigInfo.ExportDir + "/" + value
-		if ret, err := CheckFileExits(keyPath); ret && err == nil {
-			CreateDir(valuePath)
+		if ret, err := fs.CheckFileExits(keyPath); ret && err == nil {
+			fs.CreateDir(valuePath)
 			rsyncDir(30, keyPath+"/", valuePath)
 		}
 	}
@@ -123,10 +124,10 @@ func (config *Config) Export() (bool, error) {
 	}
 	for _, dir := range removeFileList {
 		dirPath := ConfigInfo.ExportDir + "/" + dir
-		if ret, err := CheckFileExits(dirPath); ret && err == nil {
-			ret, err = RemovePath(dirPath)
+		if ret, err := fs.CheckFileExits(dirPath); ret && err == nil {
+			ret, err = fs.RemovePath(dirPath)
 			if !ret && err != nil {
-				Logger.Errorf("remove %s err! \n", dirPath)
+				log.Logger.Errorf("remove %s err! \n", dirPath)
 				return false, errors.New("remove path err!")
 			}
 		}
@@ -144,9 +145,9 @@ func (config *Config) Export() (bool, error) {
 	}
 	for _, dir := range specialDirList {
 		srcPath := ConfigInfo.ExportDir + "/" + dir + "/"
-		if ret, err := CheckFileExits(srcPath); ret && err == nil {
-			dstPath := ConfigInfo.ExportDir + "/entries/" + GetFileName(srcPath)
-			CreateDir(dstPath)
+		if ret, err := fs.CheckFileExits(srcPath); ret && err == nil {
+			dstPath := ConfigInfo.ExportDir + "/entries/" + fs.GetFileName(srcPath)
+			fs.CreateDir(dstPath)
 			rsyncDir(30, srcPath, dstPath)
 			os.RemoveAll(srcPath)
 		}
@@ -154,14 +155,14 @@ func (config *Config) Export() (bool, error) {
 
 	// 拷贝处理/opt目录
 	srcOptPath := ConfigInfo.Basedir + "/opt/apps/" + DebConf.Info.Appid
-	Logger.Debugf("srcOptPath %s", srcOptPath)
-	if ret, err := CheckFileExits(srcOptPath); ret && err == nil {
+	log.Logger.Debugf("srcOptPath %s", srcOptPath)
+	if ret, err := fs.CheckFileExits(srcOptPath); ret && err == nil {
 		rsyncDir(30, srcOptPath+"/", ConfigInfo.ExportDir)
 	}
 
 	// 处理icons目录下多余的icon-theme.cache文件
 	iconsPath := ConfigInfo.ExportDir + "/entries/icons"
-	if ret, err := CheckFileExits(iconsPath); ret && err == nil {
+	if ret, err := fs.CheckFileExits(iconsPath); ret && err == nil {
 		// 遍历icons下的icon-theme.cache
 		filepath.Walk(iconsPath, func(path string, f os.FileInfo, err error) error {
 			if f == nil {
@@ -181,19 +182,19 @@ func (config *Config) Export() (bool, error) {
 }
 
 func (config *Config) fixDesktop(desktopFile, appid string) (bool, error) {
-	newFileDesktop := GetFilePPath(desktopFile) + "/bak-linglong.desktop"
+	newFileDesktop := fs.GetFilePPath(desktopFile) + "/bak-linglong.desktop"
 	newFileDesktop = filepath.Clean(newFileDesktop)
 
 	file, err := os.Open(desktopFile)
 	if err != nil {
-		Logger.Errorw("desktopFile open failed! : ", desktopFile)
+		log.Logger.Errorw("desktopFile open failed! : ", desktopFile)
 		return false, err
 	}
 	defer file.Close()
 
 	newFile, newFileErr := os.OpenFile(newFileDesktop, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if newFileErr != nil {
-		Logger.Errorw("desktopFile open failed! : ", newFileDesktop)
+		log.Logger.Errorw("desktopFile open failed! : ", newFileDesktop)
 		return false, newFileErr
 	}
 	defer newFile.Close()
@@ -203,10 +204,10 @@ func (config *Config) fixDesktop(desktopFile, appid string) (bool, error) {
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
-				Logger.Debug("desktopFile read ok! : ", desktopFile)
+				log.Logger.Debug("desktopFile read ok! : ", desktopFile)
 				break
 			} else {
-				Logger.Errorw("read desktopFile failed! : ", desktopFile)
+				log.Logger.Errorw("read desktopFile failed! : ", desktopFile)
 				return false, err
 			}
 		}
@@ -216,7 +217,7 @@ func (config *Config) fixDesktop(desktopFile, appid string) (bool, error) {
 		if strings.HasPrefix(line, "Exec=") {
 			valueList := strings.Split(line, "=")
 			newLine := strings.TrimRight(valueList[1], "\r\n")
-			newLine = TransExecToLl(newLine, appid)
+			newLine = fs.TransExecToLl(newLine, appid)
 			byteLine := []byte("Exec=" + newLine + "\n")
 			newFile.Write(byteLine)
 			// 处理TryExec
@@ -227,7 +228,7 @@ func (config *Config) fixDesktop(desktopFile, appid string) (bool, error) {
 		} else if strings.HasPrefix(line, "Icon=") {
 			valueList := strings.Split(line, "=")
 			newLine := strings.TrimRight(valueList[1], "\r\n")
-			newLine = TransIconToLl(newLine)
+			newLine = fs.TransIconToLl(newLine)
 			byteLine := []byte("Icon=" + newLine + "\n")
 			newFile.Write(byteLine)
 		} else {
@@ -238,8 +239,8 @@ func (config *Config) fixDesktop(desktopFile, appid string) (bool, error) {
 	}
 	newFile.Sync()
 
-	if ret, err := MoveFileOrDir(newFileDesktop, desktopFile); !ret && err != nil {
-		Logger.Errorw("move test.desktop failed!")
+	if ret, err := fs.MoveFileOrDir(newFileDesktop, desktopFile); !ret && err != nil {
+		log.Logger.Errorw("move test.desktop failed!")
 		return false, err
 	}
 
@@ -249,8 +250,8 @@ func (config *Config) fixDesktop(desktopFile, appid string) (bool, error) {
 func (config *Config) FixDesktop(appid string) (bool, error) {
 	applicationsPath := config.ExportDir + "/entries/applications"
 	applicationsPath = filepath.Clean(applicationsPath)
-	if ret, err := CheckFileExits(applicationsPath); !ret && err != nil {
-		Logger.Errorw("applications dir not exists! : ", applicationsPath)
+	if ret, err := fs.CheckFileExits(applicationsPath); !ret && err != nil {
+		log.Logger.Errorw("applications dir not exists! : ", applicationsPath)
 		return false, err
 	}
 
@@ -261,19 +262,19 @@ func (config *Config) FixDesktop(appid string) (bool, error) {
 	}
 	for _, file := range dropfiles {
 		dropfile := applicationsPath + "/" + file
-		if ret, err := CheckFileExits(dropfile); ret && err == nil {
+		if ret, err := fs.CheckFileExits(dropfile); ret && err == nil {
 			os.RemoveAll(dropfile)
 		}
 	}
 	// 遍历desktop目录
 	fileList, err := ioutil.ReadDir(applicationsPath)
 	if err != nil {
-		Logger.Errorw("readDir failed! : ", applicationsPath)
+		log.Logger.Errorw("readDir failed! : ", applicationsPath)
 		return false, err
 
 	}
 	for _, fileinfo := range fileList {
-		Logger.Debug("read dir : ", applicationsPath)
+		log.Logger.Debug("read dir : ", applicationsPath)
 		desktopPath := applicationsPath + "/" + fileinfo.Name()
 		if ret := strings.HasSuffix(desktopPath, ".desktop"); ret {
 			// 处理desktop
@@ -289,7 +290,7 @@ func (config *Config) FixDesktop(appid string) (bool, error) {
 // 当使用了-w 参数 ，没用 -f 参数时
 func (config *Config) FixCachePath() (bool, error) {
 	// 检查workdir是否存在
-	if ret, err := CheckFileExits(config.Workdir); !ret || err != nil {
+	if ret, err := fs.CheckFileExits(config.Workdir); !ret || err != nil {
 		return false, err
 	}
 	retWork := strings.HasPrefix(config.Workdir, "/mnt/workdir")
@@ -314,7 +315,7 @@ type Mounts struct {
 
 func (ts Mounts) DoMountALL() []error {
 
-	Logger.Debug("mount list: ", len(ts.Mounts))
+	log.Logger.Debug("mount list: ", len(ts.Mounts))
 	var errs []error
 	if len(ts.Mounts) == 0 {
 		return errs
@@ -325,13 +326,13 @@ func (ts Mounts) DoMountALL() []error {
 
 	for _, item := range ts.Mounts {
 
-		Logger.Debugf("mount: ", item.MountPoint, item.Source, item.Type, item.TypeLive, item.IsRbind)
+		log.Logger.Debugf("mount: ", item.MountPoint, item.Source, item.Type, item.TypeLive, item.IsRbind)
 		if IsRbind := item.IsRbind; IsRbind {
 
 			// sudo mount --rbind /tmp/ /mnt/workdir/rootfs/tmp/
 			_, msg, err = ExecAndWait(10, "mount", "--rbind", item.Source, item.MountPoint)
 			if err != nil {
-				Logger.Warnf("mount bind failed: ", msg, err)
+				log.Logger.Warnf("mount bind failed: ", msg, err)
 				errs = append(errs, err)
 				// continue
 			}
@@ -339,13 +340,13 @@ func (ts Mounts) DoMountALL() []error {
 		} else if item.TypeLive != "" {
 			_, msg, err = ExecAndWait(10, "mount", item.TypeLive, "-t", item.Type, item.MountPoint)
 			if err != nil {
-				Logger.Warnf("mount failed: ", msg, err)
+				log.Logger.Warnf("mount failed: ", msg, err)
 				errs = append(errs, err)
 			}
 		} else {
 			_, msg, err = ExecAndWait(10, "mount", "-t", item.Type, item.Source, item.MountPoint)
 			if err != nil {
-				Logger.Warnf("mount failed: ", msg, err)
+				log.Logger.Warnf("mount failed: ", msg, err)
 				errs = append(errs, err)
 			}
 		}
@@ -355,17 +356,17 @@ func (ts Mounts) DoMountALL() []error {
 }
 
 func (ts Mounts) DoUmountALL() []error {
-	Logger.Debug("mount list: ", len(ts.Mounts))
+	log.Logger.Debug("mount list: ", len(ts.Mounts))
 	var errs []error
 	if len(ts.Mounts) == 0 {
 		return errs
 	}
 
 	for _, item := range ts.Mounts {
-		Logger.Debugf("umount: ", item.MountPoint)
+		log.Logger.Debugf("umount: ", item.MountPoint)
 		_, msg, err := ExecAndWait(10, "umount", item.MountPoint)
 		if err != nil {
-			Logger.Warnf("umount failed: ", msg, err)
+			log.Logger.Warnf("umount failed: ", msg, err)
 			errs = append(errs, err)
 		} else {
 			delete(ts.Mounts, item.MountPoint)
@@ -377,7 +378,7 @@ func (ts Mounts) DoUmountALL() []error {
 
 func (ts Mounts) DoUmountAOnce() []error {
 	return nil
-	Logger.Debug("mount list: ", len(ts.Mounts))
+	log.Logger.Debugf("mount list: %v", len(ts.Mounts))
 	var errs []error
 	if len(ts.Mounts) == 0 {
 		return nil
@@ -392,11 +393,11 @@ UMOUNT_ONCE:
 			goto UMOUNT_ONCE
 		}
 	} else {
-		Logger.Warnf("umount success: ", msg, err)
+		log.Logger.Warnf("umount success: ", msg, err)
 		errs = append(errs, nil)
 	}
 	for _, item := range ts.Mounts {
-		Logger.Debugf("umount: ", item.MountPoint)
+		log.Logger.Debugf("umount: ", item.MountPoint)
 		delete(ts.Mounts, item.MountPoint)
 
 	}
@@ -405,19 +406,19 @@ UMOUNT_ONCE:
 
 func (ts *Mounts) FillMountRules() {
 
-	Logger.Debug("mount list: ", len(ts.Mounts))
+	log.Logger.Debug("mount list: ", len(ts.Mounts))
 	ts.Mounts[ConfigInfo.Rootfsdir+"/dev/pts"] = MountItem{ConfigInfo.Rootfsdir + "/dev/pts", "", "devpts", "devpts-live", false}
 	ts.Mounts[ConfigInfo.Rootfsdir+"/sys"] = MountItem{ConfigInfo.Rootfsdir + "/sys", "", "sysfs", "sysfs-live", false}
 	ts.Mounts[ConfigInfo.Rootfsdir+"/proc"] = MountItem{ConfigInfo.Rootfsdir + "/proc", "", "proc", "proc-live", false}
 	ts.Mounts[ConfigInfo.Rootfsdir+"/tmp/"] = MountItem{ConfigInfo.Rootfsdir + "/tmp", "/tmp", "", "", true}
 	ts.Mounts[ConfigInfo.Rootfsdir+"/etc/resolv.conf"] = MountItem{ConfigInfo.Rootfsdir + "/etc/resolv.conf", "/etc/resolv.conf", "", "", true}
 
-	Logger.Debug("mount list: ", len(ts.Mounts))
+	log.Logger.Debug("mount list: ", len(ts.Mounts))
 }
 
 // exec and wait for command
 func ExecAndWait(timeout int, name string, arg ...string) (stdout, stderr string, err error) {
-	Logger.Debugf("cmd: %s %+v\n", name, arg)
+	log.Logger.Debugf("cmd: %s %+v\n", name, arg)
 	cmd := exec.Command(name, arg...)
 	var bufStdout, bufStderr bytes.Buffer
 	cmd.Stdout = &bufStdout
@@ -509,7 +510,7 @@ func (ts *DebInfo) CheckDebHash() bool {
 	}
 	hash, err := GetFileSha256(ts.Path)
 	if err != nil {
-		Logger.Warn(err)
+		log.Logger.Warn(err)
 		return false
 	}
 	if hash == ts.Hash {
@@ -522,47 +523,47 @@ func (ts *DebInfo) CheckDebHash() bool {
 // FetchDebFile
 func (ts *DebInfo) FetchDebFile(dstPath string) bool {
 
-	Logger.Debugf("FetchDebFile %s,ts:%v type:%s", dstPath, ts, ts.Type)
+	log.Logger.Debugf("FetchDebFile %s,ts:%v type:%s", dstPath, ts, ts.Type)
 
 	if ts.Type == "repo" {
 
-		CreateDir(GetFilePPath(dstPath))
+		fs.CreateDir(fs.GetFilePPath(dstPath))
 
 		if ret, msg, err := ExecAndWait(1<<20, "wget", "-O", dstPath, ts.Ref); err != nil {
 
-			Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
+			log.Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
 			return false
 		} else {
-			Logger.Debugf("ret: %+v", ret)
+			log.Logger.Debugf("ret: %+v", ret)
 		}
 
-		if ret, err := CheckFileExits(dstPath); ret {
+		if ret, err := fs.CheckFileExits(dstPath); ret {
 			ts.Path = dstPath
 			return true
 		} else {
-			Logger.Warnf("downalod %s , err:%+v", dstPath, err)
+			log.Logger.Warnf("downalod %s , err:%+v", dstPath, err)
 			return false
 		}
 	} else if ts.Type == "localfs" {
 
-		if ret, err := CheckFileExits(ts.Ref); !ret {
-			Logger.Warnf("not exist ! %s , err:%+v", ts.Ref, err)
+		if ret, err := fs.CheckFileExits(ts.Ref); !ret {
+			log.Logger.Warnf("not exist ! %s , err:%+v", ts.Ref, err)
 			return false
 		}
 
-		CreateDir(GetFilePPath(dstPath))
+		fs.CreateDir(fs.GetFilePPath(dstPath))
 		if ret, msg, err := ExecAndWait(1<<8, "cp", "-v", ts.Ref, dstPath); err != nil {
-			Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
+			log.Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
 			return false
 		} else {
-			Logger.Debugf("ret: %+v", ret)
+			log.Logger.Debugf("ret: %+v", ret)
 		}
 
-		if ret, err := CheckFileExits(dstPath); ret {
+		if ret, err := fs.CheckFileExits(dstPath); ret {
 			ts.Path = dstPath
 			return true
 		} else {
-			Logger.Warnf("downalod %s , err:%+v", dstPath, err)
+			log.Logger.Warnf("downalod %s , err:%+v", dstPath, err)
 			return false
 		}
 	}
@@ -590,7 +591,7 @@ func (ts *BaseInfo) CheckIsoHash() bool {
 	}
 	hash, err := GetFileSha256(ts.Path)
 	if err != nil {
-		Logger.Warn(err)
+		log.Logger.Warn(err)
 		return false
 	}
 	if hash == ts.Hash {
@@ -604,21 +605,21 @@ func (ts *BaseInfo) FetchIsoFile(workdir, isopath string) bool {
 	//转化绝对路径
 	isoAbsPath, _ := filepath.Abs(isopath)
 	//如果下载目录不存在就创建目录
-	CreateDir(GetFilePPath(isoAbsPath))
+	fs.CreateDir(fs.GetFilePPath(isoAbsPath))
 	if ts.Type == "iso" {
 		ts.Path = isoAbsPath
 
 		if ret, msg, err := ExecAndWait(1<<20, "wget", "-O", ts.Path, ts.Ref); err != nil {
-			Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
+			log.Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
 			return false
 		} else {
-			Logger.Debugf("ret: %+v", ret)
+			log.Logger.Debugf("ret: %+v", ret)
 		}
 
-		if ret, err := CheckFileExits(ts.Path); ret {
+		if ret, err := fs.CheckFileExits(ts.Path); ret {
 			return true
 		} else {
-			Logger.Warnf("downalod %s , err:%+v", ts.Path, err)
+			log.Logger.Warnf("downalod %s , err:%+v", ts.Path, err)
 			return false
 		}
 	}
@@ -627,11 +628,11 @@ func (ts *BaseInfo) FetchIsoFile(workdir, isopath string) bool {
 
 func (ts *BaseInfo) CheckoutOstree(target string) bool {
 	// ConfigInfo.RuntimeBasedir = fmt.Sprintf("%s/runtimedir", ConfigInfo.Workdir)
-	Logger.Debug("ostree checkout %s to %s", ts.Path, target)
+	log.Logger.Debug("ostree checkout %s to %s", ts.Path, target)
 	_, msg, err := ExecAndWait(10, "ostree", "checkout", "--repo", ts.Path, ts.Ref, target)
 
 	if err != nil {
-		Logger.Errorf("msg: %v ,err: %+v", msg, err)
+		log.Logger.Errorf("msg: %v ,err: %+v", msg, err)
 		return false
 	}
 	return true
@@ -639,25 +640,25 @@ func (ts *BaseInfo) CheckoutOstree(target string) bool {
 
 func (ts *BaseInfo) InitOstree(ostreePath string) bool {
 	if ts.Type == "ostree" {
-		Logger.Debug("ostree init")
+		log.Logger.Debug("ostree init")
 		ts.Path = ostreePath
 		_, msg, err := ExecAndWait(10, "ostree", "init", "--mode=bare-user-only", "--repo", ts.Path)
 		if err != nil {
-			Logger.Errorf("msg: %v ,err: %+v", msg, err)
+			log.Logger.Errorf("msg: %v ,err: %+v", msg, err)
 			return false
 		}
-		Logger.Debug("ostree remote add", ts.Remote)
+		log.Logger.Debug("ostree remote add", ts.Remote)
 
 		_, msg, err = ExecAndWait(10, "ostree", "remote", "add", "runtime", ts.Remote, "--repo", ts.Path, "--no-gpg-verify")
 		if err != nil {
-			Logger.Errorf("msg: %+v err:%+v", msg, err)
+			log.Logger.Errorf("msg: %+v err:%+v", msg, err)
 			return false
 		}
 
-		Logger.Debug("ostree pull")
+		log.Logger.Debug("ostree pull")
 		_, msg, err = ExecAndWait(300, "ostree", "pull", "runtime", "--repo", ts.Path, "--mirror", ts.Ref)
 		if err != nil {
-			Logger.Errorf("msg: %+v err:%+v", msg, err)
+			log.Logger.Errorf("msg: %+v err:%+v", msg, err)
 			return false
 		}
 
@@ -673,19 +674,19 @@ type ExtraInfo struct {
 }
 
 func (ts *ExtraInfo) WriteRootfsRepo(config Config) bool {
-	if ret, err := CheckFileExits(config.Rootfsdir + "/etc/apt/sources.list"); !ret && err != nil {
-		Logger.Warnf("rootfs sources.list not exists ! ,err : %+v", err)
+	if ret, err := fs.CheckFileExits(config.Rootfsdir + "/etc/apt/sources.list"); !ret && err != nil {
+		log.Logger.Warnf("rootfs sources.list not exists ! ,err : %+v", err)
 		return false
 	}
 	file, err := os.OpenFile(config.Rootfsdir+"/etc/apt/sources.list", os.O_RDWR|os.O_APPEND|os.O_TRUNC, 0644)
 	if err != nil {
-		Logger.Warnf("open sources.list failed! err: %+v", err)
+		log.Logger.Warnf("open sources.list failed! err: %+v", err)
 		return false
 	}
 	defer file.Close()
 	for _, value := range ts.Repo {
 		if _, err := file.WriteString(value + "\n"); err != nil {
-			Logger.Warnf("write sources.list failed! err : %+v", err)
+			log.Logger.Warnf("write sources.list failed! err : %+v", err)
 			return false
 		}
 	}
@@ -713,61 +714,61 @@ func (ts *ExtraInfo) RenderExtraShell(save string) (bool, error) {
 	tpl, err := template.New("init").Parse(EXTRA_COMMAND_TMPL)
 
 	if err != nil {
-		Logger.Fatalf("parse deb shell template failed! ", err)
+		log.Logger.Fatalf("parse deb shell template failed! ", err)
 		return false, nil
 	}
 
 	extraShell := ExtraShellTemplate{"", ConfigInfo.Verbose}
 
 	// PostCommand
-	Logger.Debugf("cmd: %s", ts.Cmd)
+	log.Logger.Debugf("cmd: %s", ts.Cmd)
 	if len(ts.Cmd) > 0 {
 		extraShell.ExtraCommand = ts.Cmd
 	}
 
 	// create save file
-	Logger.Debug("extra shell save file: ", save)
+	log.Logger.Debug("extra shell save file: ", save)
 	saveFd, ret := os.Create(save)
 	if ret != nil {
-		Logger.Warnf("save to %s failed!", save)
+		log.Logger.Warnf("save to %s failed!", save)
 		return false, ret
 	}
 	defer saveFd.Close()
 
 	// render template
-	Logger.Debug("render template: ", extraShell)
+	log.Logger.Debug("render template: ", extraShell)
 	tpl.Execute(saveFd, extraShell)
 
 	return true, nil
 }
 
 func GetFileSha256(filename string) (string, error) {
-	Logger.Debug("GetFileSha256 :", filename)
+	log.Logger.Debug("GetFileSha256 :", filename)
 	hasher := sha256.New()
 	s, err := ioutil.ReadFile(filename)
 	if err != nil {
-		Logger.Warn(err)
+		log.Logger.Warn(err)
 		return "", err
 	}
 	_, err = hasher.Write(s)
 	if err != nil {
-		Logger.Warn(err)
+		log.Logger.Warn(err)
 		return "", err
 	}
 
 	sha256Sum := hex.EncodeToString(hasher.Sum(nil))
-	Logger.Debug("file hash: ", sha256Sum)
+	log.Logger.Debug("file hash: ", sha256Sum)
 
 	return sha256Sum, nil
 }
 
 func UmountPath(path string) bool {
-	Logger.Debugf("umount path: %s", path)
+	log.Logger.Debugf("umount path: %s", path)
 	if ret, msg, err := ExecAndWait(10, "umount", path); err != nil {
-		Logger.Debugf("umount path failed: %s %v \nout:%s", msg, err, ret)
+		log.Logger.Debugf("umount path failed: %s %v \nout:%s", msg, err, ret)
 		return false
 	} else {
-		Logger.Debugf("umount path %s \nout:%s", msg, ret)
+		log.Logger.Debugf("umount path %s \nout:%s", msg, ret)
 		return true
 	}
 }
@@ -814,11 +815,11 @@ func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 			"--password",
 			conf.AppPasswords}...)
 		// ll-builder config
-		Logger.Infof("ll-builder %v", AppConfigCommand)
+		log.Logger.Infof("ll-builder %v", AppConfigCommand)
 		if ret, msg, err := ExecAndWait(1<<12, "ll-builder", AppConfigCommand...); err == nil {
-			Logger.Debugf("output: %v", ret)
+			log.Logger.Debugf("output: %v", ret)
 		} else {
-			Logger.Errorf("Exec stdout ret: %v,stderr msg %v", ret, msg)
+			log.Logger.Errorf("Exec stdout ret: %v,stderr msg %v", ret, msg)
 			return false, err
 		}
 		break
@@ -830,28 +831,28 @@ func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 
 	AppCommand = append(AppCommand, string("--no-devel"))
 
-	Logger.Debugf("command args: %v", AppCommand)
+	log.Logger.Debugf("command args: %v", AppCommand)
 
 	// ll-builder import
-	Logger.Infof("ll-builder import")
+	log.Logger.Infof("ll-builder import")
 	if ret, msg, err := ExecAndWait(1<<12, "ll-builder", "import"); err == nil {
-		Logger.Debugf("output: %v", ret)
+		log.Logger.Debugf("output: %v", ret)
 	} else {
-		Logger.Errorf("Exec stdout ret: %v,stderr msg %v", ret, msg)
+		log.Logger.Errorf("Exec stdout ret: %v,stderr msg %v", ret, msg)
 		return false, err
 	}
 
 	// ll-builder push
 	// ll-builder wait max timeout 3600 seconds wtf
-	Logger.Infof("ll-builder %v", AppCommand)
+	log.Logger.Infof("ll-builder %v", AppCommand)
 	if ret, msg, err := ExecAndWait(1<<12, "ll-builder", AppCommand...); err == nil {
 		// if ConfigInfo.Verbose {
 		// 	Logger.Infof("output: %v", ret)
 		// }
-		Logger.Debugf("output: %v", ret)
+		log.Logger.Debugf("output: %v", ret)
 		return true, nil
 	} else {
-		Logger.Errorf("Exec stdout ret: %v,stderr msg %v", ret, msg)
+		log.Logger.Errorf("Exec stdout ret: %v,stderr msg %v", ret, msg)
 		return false, err
 	}
 
@@ -860,6 +861,6 @@ func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 // logger verbose
 func LoggerVerbose(k string, s ...interface{}) {
 	if ConfigInfo.Verbose || ConfigInfo.DebugMode {
-		Logger.Infof(k, s)
+		log.Logger.Infof(k, s)
 	}
 }

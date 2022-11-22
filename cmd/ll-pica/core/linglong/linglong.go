@@ -9,11 +9,12 @@ package linglong
 import (
 	"encoding/json"
 	"io/ioutil"
-	. "ll-pica/core/comm"
-	. "ll-pica/utils/fs"
-	. "ll-pica/utils/log"
 	"os"
 	"text/template"
+
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/core/comm"
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/fs"
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/log"
 )
 
 type LinglongBuder struct {
@@ -38,19 +39,19 @@ type RuntimeJson struct {
 // LoadRuntimeInfo
 func (ts *LinglongBuder) LoadRuntimeInfo(path string) bool {
 	// load runtime info from file
-	if ret, err := CheckFileExits(path); err != nil && !ret {
-		Logger.Warnf("load runtime info failed: %v", err)
+	if ret, err := fs.CheckFileExits(path); err != nil && !ret {
+		log.Logger.Warnf("load runtime info failed: %v", err)
 		return false
 	}
 	var runtimedir RuntimeJson
 	runtimedirFd, err := ioutil.ReadFile(path)
 	if err != nil {
-		Logger.Errorf("get %s error: %v", path, err)
+		log.Logger.Errorf("get %s error: %v", path, err)
 		return false
 	}
 	err = json.Unmarshal(runtimedirFd, &runtimedir)
 	if err != nil {
-		Logger.Errorf("error: %v", err)
+		log.Logger.Errorf("error: %v", err)
 		return false
 	}
 	// copy to LinglongBuder
@@ -88,21 +89,21 @@ func (ts *LinglongBuder) CreateLinglongYamlBuilder(path string) bool {
 	tpl, err := template.New("linglong").Parse(LinglongBuilderTMPL)
 
 	if err != nil {
-		Logger.Fatalf("parse deb shell template failed! ", err)
+		log.Logger.Fatalf("parse deb shell template failed! ", err)
 		return false
 	}
 
 	// create save file
-	Logger.Debug("create save file: ", path)
+	log.Logger.Debug("create save file: ", path)
 	saveFd, ret := os.Create(path)
 	if ret != nil {
-		Logger.Fatalf("save to %s failed!", path)
+		log.Logger.Fatalf("save to %s failed!", path)
 		return false
 	}
 	defer saveFd.Close()
 
 	// render template
-	Logger.Debug("render template: ", ts)
+	log.Logger.Debug("render template: ", ts)
 	tpl.Execute(saveFd, ts)
 
 	return true
@@ -112,62 +113,62 @@ func (ts *LinglongBuder) CreateLinglongYamlBuilder(path string) bool {
 // CreateLinglongBuilder
 func (ts *LinglongBuder) CreateLinglongBuilder(path string) bool {
 
-	Logger.Debugf("create save file: ", path)
+	log.Logger.Debugf("create save file: ", path)
 
 	// check workstation
-	if ret, err := CheckFileExits(path); err != nil && !ret {
-		Logger.Errorf("workstation witch convert not found: %s", path)
+	if ret, err := fs.CheckFileExits(path); err != nil && !ret {
+		log.Logger.Errorf("workstation witch convert not found: %s", path)
 		return false
 	} else {
 		err := os.Chdir(path)
 		if err != nil {
-			Logger.Errorf("workstation can not enter directory: %s", path)
+			log.Logger.Errorf("workstation can not enter directory: %s", path)
 			return false
 		}
 	}
 
 	// caller ll-builder build
-	if ret, msg, err := ExecAndWait(10, "ll-builder", "build"); err != nil {
-		Logger.Fatalf("ll-builder failed: ", err, msg, ret)
+	if ret, msg, err := comm.ExecAndWait(10, "ll-builder", "build"); err != nil {
+		log.Logger.Fatalf("ll-builder failed: ", err, msg, ret)
 		return false
 	} else {
-		Logger.Infof("ll-builder succeeded: ", path, ret)
+		log.Logger.Infof("ll-builder succeeded: ", path, ret)
 		return true
 	}
 }
 
 func (ts *LinglongBuder) LinglongExport(path string) bool {
-	Logger.Debugf("ll-builder import : ", ts.Appid)
-	appExportPath := GetFilePPath(path)
-	appExportPath = GetFilePPath(appExportPath)
+	log.Logger.Debugf("ll-builder import : ", ts.Appid)
+	appExportPath := fs.GetFilePPath(path)
+	appExportPath = fs.GetFilePPath(appExportPath)
 	// check workstation
-	if ret, err := CheckFileExits(path); err != nil && !ret {
-		Logger.Errorf("workstation witch convert not found: %s", path)
+	if ret, err := fs.CheckFileExits(path); err != nil && !ret {
+		log.Logger.Errorf("workstation witch convert not found: %s", path)
 		return false
 	} else {
 		err := os.Chdir(appExportPath)
 		if err != nil {
-			Logger.Errorf("workstation can not enter directory: %s", appExportPath)
+			log.Logger.Errorf("workstation can not enter directory: %s", appExportPath)
 			return false
 		}
 	}
 	// caller ll-builder export --local
-	if ret, msg, err := ExecAndWait(120, "ll-builder", "export", "--local"); err != nil {
-		Logger.Fatalf("ll-builder export failed: ", err, msg, ret)
+	if ret, msg, err := comm.ExecAndWait(120, "ll-builder", "export", "--local"); err != nil {
+		log.Logger.Fatalf("ll-builder export failed: ", err, msg, ret)
 		return false
 	} else {
-		Logger.Infof("ll-builder export succeeded: ", path, ret)
+		log.Logger.Infof("ll-builder export succeeded: ", path, ret)
 	}
 
 	// chmod 755 uab
-	if bundleList, err := FindBundlePath(appExportPath); err != nil {
-		Logger.Errorf("not found bundle")
+	if bundleList, err := fs.FindBundlePath(appExportPath); err != nil {
+		log.Logger.Errorf("not found bundle")
 		return false
 	} else {
 		for _, bundle := range bundleList {
-			Logger.Infof("chmod 0755 for %s", bundle)
+			log.Logger.Infof("chmod 0755 for %s", bundle)
 			if err := os.Chmod(bundle, 0755); err != nil {
-				Logger.Errorf("chmod 0755 for %s failed！", bundle)
+				log.Logger.Errorf("chmod 0755 for %s failed！", bundle)
 				return false
 			}
 		}

@@ -8,11 +8,12 @@ package comm
 
 import (
 	"io/ioutil"
-	. "ll-pica/utils/fs"
 	"log"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/fs"
 )
 
 // ExecAndWait
@@ -51,7 +52,7 @@ func TestWriteRootfsRepo(t *testing.T) {
 	if ret := extraInfo.WriteRootfsRepo(configTest); ret {
 		t.Errorf("failed test for WriteRootfsRepo!")
 	}
-	if ret, err := CreateDir("/tmp/ll-rootfs/etc/apt"); !ret && err != nil {
+	if ret, err := fs.CreateDir("/tmp/ll-rootfs/etc/apt"); !ret && err != nil {
 		t.Errorf("failed test for WriteRootfsRepo! Error: failed to create dir")
 	}
 	if file, err := os.OpenFile(rootfsPath+"/etc/apt/sources.list", os.O_RDWR|os.O_APPEND|os.O_TRUNC|os.O_CREATE, 0644); err != nil {
@@ -75,7 +76,7 @@ func TestWriteRootfsRepo(t *testing.T) {
 		t.Errorf("failed test for WriteRootfsRepo! Error: read data not right!")
 	}
 
-	if ret, err := RemovePath(rootfsPath); err != nil || !ret {
+	if ret, err := fs.RemovePath(rootfsPath); err != nil || !ret {
 		t.Errorf("failed test for WriteRootfsRepo! Error: failed to remove rootfs")
 	}
 
@@ -102,10 +103,10 @@ func TestFixCachePath(t *testing.T) {
 		t.Errorf("Failed test for TestFixCache! Error : %+v", err)
 	}
 	// 新建目录
-	if ret, err := CreateDir(config.Workdir); !ret || err != nil {
+	if ret, err := fs.CreateDir(config.Workdir); !ret || err != nil {
 		t.Errorf("Failed test for TestFixCache! Error : failed to create dir %+v", config.Workdir)
 	}
-	defer RemovePath(config.Workdir)
+	defer fs.RemovePath(config.Workdir)
 	if ret, err := config.FixCachePath(); !ret || err != nil {
 		t.Errorf("Failed test for TestFixCache! Error :  %+v", err)
 	}
@@ -148,10 +149,10 @@ func TestFixCachePath(t *testing.T) {
 		t.Errorf("Failed test for TestFixCache! Error : %+v", err)
 	}
 	// 新建目录
-	if ret, err := CreateDir(config.Workdir); !ret || err != nil {
+	if ret, err := fs.CreateDir(config.Workdir); !ret || err != nil {
 		t.Errorf("Failed test for TestFixCache! Error : failed to create dir %+v", config.Workdir)
 	}
-	defer RemovePath(config.Workdir)
+	defer fs.RemovePath(config.Workdir)
 	if ret, err := config.FixCachePath(); !ret || err != nil {
 		t.Errorf("Failed test for TestFixCache! Error :  %+v", err)
 	}

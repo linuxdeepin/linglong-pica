@@ -8,8 +8,9 @@ package core
 
 import (
 	"fmt"
-	. "ll-pica/utils/fs"
 	"testing"
+
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/fs"
 )
 
 var binReactor = new(BinFormatReactor)
@@ -37,7 +38,7 @@ func TestRenderElfWithLDD(t *testing.T) {
 	elfLDDShell := "/mnt/workdir/elfldd.sh"
 
 	binReactor.RenderElfWithLDD(elfLDDLog, elfLDDShell)
-	if ret, err := CheckFileExits(elfLDDShell); err != nil && !ret {
+	if ret, err := fs.CheckFileExits(elfLDDShell); err != nil && !ret {
 		t.Errorf("%s %s", elfLDDLog, elfLDDShell)
 		return
 	}

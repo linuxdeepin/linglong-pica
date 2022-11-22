@@ -12,13 +12,14 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	. "ll-pica/utils/log"
 	"os"
 	"os/user"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
+
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/log"
 )
 
 // var Logger *zap.SugaredLogger
@@ -45,7 +46,7 @@ func IsDir(file string) bool {
  * @return 是否存在
  */
 func CheckFileExits(file string) (bool, error) {
-	Logger.Debugf("check file exists: ", file)
+	log.Logger.Debugf("check file exists: ", file)
 	_, err := os.Stat(file)
 	if err == nil {
 		return true, nil
@@ -63,12 +64,12 @@ func CheckFileExits(file string) (bool, error) {
  */
 func CreateDir(file string) (bool, error) {
 
-	Logger.Debug("create file: ", file)
+	log.Logger.Debug("create file: ", file)
 	if err := os.MkdirAll(file, 0755); err == nil {
-		Logger.Debug("create file: ", file, " mask: 0755")
+		log.Logger.Debug("create file: ", file, " mask: 0755")
 		return true, nil
 	} else {
-		Logger.Error("create file error: ", err)
+		log.Logger.Error("create file error: ", err)
 		return false, err
 	}
 
@@ -81,13 +82,13 @@ func CreateDir(file string) (bool, error) {
  */
 func RemovePath(file string) (bool, error) {
 
-	Logger.Debugf("remove path: %s", file)
+	log.Logger.Debugf("remove path: %s", file)
 	if ret, err := CheckFileExits(file); err == nil && ret {
 		if err := os.RemoveAll(file); err == nil {
-			Logger.Debugf("remove path: %s", file)
+			log.Logger.Debugf("remove path: %s", file)
 			return true, nil
 		} else {
-			Logger.Debugf("remove path error: ", err)
+			log.Logger.Debugf("remove path error: ", err)
 			return false, err
 		}
 	}
@@ -124,7 +125,7 @@ func GetFilePPath(file string) string {
  */
 func MoveFileOrDir(src, dst string) (bool, error) {
 	if ret, err := CheckFileExits(src); err != nil && !ret {
-		Logger.Warnw(src, " no existd!")
+		log.Logger.Warnw(src, " no existd!")
 		return false, err
 	}
 	dstDirPath := GetFilePPath(dst)
@@ -180,12 +181,12 @@ func CopyFile(src, dst string) (bool, error) {
 func CopyDir(src, dst string) bool {
 	//检查源目录是否存在
 	if ret, err := CheckFileExits(src); err != nil && !ret {
-		Logger.Warnw(src, " no existd!")
+		log.Logger.Warnw(src, " no existd!")
 		return false
 	}
 
 	if strings.TrimSpace(src) == strings.TrimSpace(dst) {
-		Logger.Warnw("源路径与目标路径一样")
+		log.Logger.Warnw("源路径与目标路径一样")
 		return false
 	}
 
@@ -292,7 +293,7 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 		return err
 	}
 	if !si.IsDir() {
-		Logger.Warnf("source only support directory")
+		log.Logger.Warnf("source only support directory")
 		return fmt.Errorf("source is not a directory")
 	}
 
@@ -302,7 +303,7 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 	}
 	if err == nil && !os.IsNotExist(err) {
 		if !force {
-			Logger.Warnf("destination already exists failed")
+			log.Logger.Warnf("destination already exists failed")
 			return fmt.Errorf("destination already exists")
 		} else {
 			if err := os.RemoveAll(dst); err != nil {
@@ -342,12 +343,12 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 				}
 				realPath, err := filepath.Abs(srcPath)
 				if err != nil {
-					Logger.Warnf("link failed to read link data: %v %s %s", err, realPath, srcPath)
+					log.Logger.Warnf("link failed to read link data: %v %s %s", err, realPath, srcPath)
 					return err
 				}
 				if realPathFileInfo, err := os.Stat(realPath); err != nil {
 					// broken link
-					Logger.Warnf("link failed to stat link data: %v %s %s", err, realPath, srcPath)
+					log.Logger.Warnf("link failed to stat link data: %v %s %s", err, realPath, srcPath)
 					continue
 				} else {
 					if realPathFileInfo.IsDir() {
@@ -357,7 +358,7 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 					} else {
 						// copy data drop the mod and owner
 						if err = CopyFileKeepPermission(srcPath, dstPath, false, false); err != nil {
-							Logger.Warnf("link %s to %s failed: %v", srcPath, dstPath, err)
+							log.Logger.Warnf("link %s to %s failed: %v", srcPath, dstPath, err)
 							return err
 						}
 					}
@@ -390,7 +391,7 @@ func FindBundlePath(flie string) ([]string, error) {
 			return nil
 		})
 		if err != nil {
-			Logger.Debugf("get bundle file failed: %v", err)
+			log.Logger.Debugf("get bundle file failed: %v", err)
 			return nil, err
 		}
 		if len(bundleList) > 0 {
@@ -418,12 +419,12 @@ const (
 
 func DesktopInit(desktopFilePath string) (bool, DesktopData) {
 	if ret, err := CheckFileExits(desktopFilePath); !ret && err != nil {
-		Logger.Errorw("desktop file not exists：", desktopFilePath)
+		log.Logger.Errorw("desktop file not exists：", desktopFilePath)
 		return false, nil
 	}
 	file, err := os.Open(desktopFilePath)
 	if err != nil {
-		Logger.Errorw("open file failed: ", desktopFilePath)
+		log.Logger.Errorw("open file failed: ", desktopFilePath)
 		return false, nil
 	}
 	defer file.Close()
@@ -466,10 +467,10 @@ func DesktopInit(desktopFilePath string) (bool, DesktopData) {
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
-				Logger.Debug("File read ok! : ", desktopFilePath)
+				log.Logger.Debug("File read ok! : ", desktopFilePath)
 				break
 			} else {
-				Logger.Errorw("Read file error! : ", desktopFilePath)
+				log.Logger.Errorw("Read file error! : ", desktopFilePath)
 				return false, nil
 			}
 		}
@@ -502,7 +503,7 @@ func DesktopInit(desktopFilePath string) (bool, DesktopData) {
 func DesktopGroupname(desktopFile string) []string {
 	ok, data := DesktopInit(desktopFile)
 	if !ok && data == nil {
-		Logger.Errorw("Init dekstop failed! : ", desktopFile)
+		log.Logger.Errorw("Init dekstop failed! : ", desktopFile)
 		return nil
 	}
 	groupNmaeList := []string{}
@@ -575,7 +576,7 @@ func TransIconToLl(iconValue string) string {
 func GetHomePath() string {
 	u, err := user.Current()
 	if err != nil {
-		Logger.Fatal(err)
+		log.Logger.Fatal(err)
 		return ""
 	}
 	return u.HomeDir

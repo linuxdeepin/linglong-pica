@@ -11,14 +11,15 @@ package rfs
 
 import (
 	"fmt"
-	. "ll-pica/core/comm"
-	. "ll-pica/utils/log"
+
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/core/comm"
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/log"
 )
 
-// var Logger *zap.SugaredLogger
+// var log.Logger *zap.SugaredLogger
 
 // func init() {
-// 	Logger = InitLog()
+// 	log.Logger = InitLog()
 // }
 
 /*!
@@ -27,9 +28,9 @@ import (
  * @return 是否成功
  */
 func MountIso(path, iso string) (bool, error) {
-	_, msg, err := ExecAndWait(10, "mount", "-o", "loop", iso, path)
+	_, msg, err := comm.ExecAndWait(10, "mount", "-o", "loop", iso, path)
 	if err != nil {
-		Logger.Warnf("mount iso failed!", msg, err)
+		log.Logger.Warnf("mount iso failed!", msg, err)
 		return false, err
 	}
 	return true, nil
@@ -41,9 +42,9 @@ func MountIso(path, iso string) (bool, error) {
  * @return 是否成功
  */
 func UmountIso(path string) (bool, error) {
-	Logger.Debug("umount iso: ", path)
-	if _, msg, err := ExecAndWait(10, "umount", path); err != nil {
-		Logger.Error("umount iso failed!", msg, err)
+	log.Logger.Debug("umount iso: ", path)
+	if _, msg, err := comm.ExecAndWait(10, "umount", path); err != nil {
+		log.Logger.Error("umount iso failed!", msg, err)
 		return false, err
 	}
 
@@ -57,13 +58,13 @@ func UmountIso(path string) (bool, error) {
  */
 func MountSquashfs(path, squashfs string) (bool, error) {
 
-	Logger.Debugf("mount squashfs %s to %s ", squashfs, path)
-	_, msg, err := ExecAndWait(10, "mount", squashfs, path)
+	log.Logger.Debugf("mount squashfs %s to %s ", squashfs, path)
+	_, msg, err := comm.ExecAndWait(10, "mount", squashfs, path)
 	if err != nil {
-		Logger.Error("mount squashfs failed!", msg, err)
+		log.Logger.Error("mount squashfs failed!", msg, err)
 		return false, err
 	}
-	Logger.Debug("mount squashfs success.")
+	log.Logger.Debug("mount squashfs success.")
 	return true, nil
 }
 
@@ -73,9 +74,9 @@ func MountSquashfs(path, squashfs string) (bool, error) {
  * @return 是否成功
  */
 func UmountSquashfs(path string) (bool, error) {
-	Logger.Debug("umount squashfs: ", path)
-	if _, msg, err := ExecAndWait(10, "umount", path); err != nil {
-		Logger.Error("umount squashfs failed!", msg, err)
+	log.Logger.Debug("umount squashfs: ", path)
+	if _, msg, err := comm.ExecAndWait(10, "umount", path); err != nil {
+		log.Logger.Error("umount squashfs failed!", msg, err)
 		return false, err
 	}
 
@@ -95,23 +96,23 @@ func MountRfsWithOverlayfs(lowerRuntimeDir, lowerFilesSystem, lowerInitDir, uppe
  */
 func MountRfs(fstype, lowerTop, lowerMid, lowerBottom, upper, workdir, rootfs string) (bool, error) {
 
-	Logger.Debugf("mount rfs: ", fstype, lowerTop, lowerMid, lowerBottom, upper, workdir, rootfs)
+	log.Logger.Debugf("mount rfs: ", fstype, lowerTop, lowerMid, lowerBottom, upper, workdir, rootfs)
 
 	switch {
 	case fstype == "overlay":
-		Logger.Debug("SetOverlayfs :", lowerTop, lowerMid, lowerBottom, upper, rootfs)
+		log.Logger.Debug("SetOverlayfs :", lowerTop, lowerMid, lowerBottom, upper, rootfs)
 		// mount lower dir to upper dir
 		msg := fmt.Sprintf("lowerdir=%s:%s:%s,upperdir=%s,workdir=%s", lowerTop, lowerMid, lowerBottom, upper, workdir)
-		Logger.Debug("mount overlayfs flags: ", msg)
-		if _, msg, err := ExecAndWait(10, "mount", "-t", "overlay", "overlay", "-o", msg, rootfs); err != nil {
-			Logger.Error("mount overlayfs failed: ", msg, err)
+		log.Logger.Debug("mount overlayfs flags: ", msg)
+		if _, msg, err := comm.ExecAndWait(10, "mount", "-t", "overlay", "overlay", "-o", msg, rootfs); err != nil {
+			log.Logger.Error("mount overlayfs failed: ", msg, err)
 			return false, err
 		}
-		Logger.Debug("mount overlayfs success: ", rootfs)
+		log.Logger.Debug("mount overlayfs success: ", rootfs)
 		return true, nil
 	case fstype == "mount":
-		Logger.Debug("SetMountfs :", lowerTop, upper, workdir)
-		Logger.Fatal("not support mountfs")
+		log.Logger.Debug("SetMountfs :", lowerTop, upper, workdir)
+		log.Logger.Fatal("not support mountfs")
 	}
 	return false, nil
 }
@@ -122,15 +123,15 @@ func MountRfs(fstype, lowerTop, lowerMid, lowerBottom, upper, workdir, rootfs st
  * @return 是否成功
  */
 func UmountRfs(workdir string) (bool, error) {
-	Logger.Debug("umountRfs :", workdir)
+	log.Logger.Debug("umountRfs :", workdir)
 	// umount upper dir
 
-	if ret, msg, err := ExecAndWait(10, "umount", workdir); err != nil {
-		Logger.Warnf("umount rootfs failed: ", workdir, msg, err, ret)
-		if ret, msg, err := ExecAndWait(10, "umount", "-R", workdir); err == nil {
+	if ret, msg, err := comm.ExecAndWait(10, "umount", workdir); err != nil {
+		log.Logger.Warnf("umount rootfs failed: ", workdir, msg, err, ret)
+		if ret, msg, err := comm.ExecAndWait(10, "umount", "-R", workdir); err == nil {
 			return true, nil
 		} else {
-			Logger.Warnf("umount -R rootfs failed: ", workdir, msg, err, ret)
+			log.Logger.Warnf("umount -R rootfs failed: ", workdir, msg, err, ret)
 		}
 		return false, err
 	}

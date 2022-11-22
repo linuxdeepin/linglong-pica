@@ -10,16 +10,17 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	. "ll-pica/core/comm"
-	. "ll-pica/core/linglong"
-	. "ll-pica/utils/fs"
-	. "ll-pica/utils/log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/core/comm"
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/core/linglong"
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/fs"
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/log"
 )
 
 type InfoApp struct {
@@ -48,9 +49,9 @@ type InfoPermissions struct {
 	InstalledApps bool `json:"installed_apps"`
 }
 
-func CreateInfo(info Config, debInfo *DebConfig, lb LinglongBuder) (bool, error) {
-	if ret, err := CheckFileExits(info.ExportDir); !ret && err != nil {
-		Logger.Errorw("info.json dir not exists! : ", info.ExportDir)
+func CreateInfo(info comm.Config, debInfo *comm.DebConfig, lb linglong.LinglongBuder) (bool, error) {
+	if ret, err := fs.CheckFileExits(info.ExportDir); !ret && err != nil {
+		log.Logger.Errorw("info.json dir not exists! : ", info.ExportDir)
 		return false, err
 	}
 	infoFilePath := filepath.Clean(info.ExportDir) + "/info.json"
@@ -75,11 +76,11 @@ func CreateInfo(info Config, debInfo *DebConfig, lb LinglongBuder) (bool, error)
 		// Description: Calculator for UOS
 		// /var/lib/dpkg/status
 		dpkgStatus := info.Basedir + "/var/lib/dpkg/status"
-		if ret, err := CheckFileExits(dpkgStatus); err != nil && !ret {
-			Logger.Warnf("can not found dpkg info %s , %v", dpkgStatus, err)
+		if ret, err := fs.CheckFileExits(dpkgStatus); err != nil && !ret {
+			log.Logger.Warnf("can not found dpkg info %s , %v", dpkgStatus, err)
 		}
 		if dpkgStatusFile, err := os.Open(dpkgStatus); err != nil {
-			Logger.Warnf("open status failed:", err)
+			log.Logger.Warnf("open status failed:", err)
 
 		} else {
 			defer dpkgStatusFile.Close()
@@ -168,7 +169,7 @@ func CreateInfo(info Config, debInfo *DebConfig, lb LinglongBuder) (bool, error)
 
 	data, err := json.MarshalIndent(infoApp, "", "\t")
 	if err != nil {
-		Logger.Errorw("序列化错误： ", infoFilePath)
+		log.Logger.Errorw("序列化错误： ", infoFilePath)
 		return false, err
 	}
 
@@ -176,7 +177,7 @@ func CreateInfo(info Config, debInfo *DebConfig, lb LinglongBuder) (bool, error)
 	file, err := os.Create(infoFilePath)
 
 	if err != nil {
-		Logger.Errorw("create file error: ", infoFilePath)
+		log.Logger.Errorw("create file error: ", infoFilePath)
 		return false, err
 	}
 	defer file.Close()

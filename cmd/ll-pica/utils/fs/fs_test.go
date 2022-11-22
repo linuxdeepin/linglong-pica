@@ -9,10 +9,11 @@ package fs
 import (
 	"fmt"
 	"io/ioutil"
-	. "ll-pica/utils/log"
 	"os"
 	"sort"
 	"testing"
+
+	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/log"
 )
 
 // test IsDir
@@ -310,7 +311,7 @@ func TestCopyFileKeepPermission(t *testing.T) {
 			}
 		}
 	} else {
-		Logger.Infof("skip test case: %v", t)
+		log.Logger.Infof("skip test case: %v", t)
 	}
 }
 
@@ -356,7 +357,7 @@ func TestCopyDirKeepPathAndPerm2(t *testing.T) {
 			t.Error("failed:", err, dst)
 		}
 	} else {
-		Logger.Infof("skip test case: %v", t)
+		log.Logger.Infof("skip test case: %v", t)
 	}
 
 }
