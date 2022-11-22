@@ -302,7 +302,7 @@ func TestCopyFileKeepPermission(t *testing.T) {
 	dst := "/tmp/aaaaaxxx"
 
 	prefix := "/mnt/workdir/rootfs"
-	if ret, _ := CheckFileExits(prefix); ret {
+	if ret, err := CheckFileExits(prefix); err == nil && ret {
 		for _, tds := range testDataCopyFileKeepPermission {
 			fmt.Println(tds)
 			if err := CopyFileKeepPermission(prefix+tds.in, dst, true, false); err != nil && tds.ret {
@@ -345,7 +345,7 @@ func TestCopyDirKeepPathAndPerm2(t *testing.T) {
 	// t.Parallel()
 	dst := "/tmp/aaaaaxxx"
 	prefix := "/mnt/workdir/rootfs"
-	if ret, _ := CheckFileExits(prefix); ret {
+	if ret, err := CheckFileExits(prefix); err == nil && ret {
 		for _, tds := range testDataCopyDirKeepPathAndPerm {
 			fmt.Println(tds)
 			if err := CopyDirKeepPathAndPerm(prefix+tds.in, dst, true, false, false); err != nil && tds.ret {

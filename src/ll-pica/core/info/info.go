@@ -75,7 +75,7 @@ func CreateInfo(info Config, debInfo *DebConfig, lb LinglongBuder) (bool, error)
 		// Description: Calculator for UOS
 		// /var/lib/dpkg/status
 		dpkgStatus := info.Basedir + "/var/lib/dpkg/status"
-		if ret, err := CheckFileExits(dpkgStatus); !ret {
+		if ret, err := CheckFileExits(dpkgStatus); err != nil && !ret {
 			Logger.Warnf("can not found dpkg info %s , %v", dpkgStatus, err)
 		}
 		if dpkgStatusFile, err := os.Open(dpkgStatus); err != nil {

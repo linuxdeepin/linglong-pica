@@ -98,7 +98,7 @@ func GetElfWithEntry(filename string) ([]string, error) {
 	} else {
 		real_path = filepath.Join(os.Getenv("PWD"), filename)
 	}
-	if ret, err := CheckFileExits(real_path); !ret {
+	if ret, err := CheckFileExits(real_path); err != nil && !ret {
 		Logger.Warnf("get elf path failed: %v", err)
 		return nil, err
 	}

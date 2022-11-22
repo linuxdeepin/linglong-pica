@@ -187,7 +187,11 @@ var initCmd = &cobra.Command{
 					Logger.Debugf("iso download %s", ConfigInfo.IsIsoDownload)
 
 					ConfigInfo.IsoPath = ConfigInfo.Workdir + "/iso/base.iso"
-					if ret, _ := CheckFileExits(ConfigInfo.IsoPath); ret {
+					ret, err := CheckFileExits(ConfigInfo.IsoPath)
+					if err != nil {
+						Logger.Debugf("%v not exists, err: %v", ConfigInfo.IsoPath, err)
+					}
+					if ret {
 						SdkConf.SdkInfo.Base[idx].Path = ConfigInfo.IsoPath
 						if ret := SdkConf.SdkInfo.Base[idx].CheckIsoHash(); !ret {
 							ConfigInfo.IsIsoChecked = false
@@ -229,7 +233,8 @@ var initCmd = &cobra.Command{
 		Logger.Debug("set initdir: ", ConfigInfo.Initdir)
 
 		// 不读取缓存文件时，需清理initdir
-		if ret, err := CheckFileExits(ConfigInfo.Initdir); ret && err == nil && !ConfigInfo.IsInited {
+		ret, err := CheckFileExits(ConfigInfo.Initdir)
+		if ret && err == nil && !ConfigInfo.IsInited {
 			ret, err = RemovePath(ConfigInfo.Initdir)
 			if !ret || err != nil {
 				Logger.Errorf("failed to remove %s\n", ConfigInfo.Initdir)
@@ -252,7 +257,7 @@ var initCmd = &cobra.Command{
 
 		ConfigInfo.IsoMountDir = ConfigInfo.Workdir + "/iso/mount"
 		err := errors.New("")
-		if ret, _ := CheckFileExits(ConfigInfo.IsoMountDir); !ret {
+		if ret, err := CheckFileExits(ConfigInfo.IsoMountDir); err != nil && !ret {
 			err = os.Mkdir(ConfigInfo.IsoMountDir, 0755)
 			if os.IsNotExist(err) {
 				Logger.Error("mkdir iso mount dir failed!", err)
@@ -293,7 +298,7 @@ var initCmd = &cobra.Command{
 		}
 
 		// mount overlay to base dir
-		if ret, _ := CheckFileExits(ConfigInfo.RuntimeBasedir + "/files"); ret {
+		if ret, err := CheckFileExits(ConfigInfo.RuntimeBasedir + "/files"); err == nil && ret {
 			SetOverlayfs(baseDir, ConfigInfo.RuntimeBasedir+"/files", ConfigInfo.Initdir)
 		} else {
 			SetOverlayfs(baseDir, ConfigInfo.RuntimeBasedir, ConfigInfo.Initdir)
@@ -389,13 +394,13 @@ Convert:
 		}
 
 		Logger.Debug("load yaml config", TransInfo.Yamlconfig)
-		if ret, msg := CheckFileExits(TransInfo.Yamlconfig); !ret {
-			Logger.Fatal("can not found: ", msg)
+		if ret, err := CheckFileExits(TransInfo.Yamlconfig); err != nil && !ret {
+			Logger.Fatal("can not found: ", err)
 		} else {
 			Logger.Debugf("load: %s", TransInfo.Yamlconfig)
 			cacheFd, err := ioutil.ReadFile(TransInfo.Yamlconfig)
 			if err != nil {
-				Logger.Fatalf("read error: %s %s", err, msg)
+				Logger.Fatalf("read error: %s %s", err, err)
 				return
 			}
 			err = yaml.Unmarshal(cacheFd, &DebConf)
@@ -406,12 +411,12 @@ Convert:
 		}
 
 		Logger.Debug("load cache.yaml", TransInfo.CachePath)
-		if ret, msg := CheckFileExits(TransInfo.CachePath); ret {
+		if ret, err := CheckFileExits(TransInfo.CachePath); err == nil && ret {
 			// load cache.yaml
 			Logger.Debugf("load cache: %s", TransInfo.CachePath)
 			cacheFd, err := ioutil.ReadFile(TransInfo.CachePath)
 			if err != nil {
-				Logger.Warnf("read error: %s %s", err, msg)
+				Logger.Warnf("read error: %s %s", err, err)
 				return
 			}
 			err = yaml.Unmarshal(cacheFd, &ConfigInfo)
@@ -420,7 +425,7 @@ Convert:
 				return
 			}
 		} else {
-			Logger.Fatalf("can not found: %s", msg)
+			Logger.Fatalf("can not found: %s", err)
 			return
 		}
 
@@ -469,7 +474,7 @@ Convert:
 		Logger.Debug("Rootfsdir:", ConfigInfo.Rootfsdir, "runtimeBasedir:", ConfigInfo.RuntimeBasedir, "basedir:", ConfigInfo.Basedir, "workdir:", ConfigInfo.Workdir)
 
 		CreateDir(ConfigInfo.Workdir + "/tmpdir")
-		if ret, _ := CheckFileExits(ConfigInfo.RuntimeBasedir + "/files"); ret {
+		if ret, err := CheckFileExits(ConfigInfo.RuntimeBasedir + "/files"); err == nil && ret {
 			if ret, err := rfs.MountRfsWithOverlayfs(ConfigInfo.RuntimeBasedir+"/files", ConfigInfo.Workdir+"/iso/live", ConfigInfo.Initdir, ConfigInfo.Basedir, ConfigInfo.Workdir+"/tmpdir", ConfigInfo.Rootfsdir); !ret {
 				Logger.Warnf("mount rootfs failed!", err)
 			}
@@ -491,7 +496,7 @@ Convert:
 				// NOTE: work with go1.15 but feature not sure .
 				debFilePath := ConfigInfo.DebWorkdir + "/" + filepath.Base(DebConf.FileElement.Deb[idx].Ref)
 				Logger.Warnf("deb file :%s", debFilePath)
-				if ret, _ := CheckFileExits(debFilePath); ret {
+				if ret, err := CheckFileExits(debFilePath); err == nil && ret {
 					DebConf.FileElement.Deb[idx].Path = debFilePath
 					if ret := DebConf.FileElement.Deb[idx].CheckDebHash(); ret {
 						Logger.Infof("download skipped because of %s cached", debFilePath)
@@ -517,7 +522,7 @@ Convert:
 		// render DebConfig to template save to pica.sh
 		// clear pica.sh cache
 		picaShellPath := ConfigInfo.DebWorkdir + "/pica.sh"
-		if ret, _ := CheckFileExits(picaShellPath); ret {
+		if ret, err := CheckFileExits(picaShellPath); err == nil && ret {
 			RemovePath(picaShellPath)
 		}
 
@@ -582,11 +587,11 @@ Convert:
 		elfLDDShell := ConfigInfo.DebWorkdir + "/elfldd.sh"
 
 		// clear history
-		if ret, _ := CheckFileExits(elfLDDLog); ret {
+		if ret, err := CheckFileExits(elfLDDLog); err == nil && ret {
 			RemovePath(elfLDDLog)
 		}
 
-		if ret, _ := CheckFileExits(elfLDDShell); ret {
+		if ret, err := CheckFileExits(elfLDDShell); err == nil && ret {
 			RemovePath(elfLDDShell)
 		}
 
@@ -732,7 +737,7 @@ push:
 		// AppKeyFile path
 		ConfigInfo.AppKeyFile = GetHomePath() + "/.linglong/.user.json"
 		// keyfile
-		if ret, _ := CheckFileExits(ConfigInfo.AppKeyFile); !ret && ConfigInfo.AppAuthType == AppLoginWithKeyfile {
+		if ret, err := CheckFileExits(ConfigInfo.AppKeyFile); err != nil && !ret && (ConfigInfo.AppAuthType == AppLoginWithKeyfile) {
 			Logger.Errorf("not found keyfile %v, please push with user and password!", ConfigInfo.AppKeyFile)
 			ConfigInfo.AppAuthType = AppLoginFailed
 			return
@@ -742,7 +747,7 @@ push:
 	Run: func(cmd *cobra.Command, args []string) {
 		Logger.Infof("app path %v", ConfigInfo.Workdir+"/"+ConfigInfo.AppId+"/export/runtime")
 		appDataPath := ConfigInfo.Workdir + "/" + ConfigInfo.AppId + "/export/runtime"
-		if ret, _ := CheckFileExits(appDataPath); !ret {
+		if ret, err := CheckFileExits(appDataPath); err != nil && !ret {
 			Logger.Errorf("app data dir not exist : %v", appDataPath)
 			return
 		}

@@ -37,7 +37,7 @@ func TestRenderElfWithLDD(t *testing.T) {
 	elfLDDShell := "/mnt/workdir/elfldd.sh"
 
 	binReactor.RenderElfWithLDD(elfLDDLog, elfLDDShell)
-	if ret, _ := CheckFileExits(elfLDDShell); !ret {
+	if ret, err := CheckFileExits(elfLDDShell); err != nil && !ret {
 		t.Errorf("%s %s", elfLDDLog, elfLDDShell)
 		return
 	}

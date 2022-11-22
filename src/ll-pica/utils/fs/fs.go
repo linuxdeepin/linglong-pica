@@ -45,16 +45,15 @@ func IsDir(file string) bool {
  * @return 是否存在
  */
 func CheckFileExits(file string) (bool, error) {
-
 	Logger.Debugf("check file exists: ", file)
-	if _, err := os.Stat(file); os.IsNotExist(err) {
-		Logger.Warnf("file not exists and exit", err)
-		return false, err
-	} else if err == nil {
-		Logger.Debug("file exists")
+	_, err := os.Stat(file)
+	if err == nil {
 		return true, nil
 	}
-	return false, nil
+	if os.IsNotExist(err) {
+		return false, err
+	}
+	return false, err
 }
 
 /*!
@@ -83,7 +82,7 @@ func CreateDir(file string) (bool, error) {
 func RemovePath(file string) (bool, error) {
 
 	Logger.Debugf("remove path: %s", file)
-	if ret, _ := CheckFileExits(file); ret {
+	if ret, err := CheckFileExits(file); err == nil && ret {
 		if err := os.RemoveAll(file); err == nil {
 			Logger.Debugf("remove path: %s", file)
 			return true, nil
@@ -124,7 +123,7 @@ func GetFilePPath(file string) string {
  * @return 是否成功
  */
 func MoveFileOrDir(src, dst string) (bool, error) {
-	if ret, err := CheckFileExits(src); !ret {
+	if ret, err := CheckFileExits(src); err != nil && !ret {
 		Logger.Warnw(src, " no existd!")
 		return false, err
 	}
@@ -180,7 +179,7 @@ func CopyFile(src, dst string) (bool, error) {
  */
 func CopyDir(src, dst string) bool {
 	//检查源目录是否存在
-	if ret, _ := CheckFileExits(src); !ret {
+	if ret, err := CheckFileExits(src); err != nil && !ret {
 		Logger.Warnw(src, " no existd!")
 		return false
 	}
@@ -215,7 +214,7 @@ func CopyDir(src, dst string) bool {
 		if !f.IsDir() {
 			CopyFile(path, destNewPath)
 		} else {
-			if ret, _ := CheckFileExits(src); !ret {
+			if ret, err := CheckFileExits(src); err != nil && !ret {
 				CreateDir(destNewPath)
 				return nil
 			}
@@ -378,7 +377,7 @@ func CopyDirKeepPathAndPerm(src string, dst string, force, mod, owner bool) (err
 
 // FindBundlePath
 func FindBundlePath(flie string) ([]string, error) {
-	if ret, _ := CheckFileExits(flie); ret {
+	if ret, err := CheckFileExits(flie); err == nil && ret {
 
 		bundleList := []string{}
 

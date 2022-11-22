@@ -121,7 +121,7 @@ func (ts *BinFormatReactor) CopyElfNeedPath(prefix, dst string) bool {
 
 	for v := range ts.ElfNeedPath {
 		srcPath := prefix + "/" + v
-		if ret, _ := CheckFileExits(srcPath); ret {
+		if ret, err := CheckFileExits(srcPath); err != nil && ret {
 			var dstPath string
 			if strings.HasPrefix(v, "/usr/lib") {
 				dstPath = dst + strings.Replace(v, "/usr/lib", "/lib", 1)
@@ -131,7 +131,7 @@ func (ts *BinFormatReactor) CopyElfNeedPath(prefix, dst string) bool {
 
 			dstParentPath := GetFilePPath(dstPath)
 			Logger.Debugf("Copying path %s ", dstParentPath)
-			if ret, _ := CheckFileExits(dstParentPath); !ret {
+			if ret, err := CheckFileExits(dstParentPath); err != nil && !ret {
 				CreateDir(dstParentPath)
 			}
 			if err := CopyFileKeepPermission(srcPath, dstPath, true, true); err != nil {
@@ -390,7 +390,7 @@ func ChrootExecShell(chrootDirPath, shell string, bindMounts []string) (bool, st
 	shellChrootPath := chrootDirPath + shell
 
 	Logger.Debugf("shell src path: %s to %s", shellSrcPath, shellDstPath)
-	if ret, _ := CheckFileExits(shellDstPath); !ret {
+	if ret, err := CheckFileExits(shellDstPath); err != nil && !ret {
 		CreateDir(shellDstPath)
 	}
 

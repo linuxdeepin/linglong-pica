@@ -38,7 +38,7 @@ type RuntimeJson struct {
 // LoadRuntimeInfo
 func (ts *LinglongBuder) LoadRuntimeInfo(path string) bool {
 	// load runtime info from file
-	if ret, err := CheckFileExits(path); !ret {
+	if ret, err := CheckFileExits(path); err != nil && !ret {
 		Logger.Warnf("load runtime info failed: %v", err)
 		return false
 	}
@@ -115,7 +115,7 @@ func (ts *LinglongBuder) CreateLinglongBuilder(path string) bool {
 	Logger.Debugf("create save file: ", path)
 
 	// check workstation
-	if ret, _ := CheckFileExits(path); !ret {
+	if ret, err := CheckFileExits(path); err != nil && !ret {
 		Logger.Errorf("workstation witch convert not found: %s", path)
 		return false
 	} else {
@@ -141,7 +141,7 @@ func (ts *LinglongBuder) LinglongExport(path string) bool {
 	appExportPath := GetFilePPath(path)
 	appExportPath = GetFilePPath(appExportPath)
 	// check workstation
-	if ret, _ := CheckFileExits(path); !ret {
+	if ret, err := CheckFileExits(path); err != nil && !ret {
 		Logger.Errorf("workstation witch convert not found: %s", path)
 		return false
 	} else {
