@@ -164,14 +164,14 @@ func (ts *BinFormatReactor) GetElfList(exclude string) bool {
 		if len(exclude) == 0 {
 			return false
 		}
-		filterResut := Filter(elf_binary_path, func(str string) bool {
+		filterResult := Filter(elf_binary_path, func(str string) bool {
 			return !strings.HasPrefix(str, exclude)
 		})
-		if len(filterResut) > 0 && ts.ElfLDDPath == nil {
+		if len(filterResult) > 0 && ts.ElfLDDPath == nil {
 			ts.ElfLDDPath = make(map[string]uint)
 		}
 		//log.Logger.Debugf("filter resut: ", filterResut)
-		for _, v := range filterResut {
+		for _, v := range filterResult {
 			ts.ElfLDDPath[v] = 1
 		}
 

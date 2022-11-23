@@ -606,24 +606,23 @@ func (ts *BaseInfo) FetchIsoFile(workdir, isopath string) bool {
 	isoAbsPath, _ := filepath.Abs(isopath)
 	//如果下载目录不存在就创建目录
 	fs.CreateDir(fs.GetFilePPath(isoAbsPath))
-	if ts.Type == "iso" {
-		ts.Path = isoAbsPath
-
-		if ret, msg, err := ExecAndWait(1<<20, "wget", "-O", ts.Path, ts.Ref); err != nil {
-			log.Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
-			return false
-		} else {
-			log.Logger.Debugf("ret: %+v", ret)
-		}
-
-		if ret, err := fs.CheckFileExits(ts.Path); ret {
-			return true
-		} else {
-			log.Logger.Warnf("downalod %s , err:%+v", ts.Path, err)
-			return false
-		}
+	if ts.Type != "iso" {
+		return false
 	}
-	return false
+	ts.Path = isoAbsPath
+
+	if ret, msg, err := ExecAndWait(1<<20, "wget", "-O", ts.Path, ts.Ref); err != nil {
+		log.Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
+		return false
+	} else {
+		log.Logger.Debugf("ret: %+v", ret)
+	}
+
+	if ret, err := fs.CheckFileExits(ts.Path); err != nil && !ret {
+		log.Logger.Warnf("downalod %s , err:%+v", ts.Path, err)
+		return false
+	}
+	return true
 }
 
 func (ts *BaseInfo) CheckoutOstree(target string) bool {
