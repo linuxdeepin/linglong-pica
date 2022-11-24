@@ -1,3 +1,9 @@
+linglong-pica (1.0.2-deepin1) unstable; urgency=medium
+
+  * update version to 1.0.2
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Thu, 24 Nov 2022 11:01:43 +0800
+
 linglong-pica (1.0.1-deepin1) unstable; urgency=medium
 
   * fix ll-builder config --name parameter error.
