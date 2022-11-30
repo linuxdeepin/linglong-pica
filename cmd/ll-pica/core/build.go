@@ -18,12 +18,6 @@ import (
 	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/log"
 )
 
-// var log.Logger *zap.SugaredLogger
-
-// func init() {
-// 	log.Logger = InitLog()
-// }
-
 type BinFormatReactor struct {
 	SearchPath      string   // search dir
 	PathFilter      []string // filter with Search result
@@ -37,11 +31,6 @@ type BinFormatReactor struct {
 	CheckWithLdd    bool   // check with ldd
 	CheckWithLtrace bool   // check with ltrace
 }
-
-// func (ts *BinFormatReactor) New(searchPath string) BinFormatReactor {
-// 	ts.SearchPath = searchPath
-// 	return *ts
-// }
 
 func Filter(vs []string, f func(string) bool) []string {
 	retVal := make([]string, 0)

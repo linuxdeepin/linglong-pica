@@ -13,12 +13,6 @@ import (
 	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/log"
 )
 
-// var log.Logger *zap.SugaredLogger
-
-// func init() {
-// 	log.Logger = InitLog()
-// }
-
 /*!
  * @brief MountIso 将iso挂载到指定目录
  * @param path 目录路径 ，如/mnt/iso ，iso 挂载文件
