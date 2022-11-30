@@ -10,12 +10,6 @@ import (
 	"testing"
 )
 
-// var logger *zap.SugaredLogger
-
-// func init() {
-// 	logger = InitLog()
-// }
-
 func TestNormal(t *testing.T) {
 	Logger.Debugf("abc")
 	Logger.Info("abc")

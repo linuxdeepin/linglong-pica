@@ -159,7 +159,6 @@ func (ts *BinFormatReactor) GetElfList(exclude string) bool {
 		if len(filterResult) > 0 && ts.ElfLDDPath == nil {
 			ts.ElfLDDPath = make(map[string]uint)
 		}
-		//log.Logger.Debugf("filter resut: ", filterResut)
 		for _, v := range filterResult {
 			ts.ElfLDDPath[v] = 1
 		}
@@ -311,12 +310,6 @@ func (ts *BinFormatReactor) RenderElfWithLDD(output, save string) (bool, error) 
 	return true, nil
 }
 
-// func (ts *BinFormatReactor) GetElfWithLDD(exclude string) []string {
-// 	if len(ts.ElfLDDPath) > 0 {
-
-//		}
-//		return nil
-//	}
 func GetDlopenDepends(path string) ([]string, error) {
 	// strings /bin/bash | grep  "\.so"
 	cmd := fmt.Sprintf("strings %s | egrep '^\\S+\\.so[.0-9]*$'", path)
@@ -326,8 +319,9 @@ func GetDlopenDepends(path string) ([]string, error) {
 	} else {
 		return strings.Split(msg, "\n"), nil
 	}
-	// return nil, fmt.Errorf("not found")
+
 }
+
 func GetElfNeedWithLDD(elfSearchDir string) (string, error) {
 	log.Logger.Debug("get elf need with ldd: ", elfSearchDir)
 	return "", nil
@@ -336,7 +330,6 @@ func GetElfNeedWithLDD(elfSearchDir string) (string, error) {
 func GetFindElfMissDepends(elfSearchDir string) (bool, error, []string) {
 
 	// find . -type f  -exec file {} \; | grep  ELF | awk -F: '{print $1}' | xargs -I{} ldd {} | grep -i "not found"
-
 	log.Logger.Debug("get find elf miss depends: ", elfSearchDir)
 	elf_binary_path, err := elf.GetElfWithPath(elfSearchDir)
 	if err != nil {

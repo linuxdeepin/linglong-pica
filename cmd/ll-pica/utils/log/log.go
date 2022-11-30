@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
+
 package log
 
 import (
@@ -22,10 +23,6 @@ var LogLevel zap.AtomicLevel
 
 func InitLog() *zap.SugaredLogger {
 	_callOnce.Do(func() {
-		// writer, err := syslog.New(syslog.LOG_ERR|syslog.LOG_LOCAL0, "ll-pica")
-		// if err != nil {
-		// 	log.Fatalf("error creating syslog writer: %v", err)
-		// }
 		cfg := zapcore.EncoderConfig{
 			TimeKey:        "time",
 			LevelKey:       "level",

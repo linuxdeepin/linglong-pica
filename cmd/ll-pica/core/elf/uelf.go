@@ -28,14 +28,12 @@ var ELF_MAGIC = []byte{0x7f, 0x45, 0x4c, 0x46}
 func IsElfWithPath(elfPath string) bool {
 	f, err := os.Open(elfPath)
 	if err != nil {
-		//Logger.Debugf("Open:", elfPath, err)
 		return false
 	}
 	defer f.Close()
 
 	file_header_data := make([]byte, 32)
 	n, err := f.Read(file_header_data)
-	//Logger.Debugf("Read:", elfPath, n, err)
 	if err != nil || n <= 30 {
 		return false
 	}
@@ -76,7 +74,6 @@ func GetElfWithPath(dir string) ([]string, error) {
 	err := filepath.Walk(real_path, func(path string, info os.FileInfo, err error) error {
 
 		if (info != nil && !info.IsDir() && info.Mode().IsRegular()) && IsElfWithPath(path) {
-			//fmt.Println("elf: ", path)
 			elf_paths = append(elf_paths, path)
 		}
 		return nil

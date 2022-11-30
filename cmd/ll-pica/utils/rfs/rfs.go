@@ -73,6 +73,7 @@ func UmountSquashfs(path string) (bool, error) {
 
 	return true, nil
 }
+
 func MountRfsWithOverlayfs(lowerRuntimeDir, lowerFilesSystem, lowerInitDir, upper, workdir, rootfs string) (bool, error) {
 	// lowerRuntimeDir , runtimedir/files have bug for first lowdir that can not chroot .
 	// fixme:(heysion)
