@@ -116,29 +116,6 @@ func TestFixCachePath(t *testing.T) {
 		t.Errorf("Failed test for TestFixCache! Error :  fix cache path failed. ")
 	}
 
-	// 测试没用 -w -f 参数场景(需要root才能新建目录测试)
-	// config = Config{
-	// 	Workdir:   testDataFixCachePath[1].workdir,
-	// 	CachePath: testDataFixCachePath[1].cachePath,
-	// }
-	// // workdir不存在时
-	// if ret, err := config.FixCachePath(); ret || err == nil {
-	// 	t.Errorf("Failed test for TestFixCache! Error : %+v", err)
-	// }
-	// // 新建目录
-	// if ret, err := CreateDir(config.Workdir); !ret || err != nil {
-	// 	t.Errorf("Failed test for TestFixCache! Error : failed to create dir %+v", config.Workdir)
-	// }
-	// defer RemovePath(config.Workdir)
-	// if ret, err := config.FixCachePath(); !ret || err != nil {
-	// 	t.Errorf("Failed test for TestFixCache! Error :  %+v", err)
-	// }
-
-	// fixCachePath = config.Workdir + "/cache.yaml"
-	// if fixCachePath != config.CachePath {
-	// 	t.Errorf("Failed test for TestFixCache! Error :  fix cache path failed. ")
-	// }
-
 	// 测试使用 -w -f 参数场景
 	config = Config{
 		Workdir:   testDataFixCachePath[2].workdir,

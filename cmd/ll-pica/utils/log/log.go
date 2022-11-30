@@ -63,20 +63,6 @@ func LogSetLevel(l string) {
 	LogLevel.SetLevel(zap.DebugLevel)
 }
 
-// func InitLog2() *zap.SugaredLogger {
-// 	//_callOnce = sync.Once()
-// 	_callOnce.Do(func() {
-// 		logger2, _ := zap.NewDevelopment()
-// 		zap.ReplaceGlobals(logger2)
-// 		logger = zap.S()
-// 	})
-
-// 	return logger
-
-// }
-
 func init() {
-	// _logger = InitLog()
 	Logger = InitLog()
-	//_logger.Debug("log init")
 }
