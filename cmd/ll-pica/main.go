@@ -31,7 +31,7 @@ var SdkConf comm.BaseConfig
 func SetOverlayfs(lower string, upper string, workdir string) error {
 	log.Logger.Debug("SetOverlayfs :", lower, upper, workdir)
 	// mount lower dir to upper dir
-	//mount -t overlay overlay -o lowerdir=$WORK_DIR/lower,upperdir=$WORK_DIR/upper,workdir=$WORK_DIR/work $WORK_DIR/merged
+	// mount -t overlay overlay -o lowerdir=$WORK_DIR/lower,upperdir=$WORK_DIR/upper,workdir=$WORK_DIR/work $WORK_DIR/merged
 	tempDir := comm.ConfigInfo.Workdir + "/temp"
 	err := os.Mkdir(tempDir, 0755)
 	if os.IsNotExist(err) {

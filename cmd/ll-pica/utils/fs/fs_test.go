@@ -323,8 +323,6 @@ var testDataCopyDirKeepPathAndPerm = []struct {
 	{"/etc/default/grub.d", true},
 	{"/bin/bash.txt", false},
 	{"/etc/fstab", false},
-	// {"/usr/bin/", true},
-	// {"/lib/x86_64-linux-gnu/", false},
 }
 
 func TestCopyDirKeepPathAndPerm(t *testing.T) {

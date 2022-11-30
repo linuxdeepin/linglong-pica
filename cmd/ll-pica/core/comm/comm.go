@@ -27,13 +27,6 @@ import (
 )
 
 // app config with runtime
-
-// var Logger *zap.SugaredLogger
-
-// func init() {
-// 	Logger = InitLog()
-// }
-
 var ConfigInfo Config
 var TransInfo Config
 var DebConf DebConfig
@@ -845,9 +838,6 @@ func LinglongBuilderWarp(t int8, conf *Config) (bool, error) {
 	// ll-builder wait max timeout 3600 seconds wtf
 	log.Logger.Infof("ll-builder %v", AppCommand)
 	if ret, msg, err := ExecAndWait(1<<12, "ll-builder", AppCommand...); err == nil {
-		// if ConfigInfo.Verbose {
-		// 	Logger.Infof("output: %v", ret)
-		// }
 		log.Logger.Debugf("output: %v", ret)
 		return true, nil
 	} else {

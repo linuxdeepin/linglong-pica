@@ -22,12 +22,6 @@ import (
 	"pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/log"
 )
 
-// var Logger *zap.SugaredLogger
-
-// func init() {
-// 	Logger = InitLog()
-// }
-
 /*!
  * @brief 检查是否是目录
  * @param dir 目录路径
@@ -103,7 +97,6 @@ func RemovePath(file string) (bool, error) {
 func GetFileName(file string) string {
 
 	return filepath.Base(file)
-
 }
 
 /*!
@@ -114,7 +107,6 @@ func GetFileName(file string) string {
 func GetFilePPath(file string) string {
 
 	return filepath.Dir(file)
-
 }
 
 /*!
@@ -155,12 +147,11 @@ func CopyFile(src, dst string) (bool, error) {
 	dstDirPath := GetFilePPath(dst)
 	CreateDir(dstDirPath)
 
-	//获取源文件的权限
+	// 获取源文件的权限
 	fi, _ := srcFile.Stat()
 	perm := fi.Mode()
 
-	//desFile, err := os.Create(des)  //无法复制源文件的所有权限
-	dstFile, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, perm) //复制源文件的所有权限
+	dstFile, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, perm) // 复制源文件的所有权限
 	if err != nil {
 		return false, err
 	}
@@ -179,7 +170,7 @@ func CopyFile(src, dst string) (bool, error) {
  * @return 是否成功
  */
 func CopyDir(src, dst string) bool {
-	//检查源目录是否存在
+	// 检查源目录是否存在
 	if ret, err := CheckFileExits(src); err != nil && !ret {
 		log.Logger.Warnw(src, " no existd!")
 		return false
@@ -190,11 +181,11 @@ func CopyDir(src, dst string) bool {
 		return false
 	}
 
-	//转化为绝对路径
+	// 转化为绝对路径
 	src, _ = filepath.Abs(src)
 	dst, _ = filepath.Abs(dst)
 
-	//创建目录路径
+	// 创建目录路径
 	CreateDir(dst)
 
 	err := filepath.Walk(src, func(path string, f os.FileInfo, err error) error {
@@ -202,12 +193,12 @@ func CopyDir(src, dst string) bool {
 			return err
 		}
 
-		//复制目录是将源目录中的子目录复制到目标路径中，不包含源目录本身
+		// 复制目录是将源目录中的子目录复制到目标路径中，不包含源目录本身
 		if path == src {
 			return nil
 		}
 
-		//生成新路径
+		// 生成新路径
 		destNewPath := strings.Replace(path, src, dst, 1)
 		fmt.Printf("path: %s\n", path)
 		fmt.Printf("destNewPath: %s\n", destNewPath)
