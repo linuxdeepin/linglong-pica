@@ -4,13 +4,12 @@ BINARY_DIR = bin
 BINARY_NAME = ll-pica
 GO_PATH = /tmp/go
 GO_CACHE = /tmp/go-cache
-pwd := ${shell pwd}
 GoPath := GOPATH=${GO_PATH}
 export GOCACHE=${GO_CACHE}
 export GO111MODULE=on
 
 GOTEST = go test -v
-GOBUILD = go build -mod vendor  -ldflags '-X pkg.deepin.com/linglong/pica/cmd/ll-pica/utils/log.disableLogDebug=yes -X main.disableDevelop=yes' -v $(GO_BUILD_FLAGS)
+GOBUILD = go build -mod vendor  -ldflags '-X pkg.deepin.com/linglong/pica/tools/log.disableLogDebug=yes -X pkg.deepin.com/linglong/pica/cli/cobra.disableLogDebug=yes' -v $(GO_BUILD_FLAGS)
 GOBUILDDEBUG = go build -mod vendor -v $(GO_BUILD_FLAGS)
 
 
@@ -24,10 +23,11 @@ debug:
 	${GoPath} ${GOBUILDDEBUG} -o ${BINARY_DIR}/${BINARY_NAME} ./cmd/${BINARY_NAME}
 
 test:
-	${GoPath} ${GOTEST} ./cmd/...
+	${GoPath} ${GOTEST} ./tools/...
 
 install:
 	install -Dm0755  ${BINARY_DIR}/${BINARY_NAME} ${DESTDIR}/${PREFIX}/${BINARY_DIR}/${BINARY_NAME}
+	install -Dm0755  misc/libexec/linglong/builder/helper/install_dep debian/tmp/usr/libexec/linglong/builder/helper/install_dep
 
 clean:
 	rm -rf ${BINARY_DIR}

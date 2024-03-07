@@ -1,0 +1,315 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: linglong-pica
+Upstream-Contact:  UnionTech Software Technology Co., Ltd. <>
+Source: https://github.com/linuxdeepin/linglong-pica
+
+# CI config files
+Files: .github/* .obs/* .gitignore vendor/modules.txt
+License: CC0-1.0
+Copyright: None
+
+# README
+Files: *.md
+Copyright: UnionTech Software Technology Co., Ltd.
+License: CC-BY-4.0
+
+# src
+Files: cli/* cmd/* tools/* misc/*install_dep
+License: LGPL-3.0-only
+Copyright: UnionTech Software Technology Co., Ltd.
+
+# Project file
+Files: *Makefile*
+Copyright: None
+License: CC0-1.0
+
+# debian packaging configurations
+Files: debian/*
+License: CC0-1.0
+Copyright: None
+
+# gomod files
+Files: go.mod go.sum
+Copyright: None
+License: CC0-1.0
+
+# github.com/AlekSi/pointer
+Files: vendor/github.com/AlekSi/pointer/pointer.go
+Copyright: None
+License: MIT
+
+Files: vendor/github.com/AlekSi/pointer/.travis.yml
+Copyright: None
+License: CC0-1.0
+
+# github.com/Azure/azure-pipeline-go
+Files: vendor/github.com/Azure/azure-pipeline-go/pipeline/*.go
+Copyright: Microsoft Corporation
+License: MIT
+
+# github.com/Azure/azure-storage-blob-go/azblob
+Files: vendor/github.com/Azure/azure-storage-blob-go/azblob/*
+Copyright: Microsoft Corporation
+License: MIT
+
+# github.com/DisposaBoy/JsonConfigReader
+Files: vendor/github.com/DisposaBoy/JsonConfigReader/*
+Copyright: JsonConfigReader Authors
+License: MIT
+
+# github.com/aptly-dev/aptly
+Files: vendor/github.com/aptly-dev/aptly/*
+Copyright: aptly authors
+License: MIT
+
+# github.com/awalterschulze/gographviz
+Files: vendor/github.com/awalterschulze/gographviz/*
+Copyright: GoGraphviz Authors
+License: Apache-2.0
+
+# github.com/aws
+Files: vendor/github.com/aws/*
+Copyright: Amazon.com, Inc. or its affiliates
+License: Apache-2.0
+
+# github.com/beorn7/perks/quantile
+Files: vendor/github.com/beorn7/perks/quantile/*
+Copyright: Blake Mizerany
+License: MIT
+
+# github.com/cavaliergopher/grab/v3
+Files: vendor/github.com/cavaliergopher/grab/v3/*
+Copyright: Ryan Armstrong.
+License: MIT
+
+# github.com/cespare/xxhash/v2
+Files: vendor/github.com/cespare/xxhash/v2/*
+Copyright: Caleb Spare
+License: MIT
+
+# github.com/cheggaaa/pb
+Files: vendor/github.com/cheggaaa/pb/*
+Copyright: Sergey Cherepanov
+License: MIT
+
+# github.com/gin-contrib/sse
+Files: vendor/github.com/gin-contrib/sse/*
+Copyright: Manuel Martínez-Almeida
+License: MIT
+
+# github.com/gin-gonic/gin
+Files: vendor/github.com/gin-gonic/gin/*
+Copyright: Manuel Martínez-Almeida
+License: MIT
+
+# github.com/go-playground
+Files: vendor/github.com/go-playground/*
+Copyright: Go Playground
+License: MIT
+
+# github.com/go-playground/validator/v10
+Files: vendor/github.com/go-playground/validator/v10/*
+Copyright: Dean Karn
+License: MIT
+
+# github.com/golang/protobuf, Go Authors License
+Files: vendor/github.com/golang/protobuf/*
+Copyright: Go Authors.
+License: MIT
+
+# github.com/golang/snappy, Go Authors License
+Files: vendor/github.com/golang/snappy/*
+Copyright: Snappy-Go Authors.
+License: MIT
+
+# github.com/google/uuid
+Files: vendor/github.com/google/uuid/*
+Copyright: Google Inc.
+License: MIT
+
+# github.com/h2non/filetype/matchers
+Files: vendor/github.com/h2non/filetype/*
+Copyright: Tomas Aparicio
+License: MIT
+
+# github.com/inconshreveable/mousetrap
+Files: vendor/github.com/inconshreveable/mousetrap/*
+Copyright: inconshreveable Authors
+License: Apache-2.0
+
+# github.com/jlaffaye/ftp
+Files: vendor/github.com/jlaffaye/ftp/*
+Copyright: Julien Laffaye <jlaffaye@FreeBSD.org>
+License: MIT
+
+# github.com/jmespath/go-jmespath
+Files: vendor/github.com/jmespath/go-jmespath/*
+Copyright: James Saryerwinnie
+License: Apache-2.0
+
+# github.com/json-iterator/go
+Files: vendor/github.com/json-iterator/go/*
+Copyright: James Saryerwinnie
+License: MIT
+
+# github.com/kjk/lzma
+Files: vendor/github.com/kjk/lzma/*
+Copyright: json-iterator
+License: MIT
+
+# github.com/klauspost/compress , Go Authors License
+Files: vendor/github.com/klauspost/compress/*
+Copyright: Go Authors. Klaus Post.
+License: MIT
+
+# github.com/klauspost/pgzip
+Files: vendor/github.com/klauspost/pgzip/*
+Copyright: Klaus Post
+License: MIT
+
+# github.com/leodido/go-urn
+Files: vendor/github.com/leodido/go-urn/*
+Copyright: Leonardo Di Donato
+License: MIT
+
+# github.com/mattn/go-ieproxy
+# github.com/mattn/go-isatty
+# github.com/mattn/go-runewidth
+# github.com/mattn/go-shellwords
+Files: vendor/github.com/mattn/*
+Copyright: Yasuhiro MATSUMOTO <mattn.jp@gmail.com>
+License: MIT
+
+# github.com/matttproud/golang_protobuf_extensions/pbutil
+Files: vendor/github.com/matttproud/golang_protobuf_extensions/*
+Copyright: Matt T. Proud
+License: Apache-2.0
+
+# github.com/mkrautz/goar
+Files: vendor/github.com/mkrautz/goar/*
+Copyright: Mikkel Krautz.
+License: MIT
+
+# github.com/modern-go/concurrent
+Files: vendor/github.com/modern-go/concurrent/*
+Copyright: concurrent Authors
+License: Apache-2.0
+
+# github.com/modern-go/reflect2
+Files: vendor/github.com/modern-go/reflect2/*
+Copyright: reflect2t Authors
+License: Apache-2.0
+
+# github.com/mxk/go-flowrate/flowrate
+Files: vendor/github.com/mxk/go-flowrate/flowrate/*
+Copyright: Go-FlowRate Authors
+License: MIT
+
+# github.com/ncw/swift
+Files: vendor/github.com/ncw/swift/*
+Copyright: Nick Craig-Wood
+License: MIT
+
+# github.com/pborman/uuid
+Files: vendor/github.com/pborman/uuid/*
+Copyright: Google Inc
+License: MIT
+
+# github.com/pkg/errors
+Files: vendor/github.com/pkg/errors/*
+Copyright: Dave Cheney <dave@cheney.net>
+License: MIT
+
+# github.com/prometheus/client_golang/prometheus
+Files: vendor/github.com/prometheus/client_golang/*
+Copyright: Dave Cheney <dave@cheney.net>
+License: Apache-2.0
+
+# github.com/prometheus/client_model
+# github.com/prometheus/common/expfmt
+# github.com/prometheus/common/internal
+# github.com/prometheus/common/model
+# github.com/prometheus/procfs
+Files: vendor/github.com/prometheus/*
+Copyright: Prometheus Authors
+License: Apache-2.0
+
+# github.com/smira/commander
+Files: vendor/github.com/smira/commander/*
+Copyright: Go-Commander Authors
+License: MIT
+
+# github.com/smira/flag
+Files: vendor/github.com/smira/flag/*
+Copyright: Go Authors
+License: MIT
+
+# github.com/smira/go-aws-auth
+Files: vendor/github.com/smira/go-aws-auth/*
+Copyright: SmartyStreets
+License: MIT
+
+# github.com/smira/go-ftp-protocol
+Files: vendor/github.com/smira/go-ftp-protocol/*
+Copyright: Andrey Smirnov
+License: MIT
+
+# github.com/smira/go-xz
+Files: vendor/github.com/smira/go-xz/*
+Copyright: Andrey Smirnov
+License: MIT
+
+# github.com/spf13/cobra
+Files: vendor/github.com/spf13/cobra/*
+Copyright: Cobra Authors
+License: Apache-2.0
+
+# github.com/spf13/pflag
+Files: vendor/github.com/spf13/pflag/*
+Copyright: Alex Ogier. Go Authors
+License: MIT
+
+# github.com/syndtr/goleveldb
+Files: vendor/github.com/syndtr/goleveldb/*
+Copyright: Suryandaru Triandana <syndtr@gmail.com>
+License: MIT
+
+# github.com/ugorji/go/codec
+Files: vendor/github.com/ugorji/go/codec/*
+Copyright: Ugorji Nwoke
+License: MIT
+
+# github.com/wsxiaoys/terminal
+Files: vendor/github.com/wsxiaoys/terminal/*
+Copyright: Meng Zhang
+License: MIT
+
+# github.com/wsxiaoys/terminal
+Files: vendor/go.uber.org/*
+Copyright: Uber Technologies, Inc
+License: MIT
+
+# golang.org/x/crypto
+Files: vendor/golang.org/x/*
+Copyright: Go Authors
+License: MIT
+
+# google.golang.org/protobuf
+Files: vendor/google.golang.org/*
+Copyright: Go Authors
+License: MIT
+
+# gopkg.in/h2non/filetype.v1
+Files: vendor/gopkg.in/h2non/filetype.v1/*
+Copyright: Tomas Aparicio
+License: MIT
+
+# gopkg.in/yaml.v2
+Files: vendor/gopkg.in/yaml.v2/*
+Copyright: Canonical Ltd.
+License: Apache-2.0
+
+# gopkg.in/yaml.v3
+Files: vendor/gopkg.in/yaml.v3/*
+Copyright: Kirill Simonov
+License: MIT
