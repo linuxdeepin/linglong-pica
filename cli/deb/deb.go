@@ -7,6 +7,7 @@
 package deb
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -42,9 +43,8 @@ type Deb struct {
 	Depends      string `yaml:"Depends"`
 	Architecture string `yaml:"Architecture"`
 	Filename     string `yaml:"Filename"`
-	DependsList  []string
 	FromAppStore bool
-	BuildKind    string
+	PackageKind  string
 	Command      string
 	Sources      []Source
 	Build        []string
@@ -222,6 +222,10 @@ func (d *Deb) ResolveDepends(source, distro string) {
 	root := cmd.RootCommand()
 	root.UsageLine = "aptly"
 
+	if d.Architecture == "" || d.Name == "" || filter == "" {
+		log.Logger.Fatal("arch or package name or filter is empty")
+	}
+
 	args := []string{
 		"mirror",
 		"create",
@@ -239,6 +243,21 @@ func (d *Deb) ResolveDepends(source, distro string) {
 	d.GetPackageList()
 }
 
+// 对生成的 Source 数组进行去重
+func (d *Deb) RemoveExcessDeps() {
+	var result []Source
+	uniqueMap := make(map[string]bool)
+	for _, pkg := range d.Sources {
+		key, _ := json.Marshal(pkg)
+		// 如果 key 不存在于 map 中，则添加
+		if _, ok := uniqueMap[string(key)]; !ok {
+			uniqueMap[string(key)] = true
+			result = append(result, pkg)
+		}
+	}
+	d.Sources = result
+}
+
 func (d *Deb) GenerateBuildScript() {
 	var archLinuxGnu string
 	switch d.Architecture {
@@ -252,8 +271,9 @@ func (d *Deb) GenerateBuildScript() {
 		archLinuxGnu = "x86_64-linux-gnu"
 	}
 
-	d.BuildKind = "manual"
 	execFile := "start.sh"
+
+	d.Build = append(d.Build, "#>>> auto generate by ll-pica begin")
 
 	// 设置 linglong/sources 目录
 	d.Build = append(d.Build, []string{
@@ -263,6 +283,7 @@ func (d *Deb) GenerateBuildScript() {
 	}...)
 	// 如果是应用商店的软件包
 	if d.FromAppStore {
+		d.PackageKind = "app"
 		// linglong/sources 下解压 app 后的目录
 		debDirPath := filepath.Join(filepath.Dir(d.Path), "app")
 
@@ -371,6 +392,8 @@ func (d *Deb) GenerateBuildScript() {
 			"cp -r $SOURCES/app/usr/* $PREFIX",
 		}...)
 	}
+
+	d.Build = append(d.Build, "#>>> auto generate by ll-pica end")
 }
 
 // 获取 deb 包
@@ -515,8 +538,13 @@ func (d *Deb) GetPackageList() {
 						&task.File.Checksums,
 						false)
 
+					source := Source{
+						Kind:   "file",
+						Url:    repo.PackageURL(task.File.DownloadURL()).String(),
+						Digest: task.File.Checksums.SHA256,
+					}
 					// 返回 sources 列表，记录 kind, url, hash
-					d.Sources = append(d.Sources, Source{Kind: "file", Digest: task.File.Checksums.SHA256, Url: repo.PackageURL(task.File.DownloadURL()).String()})
+					d.Sources = append(d.Sources, source)
 
 					if e != nil {
 						pushError(e)

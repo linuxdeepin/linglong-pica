@@ -166,23 +166,32 @@ func runConvert(options *convertOptions) error {
 			packConfig.File.Deb[idx].ResolveDepends(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion)
 			// 生成构建脚本
 			packConfig.File.Deb[idx].GenerateBuildScript()
+			// linglong.yaml 依赖去重
+			packConfig.File.Deb[idx].RemoveExcessDeps()
 
-			builder := linglong.LinglongBuder{
-				Appid:       packConfig.File.Deb[idx].Id,
-				Name:        packConfig.File.Deb[idx].Name,
-				Version:     packConfig.File.Deb[idx].Version,
-				Description: packConfig.File.Deb[idx].Name,
-				Runtime:     packConfig.Runtime.Id,
-				Base:        packConfig.Runtime.BaseId,
-				Rversion:    packConfig.Runtime.Version,
-				Command:     packConfig.File.Deb[idx].Command,
-				Sources:     packConfig.File.Deb[idx].Sources,
-				Build:       packConfig.File.Deb[idx].Build,
+			builder := linglong.LinglongBuilder{
+				Package: linglong.Package{
+					Appid:       packConfig.File.Deb[idx].Id,
+					Name:        packConfig.File.Deb[idx].Name,
+					Version:     packConfig.File.Deb[idx].Version,
+					Kind:        packConfig.File.Deb[idx].PackageKind,
+					Description: packConfig.File.Deb[idx].Name,
+				},
+				Runtime: fmt.Sprintf("%s/%s", packConfig.Runtime.Id, packConfig.Runtime.Version),
+				Base:    fmt.Sprintf("%s/%s", packConfig.Runtime.BaseId, packConfig.Runtime.Version),
+				Command: []string{
+					packConfig.File.Deb[idx].Command,
+				},
+				Sources: packConfig.File.Deb[idx].Sources,
+				Build:   packConfig.File.Deb[idx].Build,
 			}
 
 			// 生成 linglong.yaml 文件
-			builder.CreateLinglongYamlBuilder(linglongYamlPath)
-			log.Logger.Infof("generate %s success.", comm.LinglongYaml)
+			if builder.CreateLinglongYaml(linglongYamlPath) {
+				log.Logger.Infof("generate %s success.", comm.LinglongYaml)
+			} else {
+				log.Logger.Errorf("generate %s failed", comm.LinglongYaml)
+			}
 
 			// 构建玲珑包
 			if options.buildFlag {

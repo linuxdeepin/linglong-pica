@@ -10,40 +10,48 @@ import (
 	"os"
 	"text/template"
 
+	"gopkg.in/yaml.v3"
 	"pkg.deepin.com/linglong/pica/cli/comm"
 	"pkg.deepin.com/linglong/pica/cli/deb"
 	"pkg.deepin.com/linglong/pica/tools/fs"
 	"pkg.deepin.com/linglong/pica/tools/log"
 )
 
-type LinglongBuder struct {
-	Appid       string
-	Name        string
-	Version     string
-	Base        string
-	Runtime     string
-	Rversion    string
-	Description string
-	Command     string
-	Sources     []deb.Source
-	Build       []string
+type LinglongBuilder struct {
+	Package    Package      `yaml:"package"`
+	Base       string       `yaml:"base"`
+	Runtime    string       `yaml:"runtime"`
+	Command    []string     `yaml:"command"`
+	Sources    []deb.Source `yaml:"sources"`
+	Build      []string     `yaml:"-"`
+	BuildInput string       `yaml:"build"` // 用来接收build字段，从yaml文件读入的值
+}
+
+type Package struct {
+	Appid       string `yaml:"id"`
+	Name        string `yaml:"name"`
+	Version     string `yaml:"version"`
+	Kind        string `yaml:"kind"`
+	Description string `yaml:"description"`
 }
 
 const LinglongBuilderTMPL = `version: "1"
 
 package:
-  id: {{.Appid}}
-  name: {{.Name}}
-  version: {{.Version}}
-  kind: app
+  id: {{.Package.Appid}}
+  name: {{.Package.Name}}
+  version: {{.Package.Version}}
+  kind: {{.Package.Kind}}
   description: |
-    {{.Description}}
+    {{.Package.Description}}
 
-base: {{.Base}}/{{.Rversion}}
-runtime: {{.Runtime}}/{{.Rversion}}
+base: {{.Base}}
+runtime: {{.Runtime}}
 
 command:
-  - "{{.Command}}"
+  {{- range $line := .Command}}
+  {{- printf "\n  - %s" $line}}
+  {{- end}}
 
 sources:
 {{- range .Sources}}
@@ -52,15 +60,17 @@ sources:
     digest: {{.Digest}}
 {{end}}
 build: |
-  #>>> auto generate by ll-pica begin
   {{- range $line := .Build}}
   {{- printf "\n  %s" $line}}
   {{- end}}
-  #>>> auto generate by ll-pica end
 `
 
-// CreateLinglongYamlBuilder
-func (ts *LinglongBuder) CreateLinglongYamlBuilder(path string) bool {
+func NewLinglongBuilder() *LinglongBuilder {
+	return &LinglongBuilder{}
+}
+
+// create linglong.yaml
+func (ts *LinglongBuilder) CreateLinglongYaml(path string) bool {
 
 	tpl, err := template.New("linglong").Parse(LinglongBuilderTMPL)
 
@@ -86,8 +96,24 @@ func (ts *LinglongBuder) CreateLinglongYamlBuilder(path string) bool {
 
 }
 
+// read linglong.yaml
+func (ts *LinglongBuilder) ReadLinglongYaml(path string) bool {
+	log.Logger.Infof("load %s", path)
+	llYamlFd, err := os.ReadFile(path)
+	if err != nil {
+		log.Logger.Errorf("load %s error: %v", path, err)
+	} else {
+		if err = yaml.Unmarshal(llYamlFd, ts); err != nil {
+
+			log.Logger.Errorf("unmarshal %s error: %v", path, err)
+		}
+		return true
+	}
+	return false
+}
+
 // build linglong.yaml
-func (ts *LinglongBuder) CreateLinglongBuilder(path string) bool {
+func (ts *LinglongBuilder) CreateLinglongBuilder(path string) bool {
 
 	log.Logger.Debugf("create save file: ", path)
 
@@ -113,8 +139,8 @@ func (ts *LinglongBuder) CreateLinglongBuilder(path string) bool {
 	}
 }
 
-func (ts *LinglongBuder) LinglongExport(path string) bool {
-	log.Logger.Debugf("ll-builder import : ", ts.Appid)
+func (ts *LinglongBuilder) LinglongExport(path string) bool {
+	log.Logger.Debugf("ll-builder import : ", ts.Package.Appid)
 	appExportPath := fs.GetFilePPath(path)
 	appExportPath = fs.GetFilePPath(appExportPath)
 	// check workstation
