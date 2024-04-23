@@ -162,8 +162,12 @@ func runConvert(options *convertOptions) error {
 			if err := packConfig.File.Deb[idx].ExtractDeb(); err != nil {
 				return err
 			}
-			// 依赖处理
-			packConfig.File.Deb[idx].ResolveDepends(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion)
+
+			// 可能存在依赖为空的情况
+			if packConfig.File.Deb[idx].Depends != "" {
+				// 依赖处理
+				packConfig.File.Deb[idx].ResolveDepends(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion)
+			}
 			// 生成构建脚本
 			packConfig.File.Deb[idx].GenerateBuildScript()
 			// linglong.yaml 依赖去重
