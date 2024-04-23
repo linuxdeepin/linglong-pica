@@ -368,11 +368,7 @@ func (d *Deb) GenerateBuildScript() {
 				"echo \"cd $PREFIX/" + ePath + " && ./" + binFile + " \\$@\" >> " + execFile,
 			}...)
 
-			if ePath == "" {
-				d.Command = fmt.Sprintf("/opt/apps/%s/files/%s", d.Id, binFile)
-			} else {
-				d.Command = fmt.Sprintf("/opt/apps/%s/files/%s/%s", d.Id, ePath, binFile)
-			}
+			d.Command = fmt.Sprintf("/opt/apps/%s/files/bin/%s", d.Id, execFile)
 		}
 
 		d.Build = append(d.Build, []string{
