@@ -7,12 +7,13 @@
 package convert
 
 import (
+	"bufio"
 	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"pault.ag/go/debian/control"
 	"pkg.deepin.com/linglong/pica/cli/comm"
 	"pkg.deepin.com/linglong/pica/cli/config"
 	"pkg.deepin.com/linglong/pica/cli/deb"
@@ -71,19 +72,18 @@ func runConvert(options *convertOptions) error {
 	if strings.HasSuffix(options.Config, ".deb") {
 		ret, err := deb.AptShow(configFilePath)
 		if err == nil {
-			var d deb.Deb
-
-			// apt-cache show Unmarshal
-			err = yaml.Unmarshal([]byte(ret), &d)
+			info, err := control.ParseControl(bufio.NewReader(strings.NewReader(ret)), "")
 			if err != nil {
-				log.Logger.Warnf("apt-cache show unmarshal error: %s", err)
+				log.Logger.Warnf("parse control error: %s", err)
+				return err
 			}
+
 			packConfig.File.Deb = []deb.Deb{
 				{
 					Type: options.gtype,
-					Id:   d.Package,
+					Id:   info.Source.Paragraph.Values["Package"],
 					Ref:  configFilePath,
-					Name: d.Package,
+					Name: info.Source.Paragraph.Values["Package"],
 				},
 			}
 			// 此时替换 configFilePath 为 工作目录的 package.yaml
@@ -163,11 +163,8 @@ func runConvert(options *convertOptions) error {
 				return err
 			}
 
-			// 可能存在依赖为空的情况
-			if packConfig.File.Deb[idx].Depends != "" {
-				// 依赖处理
-				packConfig.File.Deb[idx].ResolveDepends(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion)
-			}
+			// 依赖处理
+			packConfig.File.Deb[idx].ResolveDepends(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion)
 			// 生成构建脚本
 			packConfig.File.Deb[idx].GenerateBuildScript()
 			// linglong.yaml 依赖去重
@@ -179,7 +176,7 @@ func runConvert(options *convertOptions) error {
 					Name:        packConfig.File.Deb[idx].Name,
 					Version:     packConfig.File.Deb[idx].Version,
 					Kind:        packConfig.File.Deb[idx].PackageKind,
-					Description: packConfig.File.Deb[idx].Name,
+					Description: packConfig.File.Deb[idx].Desc,
 				},
 				Runtime: fmt.Sprintf("%s/%s", packConfig.Runtime.Id, packConfig.Runtime.Version),
 				Base:    fmt.Sprintf("%s/%s", packConfig.Runtime.BaseId, packConfig.Runtime.Version),
