@@ -313,3 +313,8 @@ License: Apache-2.0
 Files: vendor/gopkg.in/yaml.v3/*
 Copyright: Kirill Simonov
 License: MIT
+
+# pault.ag/go-debian
+Files: vendor/pault.ag/go/*
+Copyright: Tagliamonte
+License: MIT

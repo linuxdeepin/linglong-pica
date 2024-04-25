@@ -7,6 +7,7 @@
 package deb
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/smira/flag"
+	"pault.ag/go/debian/control"
 
 	"github.com/aptly-dev/aptly/aptly"
 	"github.com/aptly-dev/aptly/cmd"
@@ -22,7 +24,6 @@ import (
 	"github.com/aptly-dev/aptly/pgp"
 	"github.com/aptly-dev/aptly/query"
 	"github.com/aptly-dev/aptly/utils"
-	"gopkg.in/yaml.v3"
 
 	"pkg.deepin.com/linglong/pica/cli/comm"
 	"pkg.deepin.com/linglong/pica/tools/fs"
@@ -30,19 +31,19 @@ import (
 )
 
 type Deb struct {
-	Name    string
-	Id      string
-	Type    string
-	Ref     string
-	Hash    string
-	Path    string
-	Package string `yaml:"Package"`
-	Version string `yaml:"Version"`
-	SHA256  string `yaml:"SHA256"`
-	// Desc         string `yaml:"Description"`
-	Depends      string `yaml:"Depends"`
-	Architecture string `yaml:"Architecture"`
-	Filename     string `yaml:"Filename"`
+	Name         string
+	Id           string
+	Type         string
+	Ref          string
+	Hash         string
+	Path         string
+	Package      string `control:"Package"`
+	Version      string `control:"Version"`
+	SHA256       string `control:"SHA256"`
+	Desc         string `control:"Description"`
+	Depends      string `control:"Depends"`
+	Architecture string `control:"Architecture"`
+	Filename     string `control:"Filename"`
 	FromAppStore bool
 	PackageKind  string
 	Command      string
@@ -162,11 +163,18 @@ func (d *Deb) ExtractDeb() error {
 		return err
 	} else {
 		// apt-cache show Unmarshal
-		err = yaml.Unmarshal([]byte(ret), &d)
+		info, err := control.ParseControl(bufio.NewReader(strings.NewReader(ret)), "")
 		if err != nil {
-			log.Logger.Warnf("apt-cache show unmarshal error: %s", err)
+			log.Logger.Warnf("parse control error: %s", err)
 			return err
 		}
+		d.Package = info.Source.Paragraph.Values["Package"]
+		d.Version = info.Source.Paragraph.Values["Version"]
+		d.SHA256 = info.Source.Paragraph.Values["SHA256"]
+		d.Desc = info.Source.Paragraph.Values["Description"]
+		d.Depends = info.Source.Paragraph.Values["Depends"]
+		d.Architecture = info.Source.Paragraph.Values["Architecture"]
+		d.Filename = info.Source.Paragraph.Values["Filename"]
 	}
 
 	// 解压 deb 包，部分内容需要从解开的包中获取
@@ -205,10 +213,16 @@ func (d *Deb) ExtractDeb() error {
 
 // 解析依赖
 func (d *Deb) ResolveDepends(source, distro string) {
-	var (
-		// mirror_update_args []string
-		filter = strings.Replace(d.Depends, ",", "|", -1)
-	)
+	// 可能存在依赖为空的情况
+	if d.Depends == "" {
+		return
+	}
+
+	// mirror_update_args []string
+	// 玲珑作为单应用程序，不需要在意里面的版本冲突，直接选择最新版本
+	// 定义一个正则表达式，删除匹配括号及其中的内容
+	re := regexp.MustCompile(`\([^)]*\)`)
+	filter := strings.Replace(re.ReplaceAllString(d.Depends, ""), ",", "|", -1)
 
 	// 删除掉aptly缓存的内容
 	aptlyCache := comm.AptlyCachePath()
@@ -223,7 +237,8 @@ func (d *Deb) ResolveDepends(source, distro string) {
 	root.UsageLine = "aptly"
 
 	if d.Architecture == "" || d.Name == "" || filter == "" {
-		log.Logger.Fatal("arch or package name or filter is empty")
+		log.Logger.Errorf("arch or package name or filter is empty")
+		return
 	}
 
 	args := []string{
