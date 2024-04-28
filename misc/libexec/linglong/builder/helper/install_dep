@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-#set -x
 # 文件名 deb-source.bash
 # 包含要解压的deb目录
 deb_dir=$(realpath "$1")
@@ -24,7 +23,8 @@ mkdir /tmp/deb-source-file || true
 # 遍历文件列表
 while IFS= read -r file
 do
-    echo "xxxxxx $file"
+    # 输出deb名，但不换行，便于在包名后面加skip
+    echo -n "$file"
     # 提取control文件
     control_file=$(ar -t "$file" | grep control.tar)
     ar -x "$file" "$control_file"
@@ -32,7 +32,7 @@ do
     pkg=$(tar -xf "$control_file" ./control -O | grep '^Package:' | awk '{print $2}')
     rm "$control_file"
     # 如果已安装则跳过
-    if grep -q "^Package: $pkg$" /var/lib/dpkg/status && ! grep -q "^$pkg$" "$include_list_file"; then
+    if (grep -q "^Package: $pkg$" /var/lib/dpkg/status /runtime/packages.list "$PREFIX/packages.list") && ! grep -q "^$pkg$" "$include_list_file"; then
         echo " skip"
         echo "$file" >> /tmp/deb-source-file/skip.list
     else
@@ -44,22 +44,36 @@ do
         # 提取data.tar文件
         ar -x "$file" "$data_file"
         # 解压data.tar文件到输出目录
-        mkdir "$data_list_dir" || true
+        mkdir "$data_list_dir"
         tar -xvf "$data_file" -C "$data_list_dir" >> "/tmp/deb-source-file/$(basename "$file").list"
         rm "$data_file"
 
         # 清理不需要复制的目录
-        rm -r "${data_list_dir:?}/usr/share/applications"* ||  true
+        rm -r "${data_list_dir:?}/usr/share/applications"* 2>/dev/null || true
         # 修改pc文件的prefix
-        sed -i "s#/usr#$PREFIX#g" "$data_list_dir"/usr/lib/"$TRIPLET"/pkgconfig/*.pc || true
-        sed -i "s#/usr#$PREFIX#g" "$data_list_dir"/usr/share/pkgconfig/*.pc || true
+        sed -i "s#/usr#$PREFIX#g" "$data_list_dir"/usr/lib/"$TRIPLET"/pkgconfig/*.pc 2>/dev/null|| true
+        sed -i "s#/usr#$PREFIX#g" "$data_list_dir"/usr/share/pkgconfig/*.pc 2>/dev/null || true
         # 修改指向/lib的绝对路径的软链接
-        find . -type l | while IFS= read -r file; do
-            linkTarget=$(readlink "$file")
+        find "$data_list_dir" -type l | while IFS= read -r file; do
+            linkTarget=$(readlink "$file") 
             # 如果指向的路径以/lib开头，并且文件不存在，则添加 /runtime 前缀
             # 部分 dev 包会创建 so 文件的绝对链接指向 /lib 目录下
             if echo "$linkTarget" | grep -q ^/lib && ! [ -f "$linkTarget" ]; then
                 ln -sf "$target$linkTarget" "$file"
+                echo "    FIX LINK" "$linkTarget" "=>" "$target$linkTarget"
+            fi
+        done
+        # 修复动态库的RUNPATH
+        find "$data_list_dir" -type f -exec file {} \; | grep 'shared object' | awk -F: '{print $1}' | while IFS= read -r file; do
+            runpath=$(readelf -d "$file" | grep RUNPATH |  awk '{print $NF}')
+            # 如果RUNPATH使用绝对路径，则添加/runtime前缀
+            if echo "$runpath" | grep -q '^\[/'; then
+                runpath=${runpath#[}
+                runpath=${runpath%]}
+                newRunpath=${runpath//usr\/lib/runtime\/lib}
+                newRunpath=${newRunpath//usr/runtime}
+                patchelf --set-rpath "$newRunpath" "$file"
+                echo "    FIX RUNPATH" "$file" "$runpath" "=>" "$newRunpath"
             fi
         done
         # 复制/lib,/bin,/usr目录
