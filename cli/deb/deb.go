@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -169,16 +170,18 @@ func (d *Deb) ExtractDeb() error {
 			return err
 		}
 		d.Package = info.Source.Paragraph.Values["Package"]
-		d.Version = info.Source.Paragraph.Values["Version"]
+		// 格式化成玲珑使用的四位版本号，剔除非数字部分
+		d.Version = formatVersion(info.Source.Paragraph.Values["Version"])
 		d.SHA256 = info.Source.Paragraph.Values["SHA256"]
-		d.Desc = info.Source.Paragraph.Values["Description"]
+		// 在描述信息里添加原包的版本号信息
+		d.Desc = fmt.Sprintf("convert from %s    %s", info.Source.Paragraph.Values["Version"], info.Source.Paragraph.Values["Description"])
 		d.Depends = info.Source.Paragraph.Values["Depends"]
 		d.Architecture = info.Source.Paragraph.Values["Architecture"]
 		d.Filename = info.Source.Paragraph.Values["Filename"]
 	}
 
 	// 解压 deb 包，部分内容需要从解开的包中获取
-	debDirPath := filepath.Join(filepath.Dir(d.Path), "app")
+	debDirPath := filepath.Join(filepath.Dir(d.Path), d.Name)
 	if ret, msg, err := comm.ExecAndWait(1<<20, "dpkg-deb", "-x", d.Path, debDirPath); err != nil {
 		log.Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
 		return err
@@ -274,18 +277,6 @@ func (d *Deb) RemoveExcessDeps() {
 }
 
 func (d *Deb) GenerateBuildScript() {
-	var archLinuxGnu string
-	switch d.Architecture {
-	case "amd64":
-		archLinuxGnu = "x86_64-linux-gnu"
-	case "arm64":
-		archLinuxGnu = "aarch64-linux-gnu"
-	case "loongarch64":
-		archLinuxGnu = "loongarch64-linux-gnu"
-	default:
-		archLinuxGnu = "x86_64-linux-gnu"
-	}
-
 	execFile := "start.sh"
 
 	d.Build = append(d.Build, "#>>> auto generate by ll-pica begin")
@@ -294,13 +285,13 @@ func (d *Deb) GenerateBuildScript() {
 	d.Build = append(d.Build, []string{
 		"# set the linglong/sources directory",
 		fmt.Sprintf("SOURCES=\"%s\"", comm.LlSourceDir),
-		fmt.Sprintf("export TRIPLET=\"%s\"", archLinuxGnu),
+		fmt.Sprintf("dpkg-deb -x $SOURCES/%s $SOURCES/%s", filepath.Base(d.Filename), d.Name),
 	}...)
 	// 如果是应用商店的软件包
 	if d.FromAppStore {
 		d.PackageKind = "app"
 		// linglong/sources 下解压 app 后的目录
-		debDirPath := filepath.Join(filepath.Dir(d.Path), "app")
+		debDirPath := filepath.Join(filepath.Dir(d.Path), d.Name)
 
 		// // 删除多余的 desktop 文件
 		if ret, msg, err := comm.ExecAndWait(10, "sh", "-c",
@@ -374,7 +365,7 @@ func (d *Deb) GenerateBuildScript() {
 				"export PATH=$PATH:/usr/libexec/linglong/builder/helper",
 				"install_dep $SOURCES $PREFIX",
 				"# modify desktop, Exec and Icon should not contanin absolut paths",
-				"desktopPath=`find $SOURCES/app -name \"*.desktop\" | grep entries`",
+				"desktopPath=`find $SOURCES/" + d.Name + " -name \"*.desktop\" | grep entries`",
 				"sed -i '/Exec*/c\\Exec=" + newExecLine + "' $desktopPath",
 				"sed -i '/Icon*/c\\Icon=" + iconValue + "' $desktopPath",
 				"# use a script as program",
@@ -392,15 +383,15 @@ func (d *Deb) GenerateBuildScript() {
 			"install -d $PREFIX/lib",
 			"install -m 0755 " + execFile + " $PREFIX/bin",
 			"# move files",
-			"cp -r $SOURCES/app/opt/apps/" + d.Name + "/entries/* $PREFIX/share",
-			"cp -r $SOURCES/app/opt/apps/" + d.Name + "/files/* $PREFIX",
+			"cp -r $SOURCES/" + d.Name + "/opt/apps/" + d.Name + "/entries/* $PREFIX/share",
+			"cp -r $SOURCES/" + d.Name + "/opt/apps/" + d.Name + "/files/* $PREFIX",
 		}...)
 	} else {
 		// TODO
 		// 如果不是应用商店的 deb 包
 		d.Build = append(d.Build, []string{
 			"# move files",
-			"cp -r $SOURCES/app/usr/* $PREFIX",
+			"cp -r $SOURCES/" + d.Name + "/usr/* $PREFIX",
 		}...)
 	}
 
@@ -595,4 +586,34 @@ func getVerifier(flags *flag.FlagSet) (pgp.Verifier, error) {
 	}
 
 	return verifier, nil
+}
+
+// 将从包里获取的版本号格式化成四位数
+func formatVersion(versionStr string) string {
+	// 先尝试直接按点分割，处理常规的版本号格式
+	parts := strings.Split(versionStr, ".")
+
+	var digits []string
+	for _, part := range parts {
+		// 将字符串转换成数字，如果没有报错，说明是纯数字
+		if _, err := strconv.Atoi(part); err == nil {
+			digits = append(digits, part)
+		} else {
+			// 查找并提取非数字部分后的数字
+			re := regexp.MustCompile(`\d+`)
+			match := re.FindString(part)
+			if match != "" {
+				digits = append(digits, match)
+			}
+		}
+	}
+
+	// 确保版本号至少有四个段，不足则用0填充
+	for len(digits) < 4 {
+		digits = append(digits, "0")
+	}
+
+	// 截取前四个有效数字段进行格式化
+	formattedVersion := strings.Join(digits[:4], ".")
+	return formattedVersion
 }
