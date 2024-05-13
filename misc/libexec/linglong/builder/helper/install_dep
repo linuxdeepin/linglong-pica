@@ -7,6 +7,8 @@ deb_dir=$(realpath "$1")
 target=$(realpath "$2")
 # 默认会跳过base已安装的包，可以强制解压已安装的包
 include="$3"
+# 设置白名单，不跳过包的列表
+declare -a not_skip_package=('libarchive13' 'libasan5' 'libasm1' 'libbabeltrace1' 'libcairo-script-interpreter2' 'libcc1-0' 'libcurl4' 'libdpkg-perl' 'libdw1' 'libevent-2.1-6' 'libgdbm-compat4' 'libgdbm6' 'libgirepository-1.0-1' 'libgles1' 'libgles2' 'libglib2.0-data' 'libgmpxx4ldbl' 'libgnutls-dane0' 'libgnutls-openssl27' 'libgnutlsxx28' 'libharfbuzz-gobject0' 'libharfbuzz-icu0' 'libipt2' 'libisl19' 'libitm1' 'libjsoncpp1' 'libldap-2.4-2' 'libldap-common' 'liblsan0' 'liblzo2-2' 'libmpc3' 'libmpdec2' 'libmpfr6' 'libmpx2' 'libncurses6' 'libnghttp2-14' 'libpcrecpp0v5' 'libperl5.28' 'libpopt0' 'libprocps7' 'libpython3-stdlib' 'libpython3.7' 'libpython3.7-minimal' 'libpython3.7-stdlib' 'libquadmath0' 'libreadline7' 'librhash0' 'librtmp1' 'libsasl2-2' 'libsasl2-modules-db' 'libssh2-1' 'libtiffxx5' 'libtsan0' 'libubsan1' 'libunbound8' 'libuv1')
 # 临时目录，将内容处理后再移动到 target
 out_dir="$(mktemp -d)"
 cd "$out_dir"
@@ -32,7 +34,9 @@ do
     pkg=$(tar -xf "$control_file" ./control -O | grep '^Package:' | awk '{print $2}')
     rm "$control_file"
     # 如果已安装则跳过
-    if (grep -q "^Package: $pkg$" /var/lib/dpkg/status /runtime/packages.list "$PREFIX/packages.list") && ! grep -q "^$pkg$" "$include_list_file"; then
+    if (grep -q "^Package: $pkg$" /packages.list /runtime/packages.list "$PREFIX/packages.list") && \
+        ! grep -q "^$pkg$" "$include_list_file" && \
+        [[ ! " ${not_skip_package[*]} " =~ " $pkg " ]]; then
         echo " skip"
         echo "$file" >> /tmp/deb-source-file/skip.list
     else
