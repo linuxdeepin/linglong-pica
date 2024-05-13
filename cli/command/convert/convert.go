@@ -179,7 +179,7 @@ func runConvert(options *convertOptions) error {
 					Description: packConfig.File.Deb[idx].Desc,
 				},
 				Runtime: fmt.Sprintf("%s/%s", packConfig.Runtime.Id, packConfig.Runtime.Version),
-				Base:    fmt.Sprintf("%s/%s", packConfig.Runtime.BaseId, packConfig.Runtime.Version),
+				Base:    fmt.Sprintf("%s/%s", packConfig.Runtime.BaseId, packConfig.Runtime.BaseVersion),
 				Command: []string{
 					packConfig.File.Deb[idx].Command,
 				},

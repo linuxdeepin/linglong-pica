@@ -36,7 +36,8 @@ func NewInitCommand() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVarP(&options.Options.Config, "config", "c", "", "config file")
 	flags.StringVarP(&options.Workdir, "workdir", "w", "", "work directory")
-	flags.StringVarP(&options.Version, "version", "v", "", "runtime version")
+	flags.StringVar(&options.Version, "rv", "", "runtime version")
+	flags.StringVar(&options.BaseVersion, "bv", "", "base version")
 	flags.StringVarP(&options.Source, "source", "s", "", "runtime source")
 	flags.StringVar(&options.DistroVersion, "dv", "", "distribution Version")
 	flags.StringVarP(&options.Arch, "arch", "a", "", "runtime arch")
@@ -56,11 +57,6 @@ func runInit(options *initOptions) error {
 	comm.InitPicaConfigDir()
 
 	packConf := config.NewPackConfig()
-	assign := func(config *string, option string) {
-		if option != "" {
-			*config = option
-		}
-	}
 
 	// 如果不存在 pica 配置文件，生成一份默认配置
 	if ret, _ := fs.CheckFileExits(comm.PicaConfigJsonPath()); !ret {
@@ -71,11 +67,17 @@ func runInit(options *initOptions) error {
 		packConf.Runtime.ReadConfigJson()
 	}
 
-	if options.Version != "" || options.Source != "" || options.DistroVersion != "" || options.Arch != "" {
+	assign := func(config *string, option string) {
+		if option != "" {
+			*config = option
+		}
+	}
+	if options.BaseVersion != "" || options.Version != "" || options.Source != "" || options.DistroVersion != "" || options.Arch != "" {
 		assign(&packConf.Runtime.Config.Version, options.Version)
 		assign(&packConf.Runtime.Config.Source, options.Source)
 		assign(&packConf.Runtime.Config.DistroVersion, options.DistroVersion)
 		assign(&packConf.Runtime.Config.Arch, options.Arch)
+		assign(&packConf.Runtime.Config.BaseVersion, options.BaseVersion)
 		packConf.Runtime.Config.SaveOrUpdateConfigJson(comm.PicaConfigJsonPath())
 	}
 
