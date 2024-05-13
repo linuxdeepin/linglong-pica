@@ -18,6 +18,7 @@ type Config struct {
 	Id            string `yaml:"-" json:"-"`
 	BaseId        string `yaml:"-" json:"-"`
 	Version       string `yaml:"version" json:"version"`
+	BaseVersion   string `yaml:"base_version" json:"base_version"`
 	Source        string `yaml:"source" json:"source"`
 	DistroVersion string `yaml:"distro_version" json:"distro_version"`
 	Arch          string `yaml:"arch" json:"arch"`
@@ -27,9 +28,10 @@ func NewConfig() *Config {
 	return &Config{
 		Id:            "org.deepin.Runtime",
 		BaseId:        "org.deepin.foundation",
-		Version:       "20.0.0",
-		Source:        "http://pools.uniontech.com/desktop-professional",
-		DistroVersion: "eagle/1070",
+		Version:       "23.0.1",
+		BaseVersion:   "23.0.0",
+		Source:        "https://community-packages.deepin.com/beige/",
+		DistroVersion: "beige",
 		Arch:          "amd64",
 	}
 }

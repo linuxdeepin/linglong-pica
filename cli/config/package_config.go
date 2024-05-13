@@ -12,6 +12,7 @@ import (
 
 const PackageConfigTMPL = `runtime:
   version: {{.Runtime.Version}}
+  base_version: {{.Runtime.BaseVersion}}
   source: {{.Runtime.Source}}
   distro_version: {{.Runtime.DistroVersion}}
   arch: {{.Runtime.Arch}}
@@ -27,7 +28,7 @@ file:
 {{- if ne $deb.Hash ""}}
   {{  printf "    hash: %s" $deb.Hash}}
 {{- end}}
-{{- end}}
+{{end}}
 `
 
 type PackConfig struct {
@@ -71,6 +72,7 @@ func NewPackConfig() *PackConfig {
 					Type: "local",
 					Id:   "com.baidu.baidunetdisk",
 					Name: "baidunetdisk",
+					Ref:  "/tmp/com.baidu.baidunetdisk_4.17.7_amd64.deb",
 				},
 			},
 		},
