@@ -287,111 +287,114 @@ func (d *Deb) GenerateBuildScript() {
 		fmt.Sprintf("SOURCES=\"%s\"", comm.LlSourceDir),
 		fmt.Sprintf("dpkg-deb -x $SOURCES/%s $SOURCES/%s", filepath.Base(d.Filename), d.Name),
 	}...)
+
+	d.PackageKind = "app"
+	// linglong/sources 下解压 app 后的目录
+	debDirPath := filepath.Join(filepath.Dir(d.Path), d.Name)
+
+	desktopFiles, msg, err := comm.ExecAndWait(10, "sh", "-c", fmt.Sprintf("find %s -name '*.desktop' | grep applications", debDirPath))
+	if err != nil {
+		log.Logger.Fatalf("find desktop error: %s out: %s", msg, desktopFiles)
+	}
+
 	// 如果是应用商店的软件包
 	if d.FromAppStore {
-		d.PackageKind = "app"
-		// linglong/sources 下解压 app 后的目录
-		debDirPath := filepath.Join(filepath.Dir(d.Path), d.Name)
-
-		// // 删除多余的 desktop 文件
+		// 删除多余的 desktop 文件
 		if ret, msg, err := comm.ExecAndWait(10, "sh", "-c",
 			fmt.Sprintf("find %s -name '*.desktop' | grep _uos | xargs -I {} rm {}", debDirPath)); err != nil {
-			log.Logger.Warnf("remove extra desktop file error: msg: %+v", msg)
+			log.Logger.Warnf("remove extra desktop file error: %+v", msg)
 		} else {
 			log.Logger.Debugf("remove extra desktop file: %+v", ret)
 		}
+	}
 
-		// 读取desktop 文件
-		if ret, msg, err := comm.ExecAndWait(10, "sh", "-c",
-			fmt.Sprintf("find %s -name '*.desktop' | grep applications", debDirPath)); err != nil {
-			log.Logger.Errorf("find desktop error: %s out: %s", msg, ret)
-		} else {
-			var desktopData fs.DesktopData
-			var status bool
-			var binFile, ePath, iconValue, newExecLine string
-			// 如果存在多个 desktop 文件进行循环, 生成对应的 sed 操作
-			for _, desktop := range strings.Split(ret, "\n") {
-				if desktop == "" {
-					continue
-				}
-				status, desktopData = fs.DesktopInit(desktop)
-				if !status {
-					log.Logger.Errorf("load desktop error: %s", desktop)
-					continue
-				}
-
-				//获取 desktop 文件，Exec 行的内容,并且对字符串做处理
-				pattern := regexp.MustCompile(`Exec=|"|\n`)
-				execLine := pattern.ReplaceAllLiteralString(desktopData["Desktop Entry"]["Exec"], "")
-				execSlice := strings.Split(execLine, " ")
-
-				// 切割 Exec 命令
-				binPath := strings.Split(execSlice[0], "/")
-				// 获取可执行文件的名称
-				binFile = binPath[len(binPath)-1]
-
-				// 获取 files 和可执行文件之间路径的字符串
-				extractPath := func() string {
-					// 查找"files"在路径中的位置
-					filesIndex := strings.Index(execSlice[0], "files/")
-					if filesIndex == -1 {
-						// 如果没有找到"files/"，返回原始路径
-						return ""
-					}
-
-					// 找到该部分中最后一个斜杠的位置
-					part := execSlice[0][filesIndex+len("files/"):]
-					lastFolderIndex := strings.LastIndex(part, "/")
-					if lastFolderIndex == -1 {
-						// 如果没有找到斜杠，返回空
-						return ""
-					}
-					return part[:lastFolderIndex]
-				}
-				ePath = extractPath()
-				execSlice[0] = execFile
-
-				lastIndex := len(execSlice) - 1
-				execSlice[lastIndex] = strings.TrimSpace(execSlice[lastIndex])
-				newExecLine = strings.Join(execSlice, " ")
-
-				iconValue = fs.TransIconToLl(desktopData["Desktop Entry"]["Icon"])
-				index := strings.Index(desktop, comm.LlSourceDir)
-				if index != -1 {
-					// 如果找到了子串，则移除它及其之前的部分
-					modiDesktopPath := "$SOURCES" + desktop[index+len(comm.LlSourceDir):]
-					d.Build = append(d.Build, []string{
-						"# modify desktop, Exec and Icon should not contanin absolut paths",
-						fmt.Sprintf("sed -i '/Exec*/c\\Exec=%s' %s", newExecLine, modiDesktopPath),
-						fmt.Sprintf("sed -i '/Icon*/c\\Icon=%s' %s", iconValue, modiDesktopPath),
-					}...)
-				}
-			}
-
-			// 玲珑内部的 /opt/apps 路径拼接的是 linglong-id
-			d.Build = append(d.Build, []string{
-				"export PATH=$PATH:/usr/libexec/linglong/builder/helper",
-				"install_dep $SOURCES $PREFIX",
-				"# use a script as program",
-				fmt.Sprintf("echo \"#!/usr/bin/env bash\" > %s", execFile),
-				fmt.Sprintf("echo \"cd $PREFIX/%s && ./%s \\$@\" >> %s", ePath, binFile, execFile),
-			}...)
-
-			d.Command = fmt.Sprintf("/opt/apps/%s/files/bin/%s", d.Id, execFile)
+	// 读取desktop 文件
+	var desktopData fs.DesktopData
+	var status bool
+	var binFile, ePath, iconValue, newExecLine string
+	// 如果存在多个 desktop 文件进行循环, 生成对应的 sed 操作
+	for _, desktop := range strings.Split(desktopFiles, "\n") {
+		if desktop == "" {
+			continue
+		}
+		status, desktopData = fs.DesktopInit(desktop)
+		if !status {
+			log.Logger.Errorf("load desktop error: %s", desktop)
+			continue
 		}
 
+		//获取 desktop 文件，Exec 行的内容,并且对字符串做处理
+		pattern := regexp.MustCompile(`Exec=|"|\n`)
+		execLine := pattern.ReplaceAllLiteralString(desktopData["Desktop Entry"]["Exec"], "")
+		execSlice := strings.Split(execLine, " ")
+
+		// 切割 Exec 命令
+		binPath := strings.Split(execSlice[0], "/")
+		// 获取可执行文件的名称
+		binFile = binPath[len(binPath)-1]
+
+		// 获取 files 和可执行文件之间路径的字符串
+		extractPath := func() string {
+			// 查找"files"在路径中的位置
+			filesIndex := strings.Index(execSlice[0], "files/")
+			if filesIndex == -1 {
+				// 如果没有找到"files/"，返回原始路径
+				return ""
+			}
+
+			// 找到该部分中最后一个斜杠的位置
+			part := execSlice[0][filesIndex+len("files/"):]
+			lastFolderIndex := strings.LastIndex(part, "/")
+			if lastFolderIndex == -1 {
+				// 如果没有找到斜杠，返回空
+				return ""
+			}
+			return part[:lastFolderIndex]
+		}
+		ePath = extractPath()
+		execSlice[0] = execFile
+
+		lastIndex := len(execSlice) - 1
+		execSlice[lastIndex] = strings.TrimSpace(execSlice[lastIndex])
+		newExecLine = strings.Join(execSlice, " ")
+
+		iconValue = fs.TransIconToLl(desktopData["Desktop Entry"]["Icon"])
+		index := strings.Index(desktop, comm.LlSourceDir)
+		if index != -1 {
+			// 如果找到了子串，则移除它及其之前的部分
+			modiDesktopPath := "$SOURCES" + desktop[index+len(comm.LlSourceDir):]
+			d.Build = append(d.Build, []string{
+				"# modify desktop, Exec and Icon should not contanin absolut paths",
+				fmt.Sprintf("sed -i '/Exec*/c\\Exec=%s' %s", newExecLine, modiDesktopPath),
+				fmt.Sprintf("sed -i '/Icon*/c\\Icon=%s' %s", iconValue, modiDesktopPath),
+			}...)
+		}
+	}
+
+	// 玲珑内部的 /opt/apps 路径拼接的是 linglong-id
+	d.Build = append(d.Build, []string{
+		"export PATH=$PATH:/usr/libexec/linglong/builder/helper",
+		"install_dep $SOURCES $PREFIX",
+		"# use a script as program",
+		fmt.Sprintf("echo \"#!/usr/bin/env bash\" > %s", execFile),
+		fmt.Sprintf("echo \"cd $PREFIX/%s && ./%s \\$@\" >> %s", ePath, binFile, execFile),
+	}...)
+
+	d.Command = fmt.Sprintf("/opt/apps/%s/files/bin/%s", d.Id, execFile)
+
+	d.Build = append(d.Build, []string{
+		"install -d $PREFIX/share",
+		"install -d $PREFIX/bin",
+		"install -d $PREFIX/lib",
+		fmt.Sprintf("install -m 0755 %s $PREFIX/bin", execFile),
+	}...)
+
+	if d.FromAppStore {
 		d.Build = append(d.Build, []string{
-			"install -d $PREFIX/share",
-			"install -d $PREFIX/bin",
-			"install -d $PREFIX/lib",
-			fmt.Sprintf("install -m 0755 %s $PREFIX/bin", execFile),
 			"# move files",
-			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/entries/* $PREFIX/share", d.Name, d.Name),
 			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/files/* $PREFIX", d.Name, d.Name),
 		}...)
 	} else {
-		// TODO
-		// 如果不是应用商店的 deb 包
 		d.Build = append(d.Build, []string{
 			"# move files",
 			fmt.Sprintf("cp -r $SOURCES/%s/usr/* $PREFIX", d.Name),
