@@ -74,8 +74,6 @@ func runAdep(options *adepOptions) error {
 		}
 		// 添加包本身
 		deb.GetPackageUrl(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion, packConfig.Runtime.Arch)
-		// 依赖处理
-		deb.ResolveDepends(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion)
 		// 对 linglong.yaml 依赖去重
 		deb.RemoveExcessDeps()
 		builder.Sources = append(builder.Sources, deb.Sources...)

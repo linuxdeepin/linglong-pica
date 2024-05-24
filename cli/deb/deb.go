@@ -224,8 +224,26 @@ func (d *Deb) ResolveDepends(source, distro string) {
 	// mirror_update_args []string
 	// 玲珑作为单应用程序，不需要在意里面的版本冲突，直接选择最新版本
 	// 定义一个正则表达式，删除匹配括号及其中的内容
-	re := regexp.MustCompile(`\([^)]*\)`)
-	filter := strings.Replace(re.ReplaceAllString(d.Depends, ""), ",", "|", -1)
+	reParentheses := regexp.MustCompile(`\([^)]*\)`)
+	filter := strings.Replace(reParentheses.ReplaceAllString(d.Depends, ""), ",", "|", -1)
+	// 移除所有空格
+	reSpace := regexp.MustCompile(`\s+`)
+	filter = reSpace.ReplaceAllString(filter, "")
+
+	// 设置黑名单过滤包，不获取依赖
+	skipPackage := []string{"deepin-elf-verify"}
+	filterSlice := strings.Split(filter, ",")
+	delMap := make(map[string]bool)
+	for _, item := range skipPackage {
+		delMap[item] = true
+	}
+	var result []string
+	for _, item := range filterSlice {
+		if !delMap[item] {
+			result = append(result, item)
+		}
+	}
+	filter = strings.Join(result, ",")
 
 	// 删除掉aptly缓存的内容
 	aptlyCache := comm.AptlyCachePath()
@@ -236,13 +254,18 @@ func (d *Deb) ResolveDepends(source, distro string) {
 		}
 	}
 
-	root := cmd.RootCommand()
-	root.UsageLine = "aptly"
-
-	if d.Architecture == "" || d.Name == "" || filter == "" {
-		log.Logger.Errorf("arch or package name or filter is empty")
+	if d.Architecture == "" || d.Name == "" {
+		log.Logger.Errorf("arch or package name is empty")
 		return
 	}
+
+	// 依赖为空，不需要处理
+	if filter == "" {
+		return
+	}
+
+	root := cmd.RootCommand()
+	root.UsageLine = "aptly"
 
 	args := []string{
 		"mirror",
@@ -250,7 +273,6 @@ func (d *Deb) ResolveDepends(source, distro string) {
 		"-ignore-signatures",
 		"-architectures=" + d.Architecture,
 		"-filter=" + filter,
-		"-filter-with-deps",
 		d.Name,
 		source,
 		distro,
@@ -374,7 +396,56 @@ func (d *Deb) GenerateBuildScript() {
 	// 玲珑内部的 /opt/apps 路径拼接的是 linglong-id
 	d.Build = append(d.Build, []string{
 		"export PATH=$PATH:/usr/libexec/linglong/builder/helper",
-		"install_dep $SOURCES $PREFIX",
+		"OUT_DIR=\"$(mktemp -d)\"", // 临时目录，处理完内容再移动到$PREFIX
+		// 设置白名单，不跳过包的列表
+		"declare -a NOT_SKIP_PACKAGE=('libarchive13' 'libasan5' 'libasm1' 'libbabeltrace1' 'libcairo-script-interpreter2' 'libcc1-0' 'libcurl4' 'libdpkg-perl' 'libdw1' 'libevent-2.1-6' 'libgdbm-compat4' 'libgdbm6' 'libgirepository-1.0-1' 'libgles1' 'libgles2' 'libglib2.0-data' 'libgmpxx4ldbl' 'libgnutls-dane0' 'libgnutls-openssl27' 'libgnutlsxx28' 'libharfbuzz-gobject0' 'libharfbuzz-icu0' 'libipt2' 'libisl19' 'libitm1' 'libjsoncpp1' 'libldap-2.4-2' 'libldap-common' 'liblsan0' 'liblzo2-2' 'libmpc3' 'libmpdec2' 'libmpfr6' 'libmpx2' 'libncurses6' 'libnghttp2-14' 'libpcrecpp0v5' 'libperl5.28' 'libpopt0' 'libprocps7' 'libpython3-stdlib' 'libpython3.7' 'libpython3.7-minimal' 'libpython3.7-stdlib' 'libquadmath0' 'libreadline7' 'librhash0' 'librtmp1' 'libsasl2-2' 'libsasl2-modules-db' 'libssh2-1' 'libtiffxx5' 'libtsan0' 'libubsan1' 'libunbound8' 'libuv1')",
+		"DEPS_LIST=\"$OUT_DIR/DEPS.list\"",
+		"find $SOURCES -type f -name \"*.deb\" > $DEPS_LIST",
+		"DATA_LIST_DIR=\"$OUT_DIR/data\"", // 包数据存放的临时目录
+		"mkdir -p /tmp/deb-source-file",   // 用于记录安装的所有文件来自哪个包
+		"while IFS= read -r file",
+		"do",
+		"    CONTROL_FILE=$(ar -t $file | grep control.tar)", // 提取control文件
+		"    ar -x \"$file\" $CONTROL_FILE",
+		"    PKG=$(tar -xf $CONTROL_FILE ./control -O | grep '^Package:' | awk '{print $2}')", // 获取包名
+		"    rm $CONTROL_FILE",
+		"    if (grep -q \"^Package: $PKG$\" /var/lib/dpkg/status /runtime/packages.list )  && \\", // 如果已安装则跳过
+		"        [[ ! \" ${not_skip_package[*]} \" =~ \" $pkg \" ]]; then",                         // 即使被记录了安装，也选择不跳过，这是 dev 和 runtime 的差异包。
+		"        echo \"$PKG skip\"",
+		"        echo \"$file >> $OUT_DIR/skip.list\"",
+		"    else",
+		"        DATA_FILE=$(ar -t $file | grep data.tar)", // 提取data.tar文件
+		"        ar -x $file $DATA_FILE",
+		"        mkdir -p $DATA_LIST_DIR",
+		"        tar -xvf $DATA_FILE -C $DATA_LIST_DIR >> \"/tmp/deb-source-file/$(basename $file).list\"", // 解压data.tar文件到输出目录
+		"        rm -rf $DATA_FILE 2>/dev/null",
+		"        rm -r ${DATA_LIST_DIR:?}/usr/share/applications* 2>/dev/null",                           // 清理不需要复制的目录
+		"        sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/lib/$TRIPLET/pkgconfig/*.pc 2>/dev/null", // # 修改pc文件的prefix
+		"        sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/share/pkgconfig/*.pc 2>/dev/null",
+		"        find $DATA_LIST_DIR -type l | while IFS= read -r file; do", // 修改指向/lib的绝对路径的软链接
+		"            Link_Target=$(readlink $file)",
+		"            if echo $Link_Target | grep -q ^/lib && ! [ -f $Link_Target ]; then", // 如果指向的路径以/lib开头，并且文件不存在，则添加 /runtime 前缀, 部分 dev 包会创建 so 文件的绝对链接指向 /lib 目录下
+		"                ln -sf $PREFIX$Link_Target $file",
+		"                echo \"    FIX LINK $Link_Target => $PREFIX$Link_Target\"",
+		"            fi",
+		"        done",
+		"        find $DATA_LIST_DIR -type f -exec file {} \\; | grep 'shared object' | awk -F: '{print $1}' | while IFS= read -r file; do", // 修复动态库的RUNPATH
+		"            runpath=$(readelf -d $file | grep RUNPATH |  awk '{print $NF}')",
+		"            if echo $runpath | grep -q '^\\[/'; then", // 如果RUNPATH使用绝对路径，则添加/runtime前缀
+		"                runpath=${runpath#[}",
+		"                runpath=${runpath%]}",
+		"                newRunpath=${runpath//usr\\/lib/runtime\\/lib}",
+		"                newRunpath=${newRunpath//usr/runtime}",
+		"                patchelf --set-rpath $newRunpath $file",
+		"                echo \"    FIX RUNPATH $file $runpath => $newRunpath\"",
+		"            fi",
+		"        done",
+		"        cp -rP $DATA_LIST_DIR/lib $PREFIX 2>/dev/null",
+		"        cp -rP $DATA_LIST_DIR/bin $PREFIX 2>/dev/null",
+		"        cp -rP $DATA_LIST_DIR/usr/* $PREFIX 2>/dev/null",
+		"    fi",
+		"done < \"$DEPS_LIST\"",
+		"rm -r $OUT_DIR", // # 清理临时目录
 		"# use a script as program",
 		fmt.Sprintf("echo \"#!/usr/bin/env bash\" > %s", execFile),
 		fmt.Sprintf("echo \"cd $PREFIX/%s && ./%s \\$@\" >> %s", ePath, binFile, execFile),
@@ -603,7 +674,12 @@ func formatVersion(versionStr string) string {
 	for _, part := range parts {
 		// 将字符串转换成数字，如果没有报错，说明是纯数字
 		if _, err := strconv.Atoi(part); err == nil {
-			digits = append(digits, part)
+			// 大于 1 位数字，去除前导零
+			if len(part) > 1 {
+				digits = append(digits, strings.TrimLeft(part, "0"))
+			} else {
+				digits = append(digits, part)
+			}
 		} else {
 			// 查找并提取非数字部分后的数字
 			re := regexp.MustCompile(`\d+`)
