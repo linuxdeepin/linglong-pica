@@ -7,7 +7,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -40,7 +39,7 @@ Simple:
 	ll-pica convert -c package.yaml -w work-dir
 	ll-pica help
 		`,
-		Version: fmt.Sprint("1.0.2", "test"),
+		Version: "1.1.1",
 	}
 
 	cmd.CompletionOptions.DisableDefaultCmd = true
