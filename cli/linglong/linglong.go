@@ -7,6 +7,7 @@
 package linglong
 
 import (
+	"fmt"
 	"os"
 	"text/template"
 
@@ -52,13 +53,14 @@ command:
   {{- range $line := .Command}}
   {{- printf "\n  - %s" $line}}
   {{- end}}
-
+{{if .Sources}}
 sources:
 {{- range .Sources}}
   - kind: {{.Kind}}
     url: {{.Url}}
     digest: {{.Digest}}
 {{end}}
+{{- end}}
 build: |
   {{- range $line := .Build}}
   {{- printf "\n  %s" $line}}
@@ -139,41 +141,38 @@ func (ts *LinglongBuilder) CreateLinglongBuilder(path string) bool {
 	}
 }
 
-func (ts *LinglongBuilder) LinglongExport(path string) bool {
-	log.Logger.Debugf("ll-builder import : ", ts.Package.Appid)
-	appExportPath := fs.GetFilePPath(path)
-	appExportPath = fs.GetFilePPath(appExportPath)
-	// check workstation
-	if ret, err := fs.CheckFileExits(path); err != nil && !ret {
-		log.Logger.Errorf("workstation witch convert not found: %s", path)
-		return false
+// 调用 ll-builder build
+func (ts *LinglongBuilder) LinglongBuild(path string) bool {
+	if ret, msg, err := comm.ExecAndWait(300, "sh", "-c",
+		fmt.Sprintf("cd %s && ll-builder build", path)); err != nil {
+		log.Logger.Fatalf("msg: %+v err:%+v, out: %+v", msg, err, ret)
 	} else {
-		err := os.Chdir(appExportPath)
-		if err != nil {
-			log.Logger.Errorf("workstation can not enter directory: %s", appExportPath)
-			return false
-		}
+		log.Logger.Infof("msg: %+v err:%+v, out: %+v", msg, err, ret)
 	}
+	return true
+}
+
+func (ts *LinglongBuilder) LinglongExport(path string) bool {
 	// caller ll-builder export --local
-	if ret, msg, err := comm.ExecAndWait(120, "ll-builder", "export", path); err != nil {
-		log.Logger.Fatalf("ll-builder export failed: ", err, msg, ret)
-		return false
+	if ret, msg, err := comm.ExecAndWait(1<<20, "sh", "-c",
+		fmt.Sprintf("cd %s && ll-builder export", path)); err != nil {
+		log.Logger.Fatalf("msg: %+v err:%+v, out: %+v", msg, err, ret)
 	} else {
-		log.Logger.Infof("ll-builder export succeeded: ", path, ret)
+		log.Logger.Infof("%s export success.", path)
 	}
 
 	// chmod 755 uab
-	if bundleList, err := fs.FindBundlePath(appExportPath); err != nil {
-		log.Logger.Errorf("not found bundle")
-		return false
-	} else {
-		for _, bundle := range bundleList {
-			log.Logger.Infof("chmod 0755 for %s", bundle)
-			if err := os.Chmod(bundle, 0755); err != nil {
-				log.Logger.Errorf("chmod 0755 for %s failed！", bundle)
-				return false
-			}
-		}
-	}
+	// if bundleList, err := fs.FindBundlePath(appExportPath); err != nil {
+	// 	log.Logger.Errorf("not found bundle")
+	// 	return false
+	// } else {
+	// 	for _, bundle := range bundleList {
+	// 		log.Logger.Infof("chmod 0755 for %s", bundle)
+	// 		if err := os.Chmod(bundle, 0755); err != nil {
+	// 			log.Logger.Errorf("chmod 0755 for %s failed！", bundle)
+	// 			return false
+	// 		}
+	// 	}
+	// }
 	return true
 }

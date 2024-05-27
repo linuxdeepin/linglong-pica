@@ -197,20 +197,8 @@ func runConvert(options *convertOptions) error {
 			// 构建玲珑包
 			if options.buildFlag {
 				buildLinglongPath := filepath.Dir(linglongYamlPath)
-				if ret, msg, err := comm.ExecAndWait(1<<20, "sh", "-c",
-					fmt.Sprintf("cd %s && ll-builder build", buildLinglongPath)); err != nil {
-					log.Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
-				} else {
-					log.Logger.Infof("msg: %+v err:%+v, out: %+v", msg, err, ret)
-				}
-
-				// 导出玲珑包
-				if ret, msg, err := comm.ExecAndWait(1<<20, "sh", "-c",
-					fmt.Sprintf("cd %s && ll-builder export", buildLinglongPath)); err != nil {
-					log.Logger.Warnf("msg: %+v err:%+v, out: %+v", msg, err, ret)
-					} else {
-					log.Logger.Infof("%s export success.", packConfig.File.Deb[idx].Name)
-				}
+				builder.LinglongBuild(buildLinglongPath)
+				builder.LinglongExport(buildLinglongPath)
 			}
 		}
 	}
