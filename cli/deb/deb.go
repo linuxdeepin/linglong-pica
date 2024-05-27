@@ -314,11 +314,6 @@ func (d *Deb) GenerateBuildScript() {
 	// linglong/sources 下解压 app 后的目录
 	debDirPath := filepath.Join(filepath.Dir(d.Path), d.Name)
 
-	desktopFiles, msg, err := comm.ExecAndWait(10, "sh", "-c", fmt.Sprintf("find %s -name '*.desktop' | grep applications", debDirPath))
-	if err != nil {
-		log.Logger.Fatalf("find desktop error: %s out: %s", msg, desktopFiles)
-	}
-
 	// 如果是应用商店的软件包
 	if d.FromAppStore {
 		// 删除多余的 desktop 文件
@@ -328,6 +323,11 @@ func (d *Deb) GenerateBuildScript() {
 		} else {
 			log.Logger.Debugf("remove extra desktop file: %+v", ret)
 		}
+	}
+
+	desktopFiles, msg, err := comm.ExecAndWait(10, "sh", "-c", fmt.Sprintf("find %s -name '*.desktop' | grep applications", debDirPath))
+	if err != nil {
+		log.Logger.Fatalf("find desktop error: %s out: %s", msg, desktopFiles)
 	}
 
 	// 读取desktop 文件
@@ -463,6 +463,7 @@ func (d *Deb) GenerateBuildScript() {
 	if d.FromAppStore {
 		d.Build = append(d.Build, []string{
 			"# move files",
+			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/entries/* $PREFIX/share", d.Name, d.Name),
 			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/files/* $PREFIX", d.Name, d.Name),
 		}...)
 	} else {
