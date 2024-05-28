@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -176,7 +177,11 @@ func (d *Deb) ExtractDeb() error {
 		// 在描述信息里添加原包的版本号信息
 		d.Desc = fmt.Sprintf("convert from %s    %s", info.Source.Paragraph.Values["Version"], strings.ReplaceAll(info.Source.Paragraph.Values["Description"], "\n", ""))
 		d.Depends = info.Source.Paragraph.Values["Depends"]
-		d.Architecture = info.Source.Paragraph.Values["Architecture"]
+		if info.Source.Paragraph.Values["Architecture"] == "all" {
+			d.Architecture = runtime.GOARCH
+		} else {
+			d.Architecture = info.Source.Paragraph.Values["Architecture"]
+		}
 		d.Filename = info.Source.Paragraph.Values["Filename"]
 	}
 

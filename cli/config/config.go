@@ -9,6 +9,7 @@ package config
 import (
 	"encoding/json"
 	"os"
+	"runtime"
 
 	"pkg.deepin.com/linglong/pica/cli/comm"
 	"pkg.deepin.com/linglong/pica/tools/log"
@@ -32,7 +33,7 @@ func NewConfig() *Config {
 		BaseVersion:   "23.0.0",
 		Source:        "https://community-packages.deepin.com/beige/",
 		DistroVersion: "beige",
-		Arch:          "amd64",
+		Arch:          runtime.GOARCH,
 	}
 }
 
