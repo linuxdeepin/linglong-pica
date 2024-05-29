@@ -355,19 +355,10 @@ func (d *Deb) GenerateBuildScript() {
 		execLine := pattern.ReplaceAllLiteralString(desktopData["Desktop Entry"]["Exec"], "")
 		execSlice := strings.Split(execLine, " ")
 
-		// 切割 Exec 命令
-		binPath := strings.Split(execSlice[0], "/")
-		// 获取可执行文件的名称
-		binFile = binPath[len(binPath)-1]
-
 		// 获取 files 和可执行文件之间路径的字符串
-		extractPath := func() string {
+		extractPath := func(path string) string {
 			// 查找"files"在路径中的位置
-			filesIndex := strings.Index(execSlice[0], "files/")
-			if filesIndex == -1 {
-				// 如果没有找到"files/"，返回原始路径
-				return ""
-			}
+			filesIndex := strings.Index(path, "files/")
 
 			// 找到该部分中最后一个斜杠的位置
 			part := execSlice[0][filesIndex+len("files/"):]
@@ -378,7 +369,31 @@ func (d *Deb) GenerateBuildScript() {
 			}
 			return part[:lastFolderIndex]
 		}
-		ePath = extractPath()
+
+		// 以 /opt/apps 开头
+		if strings.HasPrefix(execSlice[0], "/opt/apps") {
+			ePath = extractPath(execSlice[0])
+		} else if strings.HasPrefix(execSlice[0], "env") {
+			// env开头的多是appimage应用，使用原本的 DesktopInit 逻辑无法读取正确的 Exec 内容，因为该字段又嵌套了 env key=value 无法被该函数正确识别。
+			if ret, msg, err := comm.ExecAndWait(10, "sh", "-c",
+				fmt.Sprintf("grep -oP 'Exec=\\K.*' %s", desktop)); err != nil {
+				log.Logger.Warnf(": %+v", msg)
+			} else {
+				execSlice = strings.Split(ret, " ")
+				for index, item := range execSlice {
+					if strings.HasPrefix(item, "/opt/apps") {
+						execSlice = execSlice[index:]
+						break
+					}
+				}
+			}
+			ePath = extractPath(execSlice[0])
+		} else {
+			ePath = "bin"
+		}
+
+		// 获取可执行文件的名称
+		binFile = filepath.Base(execSlice[0])
 		execSlice[0] = execFile
 
 		lastIndex := len(execSlice) - 1
@@ -400,7 +415,6 @@ func (d *Deb) GenerateBuildScript() {
 
 	// 玲珑内部的 /opt/apps 路径拼接的是 linglong-id
 	d.Build = append(d.Build, []string{
-		"export PATH=$PATH:/usr/libexec/linglong/builder/helper",
 		"OUT_DIR=\"$(mktemp -d)\"", // 临时目录，处理完内容再移动到$PREFIX
 		// 设置白名单，不跳过包的列表
 		"declare -a NOT_SKIP_PACKAGE=('libarchive13' 'libasan5' 'libasm1' 'libbabeltrace1' 'libcairo-script-interpreter2' 'libcc1-0' 'libcurl4' 'libdpkg-perl' 'libdw1' 'libevent-2.1-6' 'libgdbm-compat4' 'libgdbm6' 'libgirepository-1.0-1' 'libgles1' 'libgles2' 'libglib2.0-data' 'libgmpxx4ldbl' 'libgnutls-dane0' 'libgnutls-openssl27' 'libgnutlsxx28' 'libharfbuzz-gobject0' 'libharfbuzz-icu0' 'libipt2' 'libisl19' 'libitm1' 'libjsoncpp1' 'libldap-2.4-2' 'libldap-common' 'liblsan0' 'liblzo2-2' 'libmpc3' 'libmpdec2' 'libmpfr6' 'libmpx2' 'libncurses6' 'libnghttp2-14' 'libpcrecpp0v5' 'libperl5.28' 'libpopt0' 'libprocps7' 'libpython3-stdlib' 'libpython3.7' 'libpython3.7-minimal' 'libpython3.7-stdlib' 'libquadmath0' 'libreadline7' 'librhash0' 'librtmp1' 'libsasl2-2' 'libsasl2-modules-db' 'libssh2-1' 'libtiffxx5' 'libtsan0' 'libubsan1' 'libunbound8' 'libuv1')",
