@@ -1,3 +1,10 @@
+linglong-pica (1.1.1-1) unstable; urgency=medium
+
+  * chore: move install_dep to linglong.yaml
+  * chore: Compatible with non store software conversions
+
+ -- bluesky <chenchongbiao@deepin.org>  Mon, 27 May 2024 14:06:14 +0800
+
 linglong-pica (1.1.0-1) unstable; urgency=medium
 
   * update version to 1.1.0
