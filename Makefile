@@ -17,7 +17,7 @@ all: build
 
 build:
 	install -d ${GO_PATH} ${GO_CACHE}
-	${GoPath} ${GOBUILD} -o ${BINARY_DIR}/${BINARY_NAME} ./cmd/${BINARY_NAME}
+	CGO_ENABLED=0 ${GoPath} ${GOBUILD} -o ${BINARY_DIR}/${BINARY_NAME} ./cmd/${BINARY_NAME}
 
 debug:
 	${GoPath} ${GOBUILDDEBUG} -o ${BINARY_DIR}/${BINARY_NAME} ./cmd/${BINARY_NAME}
