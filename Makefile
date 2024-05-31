@@ -27,7 +27,6 @@ test:
 
 install:
 	install -Dm0755  ${BINARY_DIR}/${BINARY_NAME} ${DESTDIR}/${PREFIX}/${BINARY_DIR}/${BINARY_NAME}
-	install -Dm0755  misc/libexec/linglong/builder/helper/install_dep debian/tmp/${PREFIX}/libexec/linglong/builder/helper/install_dep
 
 clean:
 	rm -rf ${BINARY_DIR}
