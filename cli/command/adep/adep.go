@@ -20,8 +20,9 @@ import (
 )
 
 type adepOptions struct {
-	path string
-	deps string
+	path    string
+	deps    string
+	withDep bool // 带上依赖树
 }
 
 func NewADepCommand() *cobra.Command {
@@ -37,6 +38,7 @@ func NewADepCommand() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVarP(&options.deps, "deps", "d", "", "dependencies to be added, separator is ','")
 	flags.StringVarP(&options.path, "path", "p", "linglong.yaml", "path to linglong.yaml")
+	flags.BoolVar(&options.withDep, "withDep", false, "add depends tree")
 	return cmd
 }
 
@@ -74,11 +76,11 @@ func runAdep(options *adepOptions) error {
 		}
 		// 添加包本身
 		deb.GetPackageUrl(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion, packConfig.Runtime.Arch)
-		// 对 linglong.yaml 依赖去重
-		deb.RemoveExcessDeps()
+		deb.ResolveDepends(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion, options.withDep)
 		builder.Sources = append(builder.Sources, deb.Sources...)
 	}
-
+	// 对 linglong.yaml 依赖去重
+	builder.Sources = comm.RemoveExcessDeps(builder.Sources)
 	if builder.CreateLinglongYaml(path) {
 		log.Logger.Infof("generate %s success.", comm.LinglongYaml)
 	} else {

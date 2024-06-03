@@ -4,14 +4,13 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-package config
+package comm
 
 import (
 	"encoding/json"
 	"os"
 	"runtime"
 
-	"pkg.deepin.com/linglong/pica/cli/comm"
 	"pkg.deepin.com/linglong/pica/tools/log"
 )
 
@@ -39,10 +38,10 @@ func NewConfig() *Config {
 
 // 读取 pica 配置文件
 func (c *Config) ReadConfigJson() bool {
-	log.Logger.Infof("load %s", comm.PicaConfigJsonPath())
-	picaConfigFd, err := os.ReadFile(comm.PicaConfigJsonPath())
+	log.Logger.Infof("load %s", PicaConfigJsonPath())
+	picaConfigFd, err := os.ReadFile(PicaConfigJsonPath())
 	if err != nil {
-		log.Logger.Errorf("load  %s error: %v", comm.PicaConfigJsonPath(), err)
+		log.Logger.Errorf("load  %s error: %v", PicaConfigJsonPath(), err)
 	} else {
 		err = json.Unmarshal([]byte(picaConfigFd), &c)
 		if err != nil {

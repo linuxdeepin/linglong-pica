@@ -8,6 +8,7 @@ package comm
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -32,6 +33,12 @@ const (
 type Options struct {
 	Workdir string
 	Config  string
+}
+
+type Source struct {
+	Kind   string
+	Digest string
+	Url    string
 }
 
 func ExecAndWait(timeout int, name string, arg ...string) (stdout, stderr string, err error) {
@@ -154,4 +161,34 @@ func AptlyCachePath() string {
 // 返回 linglong.yaml 中定义的 deb 包缓存路径
 func LLSourcePath(path string) string {
 	return filepath.Join(path, LlSourceDir)
+}
+
+// 玲珑仓库的定义的架构和 os 获取系统架构对应关系
+// os 获取架构为 amd64，玲珑仓库里定义为x86_64，
+// 但是 arm64 在玲珑仓库定义 arm64，而没有使用 aarch64 需要该函数进行转换
+// loong64 对应 loongarch64
+func ArchConvert(arch string) string {
+	switch arch {
+	case "amd64":
+		return "x86_64"
+	case "loong64":
+		return "loongarch64"
+	default:
+		return arch
+	}
+}
+
+// 对生成的 Source 数组进行去重
+func RemoveExcessDeps(sources []Source) []Source {
+	var result []Source
+	uniqueMap := make(map[string]bool)
+	for _, pkg := range sources {
+		key, _ := json.Marshal(pkg)
+		// 如果 key 不存在于 map 中，则添加
+		if _, ok := uniqueMap[string(key)]; !ok {
+			uniqueMap[string(key)] = true
+			result = append(result, pkg)
+		}
+	}
+	return result
 }
