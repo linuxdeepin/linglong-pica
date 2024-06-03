@@ -28,6 +28,11 @@ Files: debian/*
 License: CC0-1.0
 Copyright: None
 
+# archlinux packaging configurations
+Files: archlinux/*
+License: CC0-1.0
+Copyright: None
+
 # gomod files
 Files: go.mod go.sum
 Copyright: None

@@ -1,0 +1,31 @@
+# Maintainer: ComixHe <self@comix.he.cn>
+
+pkgname=linglong-pica-git
+_pkgname=linglong-pica
+pkgver=1.1.1.r0.g76e47c9
+pkgrel=1
+pkgdesc="deb package to Linglong package tool."
+arch=('x86_64' 'aarch64')
+url='https://github.com/linuxdeepin/linglong-pica'
+license=('LGPL3')
+depends=( 'grep' 'linglong' )
+makedepends=( 'go' )
+provides=('linglong-pica')
+conflicts=('linglong-pica')
+source=("git+https://github.com/linuxdeepin/linglong-pica.git")
+sha256sums=('SKIP')
+
+pkgver() {
+        cd $srcdir/$_pkgname
+        git describe --long --tags "$(git rev-list --tags --max-count=1)" | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+        cd $srcdir/$_pkgname
+        make build
+}
+
+package() {
+        cd $srcdir/$_pkgname
+        DESTDIR="$pkgdir" make install
+}
