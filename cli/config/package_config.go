@@ -5,6 +5,7 @@ import (
 	"text/template"
 
 	"gopkg.in/yaml.v3"
+	"pkg.deepin.com/linglong/pica/cli/comm"
 	"pkg.deepin.com/linglong/pica/cli/deb"
 	"pkg.deepin.com/linglong/pica/tools/fs"
 	"pkg.deepin.com/linglong/pica/tools/log"
@@ -33,7 +34,7 @@ file:
 
 type PackConfig struct {
 	Runtime struct {
-		Config `yaml:",inline"`
+		comm.Config `yaml:",inline"`
 	} `yaml:"runtime"`
 	File struct {
 		Deb []deb.Deb `yaml:"deb"`
@@ -43,9 +44,9 @@ type PackConfig struct {
 func NewPackConfig() *PackConfig {
 	return &PackConfig{
 		Runtime: struct {
-			Config `yaml:",inline"`
+			comm.Config `yaml:",inline"`
 		}{
-			Config: *NewConfig(),
+			Config: *comm.NewConfig(),
 		}, File: struct {
 			Deb []deb.Deb `yaml:"deb"`
 		}{

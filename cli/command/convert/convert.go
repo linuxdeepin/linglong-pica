@@ -27,6 +27,7 @@ type convertOptions struct {
 	gtype       string
 	packageId   string
 	packageName string
+	withDep     bool // 带上依赖树
 	buildFlag   bool
 }
 
@@ -47,6 +48,7 @@ func NewConvertCommand() *cobra.Command {
 	flags.StringVarP(&options.gtype, "type", "t", "local", "get app type")
 	flags.StringVar(&options.packageId, "pi", "", "package id")
 	flags.StringVar(&options.packageName, "pn", "", "package name")
+	flags.BoolVar(&options.withDep, "withDep", false, "add depends tree")
 	flags.BoolVarP(&options.buildFlag, "build", "b", false, "build linglong")
 	return cmd
 }
@@ -164,11 +166,11 @@ func runConvert(options *convertOptions) error {
 			}
 
 			// 依赖处理
-			packConfig.File.Deb[idx].ResolveDepends(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion)
+			packConfig.File.Deb[idx].ResolveDepends(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion, options.withDep)
 			// 生成构建脚本
 			packConfig.File.Deb[idx].GenerateBuildScript()
-			// linglong.yaml 依赖去重
-			packConfig.File.Deb[idx].RemoveExcessDeps()
+			// 对 linglong.yaml 依赖去重
+			packConfig.File.Deb[idx].Sources = comm.RemoveExcessDeps(packConfig.File.Deb[idx].Sources)
 
 			builder := linglong.LinglongBuilder{
 				Package: linglong.Package{

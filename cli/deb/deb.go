@@ -8,7 +8,6 @@ package deb
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -28,8 +27,13 @@ import (
 	"github.com/aptly-dev/aptly/utils"
 
 	"pkg.deepin.com/linglong/pica/cli/comm"
+	"pkg.deepin.com/linglong/pica/cli/linglong"
 	"pkg.deepin.com/linglong/pica/tools/fs"
 	"pkg.deepin.com/linglong/pica/tools/log"
+)
+
+var (
+	delMap = make(map[string]bool) // 用来记录跳过的包的映射
 )
 
 type Deb struct {
@@ -49,14 +53,8 @@ type Deb struct {
 	FromAppStore bool
 	PackageKind  string
 	Command      string
-	Sources      []Source
+	Sources      []comm.Source
 	Build        []string
-}
-
-type Source struct {
-	Kind   string
-	Digest string
-	Url    string
 }
 
 func (d *Deb) GetPackageUrl(source, distro, arch string) string {
@@ -203,7 +201,7 @@ func (d *Deb) ExtractDeb() error {
 	}
 
 	if d.Type != "local" {
-		d.Sources = append(d.Sources, Source{Kind: "file", Digest: d.Hash, Url: d.Ref})
+		d.Sources = append(d.Sources, comm.Source{Kind: "file", Digest: d.Hash, Url: d.Ref})
 	}
 
 	// 应用需要指定，四位版本号
@@ -220,7 +218,7 @@ func (d *Deb) ExtractDeb() error {
 }
 
 // 解析依赖
-func (d *Deb) ResolveDepends(source, distro string) {
+func (d *Deb) ResolveDepends(source, distro string, withDep bool) {
 	// 可能存在依赖为空的情况
 	if d.Depends == "" {
 		return
@@ -236,9 +234,13 @@ func (d *Deb) ResolveDepends(source, distro string) {
 	filter = reSpace.ReplaceAllString(filter, "")
 
 	// 设置黑名单过滤包，不获取依赖
-	skipPackage := []string{"deepin-elf-verify"}
+	skipPackage := []string{"deepin-elf-verify", "systemd", "systemd-dev", "usrmerge", "xdg-utils", "dbus", "dbus-broker"}
+	cli := linglong.NewLinglongCli()
+	// 过滤掉 base 中安装过的包
+	skipPackage = append(skipPackage, cli.GetBaseInsPack()...)
+	// 过滤掉 runtime 中安装过的包
+	skipPackage = append(skipPackage, cli.GetRuntimeInsPack()...)
 	filterSlice := strings.Split(filter, ",")
-	delMap := make(map[string]bool)
 	for _, item := range skipPackage {
 		delMap[item] = true
 	}
@@ -249,7 +251,6 @@ func (d *Deb) ResolveDepends(source, distro string) {
 		}
 	}
 	filter = strings.Join(result, ",")
-
 	// 删除掉aptly缓存的内容
 	aptlyCache := comm.AptlyCachePath()
 	if ret, _ := fs.CheckFileExits(aptlyCache); ret {
@@ -278,29 +279,21 @@ func (d *Deb) ResolveDepends(source, distro string) {
 		"-ignore-signatures",
 		"-architectures=" + d.Architecture,
 		"-filter=" + filter,
+	}
+
+	if withDep {
+		args = append(args, "-filter-with-deps")
+	}
+
+	args = append(args, []string{
 		d.Name,
 		source,
 		distro,
-	}
+	}...)
 
 	cmd.Run(root, args, cmd.GetContext() == nil)
 
 	d.GetPackageList()
-}
-
-// 对生成的 Source 数组进行去重
-func (d *Deb) RemoveExcessDeps() {
-	var result []Source
-	uniqueMap := make(map[string]bool)
-	for _, pkg := range d.Sources {
-		key, _ := json.Marshal(pkg)
-		// 如果 key 不存在于 map 中，则添加
-		if _, ok := uniqueMap[string(key)]; !ok {
-			uniqueMap[string(key)] = true
-			result = append(result, pkg)
-		}
-	}
-	d.Sources = result
 }
 
 func (d *Deb) GenerateBuildScript() {
@@ -416,8 +409,6 @@ func (d *Deb) GenerateBuildScript() {
 	// 玲珑内部的 /opt/apps 路径拼接的是 linglong-id
 	d.Build = append(d.Build, []string{
 		"OUT_DIR=\"$(mktemp -d)\"", // 临时目录，处理完内容再移动到$PREFIX
-		// 设置白名单，不跳过包的列表
-		"declare -a NOT_SKIP_PACKAGE=('libarchive13' 'libasan5' 'libasm1' 'libbabeltrace1' 'libcairo-script-interpreter2' 'libcc1-0' 'libcurl4' 'libdpkg-perl' 'libdw1' 'libevent-2.1-6' 'libgdbm-compat4' 'libgdbm6' 'libgirepository-1.0-1' 'libgles1' 'libgles2' 'libglib2.0-data' 'libgmpxx4ldbl' 'libgnutls-dane0' 'libgnutls-openssl27' 'libgnutlsxx28' 'libharfbuzz-gobject0' 'libharfbuzz-icu0' 'libipt2' 'libisl19' 'libitm1' 'libjsoncpp1' 'libldap-2.4-2' 'libldap-common' 'liblsan0' 'liblzo2-2' 'libmpc3' 'libmpdec2' 'libmpfr6' 'libmpx2' 'libncurses6' 'libnghttp2-14' 'libpcrecpp0v5' 'libperl5.28' 'libpopt0' 'libprocps7' 'libpython3-stdlib' 'libpython3.7' 'libpython3.7-minimal' 'libpython3.7-stdlib' 'libquadmath0' 'libreadline7' 'librhash0' 'librtmp1' 'libsasl2-2' 'libsasl2-modules-db' 'libssh2-1' 'libtiffxx5' 'libtsan0' 'libubsan1' 'libunbound8' 'libuv1')",
 		"DEPS_LIST=\"$OUT_DIR/DEPS.list\"",
 		"find $SOURCES -type f -name \"*.deb\" > $DEPS_LIST",
 		"DATA_LIST_DIR=\"$OUT_DIR/data\"", // 包数据存放的临时目录
@@ -428,41 +419,35 @@ func (d *Deb) GenerateBuildScript() {
 		"    ar -x \"$file\" $CONTROL_FILE",
 		"    PKG=$(tar -xf $CONTROL_FILE ./control -O | grep '^Package:' | awk '{print $2}')", // 获取包名
 		"    rm $CONTROL_FILE",
-		"    if (grep -q \"^Package: $PKG$\" /var/lib/dpkg/status /runtime/packages.list )  && \\", // 如果已安装则跳过
-		"        [[ ! \" ${not_skip_package[*]} \" =~ \" $pkg \" ]]; then",                         // 即使被记录了安装，也选择不跳过，这是 dev 和 runtime 的差异包。
-		"        echo \"$PKG skip\"",
-		"        echo \"$file >> $OUT_DIR/skip.list\"",
-		"    else",
-		"        DATA_FILE=$(ar -t $file | grep data.tar)", // 提取data.tar文件
-		"        ar -x $file $DATA_FILE",
-		"        mkdir -p $DATA_LIST_DIR",
-		"        tar -xvf $DATA_FILE -C $DATA_LIST_DIR >> \"/tmp/deb-source-file/$(basename $file).list\"", // 解压data.tar文件到输出目录
-		"        rm -rf $DATA_FILE 2>/dev/null",
-		"        rm -r ${DATA_LIST_DIR:?}/usr/share/applications* 2>/dev/null",                           // 清理不需要复制的目录
-		"        sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/lib/$TRIPLET/pkgconfig/*.pc 2>/dev/null", // # 修改pc文件的prefix
-		"        sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/share/pkgconfig/*.pc 2>/dev/null",
-		"        find $DATA_LIST_DIR -type l | while IFS= read -r file; do", // 修改指向/lib的绝对路径的软链接
-		"            Link_Target=$(readlink $file)",
-		"            if echo $Link_Target | grep -q ^/lib && ! [ -f $Link_Target ]; then", // 如果指向的路径以/lib开头，并且文件不存在，则添加 /runtime 前缀, 部分 dev 包会创建 so 文件的绝对链接指向 /lib 目录下
-		"                ln -sf $PREFIX$Link_Target $file",
-		"                echo \"    FIX LINK $Link_Target => $PREFIX$Link_Target\"",
-		"            fi",
-		"        done",
-		"        find $DATA_LIST_DIR -type f -exec file {} \\; | grep 'shared object' | awk -F: '{print $1}' | while IFS= read -r file; do", // 修复动态库的RUNPATH
-		"            runpath=$(readelf -d $file | grep RUNPATH |  awk '{print $NF}')",
-		"            if echo $runpath | grep -q '^\\[/'; then", // 如果RUNPATH使用绝对路径，则添加/runtime前缀
-		"                runpath=${runpath#[}",
-		"                runpath=${runpath%]}",
-		"                newRunpath=${runpath//usr\\/lib/runtime\\/lib}",
-		"                newRunpath=${newRunpath//usr/runtime}",
-		"                patchelf --set-rpath $newRunpath $file",
-		"                echo \"    FIX RUNPATH $file $runpath => $newRunpath\"",
-		"            fi",
-		"        done",
-		"        cp -rP $DATA_LIST_DIR/lib $PREFIX 2>/dev/null",
-		"        cp -rP $DATA_LIST_DIR/bin $PREFIX 2>/dev/null",
-		"        cp -rP $DATA_LIST_DIR/usr/* $PREFIX 2>/dev/null",
-		"    fi",
+		"    DATA_FILE=$(ar -t $file | grep data.tar)", // 提取data.tar文件
+		"    ar -x $file $DATA_FILE",
+		"    mkdir -p $DATA_LIST_DIR",
+		"    tar -xvf $DATA_FILE -C $DATA_LIST_DIR >> \"/tmp/deb-source-file/$(basename $file).list\"", // 解压data.tar文件到输出目录
+		"    rm -rf $DATA_FILE 2>/dev/null",
+		"    rm -r ${DATA_LIST_DIR:?}/usr/share/applications* 2>/dev/null",                           // 清理不需要复制的目录
+		"    sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/lib/$TRIPLET/pkgconfig/*.pc 2>/dev/null", // # 修改pc文件的prefix
+		"    sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/share/pkgconfig/*.pc 2>/dev/null",
+		"    find $DATA_LIST_DIR -type l | while IFS= read -r file; do", // 修改指向/lib的绝对路径的软链接
+		"        Link_Target=$(readlink $file)",
+		"        if echo $Link_Target | grep -q ^/lib && ! [ -f $Link_Target ]; then", // 如果指向的路径以/lib开头，并且文件不存在，则添加 /runtime 前缀, 部分 dev 包会创建 so 文件的绝对链接指向 /lib 目录下
+		"            ln -sf $PREFIX$Link_Target $file",
+		"            echo \"    FIX LINK $Link_Target => $PREFIX$Link_Target\"",
+		"        fi",
+		"    done",
+		"    find $DATA_LIST_DIR -type f -exec file {} \\; | grep 'shared object' | awk -F: '{print $1}' | while IFS= read -r file; do", // 修复动态库的RUNPATH
+		"        runpath=$(readelf -d $file | grep RUNPATH |  awk '{print $NF}')",
+		"        if echo $runpath | grep -q '^\\[/'; then", // 如果RUNPATH使用绝对路径，则添加/runtime前缀
+		"            runpath=${runpath#[}",
+		"            runpath=${runpath%]}",
+		"            newRunpath=${runpath//usr\\/lib/runtime\\/lib}",
+		"            newRunpath=${newRunpath//usr/runtime}",
+		"            patchelf --set-rpath $newRunpath $file",
+		"            echo \"    FIX RUNPATH $file $runpath => $newRunpath\"",
+		"        fi",
+		"    done",
+		"    cp -rP $DATA_LIST_DIR/lib $PREFIX 2>/dev/null",
+		"    cp -rP $DATA_LIST_DIR/bin $PREFIX 2>/dev/null",
+		"    cp -rP $DATA_LIST_DIR/usr/* $PREFIX 2>/dev/null",
 		"done < \"$DEPS_LIST\"",
 		"rm -r $OUT_DIR", // # 清理临时目录
 		"# use a script as program",
@@ -626,9 +611,13 @@ func (d *Deb) GetPackageList() {
 
 					var e error
 
+					// 跳过黑名单
+					if delMap[strings.Split(task.File.Filename, "_")[0]] {
+						continue
+					}
+
 					// 构造下载路径
 					task.TempDownPath = filepath.Join(filepath.Dir(d.Path), task.File.Filename)
-
 					// 下载文件
 					e = context.Downloader().DownloadWithChecksum(
 						context,
@@ -637,7 +626,7 @@ func (d *Deb) GetPackageList() {
 						&task.File.Checksums,
 						false)
 
-					source := Source{
+					source := comm.Source{
 						Kind:   "file",
 						Url:    repo.PackageURL(task.File.DownloadURL()).String(),
 						Digest: task.File.Checksums.SHA256,
@@ -651,6 +640,7 @@ func (d *Deb) GetPackageList() {
 					}
 
 					task.Done = true
+
 				case <-context.Done():
 					return
 				}

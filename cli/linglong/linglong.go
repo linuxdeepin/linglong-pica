@@ -7,25 +7,32 @@
 package linglong
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"text/template"
 
 	"gopkg.in/yaml.v3"
 	"pkg.deepin.com/linglong/pica/cli/comm"
-	"pkg.deepin.com/linglong/pica/cli/deb"
 	"pkg.deepin.com/linglong/pica/tools/fs"
 	"pkg.deepin.com/linglong/pica/tools/log"
 )
 
 type LinglongBuilder struct {
-	Package    Package      `yaml:"package"`
-	Base       string       `yaml:"base"`
-	Runtime    string       `yaml:"runtime"`
-	Command    []string     `yaml:"command"`
-	Sources    []deb.Source `yaml:"sources"`
-	Build      []string     `yaml:"-"`
-	BuildInput string       `yaml:"build"` // 用来接收build字段，从yaml文件读入的值
+	Package    Package       `yaml:"package"`
+	Base       string        `yaml:"base"`
+	Runtime    string        `yaml:"runtime"`
+	Command    []string      `yaml:"command"`
+	Sources    []comm.Source `yaml:"sources"`
+	Build      []string      `yaml:"-"`
+	BuildInput string        `yaml:"build"` // 用来接收build字段，从yaml文件读入的值
+}
+
+type LinglongCli struct {
+	Arch    []string
+	Channel string
+	Version string
 }
 
 type Package struct {
@@ -69,6 +76,10 @@ build: |
 
 func NewLinglongBuilder() *LinglongBuilder {
 	return &LinglongBuilder{}
+}
+
+func NewLinglongCli() *LinglongCli {
+	return &LinglongCli{}
 }
 
 // create linglong.yaml
@@ -175,4 +186,56 @@ func (ts *LinglongBuilder) LinglongExport(path string) bool {
 	// 	}
 	// }
 	return true
+}
+
+func (cli *LinglongCli) LlCliInfo(appid string) {
+	if ret, msg, err := comm.ExecAndWait(10, "sh", "-c",
+		fmt.Sprintf("ll-cli info %s", appid)); err != nil {
+		log.Logger.Warnf("ll-cli info error: %s", msg)
+	} else {
+		err = json.Unmarshal([]byte(ret), &cli)
+		if err != nil {
+			log.Logger.Errorf("unmarshal error: %s", err)
+		}
+	}
+}
+
+// 获取 base 里面安装的包列表
+func (cli *LinglongCli) GetBaseInsPack() []string {
+	var packages []string
+
+	// 读取 pica 的配置
+	config := comm.NewConfig()
+	config.ReadConfigJson()
+
+	// 获取 base 的 info
+	cli.LlCliInfo(config.BaseId)
+	if ret, msg, err := comm.ExecAndWait(60, "sh", "-c",
+		fmt.Sprintf("cat /var/lib/linglong/layers/%s/%s/%s/%s/runtime/files/var/lib/dpkg/status | awk -F': ' '/^Package: /{a=a\",\"$2} END{sub(/^,/,\"\",a);printf a}'",
+			cli.Channel, config.BaseId, cli.Version, cli.Arch[0])); err != nil {
+		log.Logger.Warnf("cat dpkg/status error: %s", msg)
+	} else {
+		packages = append(packages, strings.Split(ret, ",")...)
+	}
+	return packages
+}
+
+// 获取 runtime 里面安装的包列表
+func (cli *LinglongCli) GetRuntimeInsPack() []string {
+	var packages []string
+
+	// 读取 pica 的配置
+	config := comm.NewConfig()
+	config.ReadConfigJson()
+
+	// 获取 runtime 的 info
+	cli.LlCliInfo(config.Id)
+	if ret, msg, err := comm.ExecAndWait(60, "sh", "-c",
+		fmt.Sprintf("cat /var/lib/linglong/layers/%s/%s/%s/%s/runtime/files/packages.list | awk -F': ' '/^Package: /{a=a\",\"$2} END{sub(/^,/,\"\",a);printf a}'",
+			cli.Channel, config.Id, cli.Version, cli.Arch[0])); err != nil {
+		log.Logger.Warnf("cat runtime/package.list error: %s", msg)
+	} else {
+		packages = append(packages, strings.Split(ret, ",")...)
+	}
+	return packages
 }

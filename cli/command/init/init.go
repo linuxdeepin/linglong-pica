@@ -20,7 +20,7 @@ type initOptions struct {
 	getType     string
 	packageId   string
 	packageName string
-	config.Config
+	comm.Config
 }
 
 func NewInitCommand() *cobra.Command {
