@@ -48,7 +48,7 @@ func NewConvertCommand() *cobra.Command {
 	flags.StringVarP(&options.gtype, "type", "t", "local", "get app type")
 	flags.StringVar(&options.packageId, "pi", "", "package id")
 	flags.StringVar(&options.packageName, "pn", "", "package name")
-	flags.BoolVar(&options.withDep, "withDep", false, "add depends tree")
+	flags.BoolVar(&options.withDep, "withDep", false, "Add dependency tree")
 	flags.BoolVarP(&options.buildFlag, "build", "b", false, "build linglong")
 	return cmd
 }

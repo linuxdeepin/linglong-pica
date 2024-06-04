@@ -38,7 +38,7 @@ func NewADepCommand() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVarP(&options.deps, "deps", "d", "", "dependencies to be added, separator is ','")
 	flags.StringVarP(&options.path, "path", "p", "linglong.yaml", "path to linglong.yaml")
-	flags.BoolVar(&options.withDep, "withDep", false, "add depends tree")
+	flags.BoolVar(&options.withDep, "withDep", false, "Add dependency tree")
 	return cmd
 }
 
