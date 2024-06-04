@@ -188,7 +188,7 @@ func (ts *LinglongBuilder) LinglongExport(path string) bool {
 	return true
 }
 
-func (cli *LinglongCli) LlCliInfo(appid string) {
+func (cli *LinglongCli) LinglongCliInfo(appid string) {
 	if ret, msg, err := comm.ExecAndWait(10, "sh", "-c",
 		fmt.Sprintf("ll-cli info %s", appid)); err != nil {
 		log.Logger.Warnf("ll-cli info error: %s", msg)
@@ -209,7 +209,7 @@ func (cli *LinglongCli) GetBaseInsPack() []string {
 	config.ReadConfigJson()
 
 	// 获取 base 的 info
-	cli.LlCliInfo(config.BaseId)
+	cli.LinglongCliInfo(config.BaseId)
 	if ret, msg, err := comm.ExecAndWait(60, "sh", "-c",
 		fmt.Sprintf("cat /var/lib/linglong/layers/%s/%s/%s/%s/runtime/files/var/lib/dpkg/status | awk -F': ' '/^Package: /{a=a\",\"$2} END{sub(/^,/,\"\",a);printf a}'",
 			cli.Channel, config.BaseId, cli.Version, cli.Arch[0])); err != nil {
@@ -229,7 +229,7 @@ func (cli *LinglongCli) GetRuntimeInsPack() []string {
 	config.ReadConfigJson()
 
 	// 获取 runtime 的 info
-	cli.LlCliInfo(config.Id)
+	cli.LinglongCliInfo(config.Id)
 	if ret, msg, err := comm.ExecAndWait(60, "sh", "-c",
 		fmt.Sprintf("cat /var/lib/linglong/layers/%s/%s/%s/%s/runtime/files/packages.list | awk -F': ' '/^Package: /{a=a\",\"$2} END{sub(/^,/,\"\",a);printf a}'",
 			cli.Channel, config.Id, cli.Version, cli.Arch[0])); err != nil {

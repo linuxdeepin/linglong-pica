@@ -695,7 +695,7 @@ func formatVersion(versionStr string) string {
 			re := regexp.MustCompile(`\d+`)
 			match := re.FindString(part)
 			if match != "" {
-				digits = append(digits, match)
+				digits = append(digits, strings.TrimLeft(match, "0"))
 			}
 		}
 	}
