@@ -34,7 +34,7 @@ do
     pkg=$(tar -xf "$control_file" ./control -O | grep '^Package:' | awk '{print $2}')
     rm "$control_file"
     # 如果已安装则跳过
-    if (grep -q "^Package: $pkg$" /packages.list /runtime/packages.list "$PREFIX/packages.list") && \
+    if (grep -q "^Package: $pkg$" /packages.list /runtime/packages.list "$PREFIX/packages.list" 2>/dev/null) && \
         ! grep -q "^$pkg$" "$include_list_file" && \
         [[ ! " ${not_skip_package[*]} " =~ " $pkg " ]]; then
         echo " skip"
