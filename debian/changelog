@@ -1,3 +1,12 @@
+linglong-pica (1.1.2-1) UNRELEASED; urgency=medium
+
+  * fix: format version
+  * feat: add --withDep
+  * feat: Disable CGO
+  * remove: remove install_dep
+
+ -- bluesky <chenchongbiao@deepin.org>  Thu, 06 Jun 2024 09:58:00 +0800
+
 linglong-pica (1.1.1-1) unstable; urgency=medium
 
   * chore: move install_dep to linglong.yaml
