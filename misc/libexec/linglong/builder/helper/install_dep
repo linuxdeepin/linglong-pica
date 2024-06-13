@@ -7,14 +7,15 @@ deb_dir=$(realpath "$1")
 target=$(realpath "$2")
 # 默认会跳过base已安装的包，可以强制解压已安装的包
 include="$3"
-# 设置白名单，不跳过包的列表
-declare -a not_skip_package=('libarchive13' 'libasan5' 'libasm1' 'libbabeltrace1' 'libcairo-script-interpreter2' 'libcc1-0' 'libcurl4' 'libdpkg-perl' 'libdw1' 'libevent-2.1-6' 'libgdbm-compat4' 'libgdbm6' 'libgirepository-1.0-1' 'libgles1' 'libgles2' 'libglib2.0-data' 'libgmpxx4ldbl' 'libgnutls-dane0' 'libgnutls-openssl27' 'libgnutlsxx28' 'libharfbuzz-gobject0' 'libharfbuzz-icu0' 'libipt2' 'libisl19' 'libitm1' 'libjsoncpp1' 'libldap-2.4-2' 'libldap-common' 'liblsan0' 'liblzo2-2' 'libmpc3' 'libmpdec2' 'libmpfr6' 'libmpx2' 'libncurses6' 'libnghttp2-14' 'libpcrecpp0v5' 'libperl5.28' 'libpopt0' 'libprocps7' 'libpython3-stdlib' 'libpython3.7' 'libpython3.7-minimal' 'libpython3.7-stdlib' 'libquadmath0' 'libreadline7' 'librhash0' 'librtmp1' 'libsasl2-2' 'libsasl2-modules-db' 'libssh2-1' 'libtiffxx5' 'libtsan0' 'libubsan1' 'libunbound8' 'libuv1')
 # 临时目录，将内容处理后再移动到 target
 out_dir="$(mktemp -d)"
 cd "$out_dir"
-# 临时文件，用于记录deb文件列表和强制安装包名
-deb_list_file="$out_dir/deb.list"
-include_list_file="$out_dir/include.list"
+# 临时文件，用于记录deb文件列表
+deb_list_file="$out_dir/deb.list" 
+# 临时文件，用于记录强制安装的包名
+include_list_file="$out_dir/include.packages.list"
+# 临时文件，用于记录跳过安装的包名
+exclude_list_file="$out_dir/exclude.packages.list"
 # 包数据存放的临时目录
 data_list_dir="$out_dir/data"
 # 生成文件列表
@@ -22,6 +23,13 @@ find "$deb_dir" -type f -name "*.deb" > "$deb_list_file"
 echo "$include" | tr ',' '\n' > "$include_list_file"
 # 用于记录安装的所有文件来自哪个包
 mkdir /tmp/deb-source-file || true
+
+# 如果base和runtime已安装则跳过，旧版本base没有/packages.list文件就使用/var/lib/dpkg/status
+grep 'Package: ' /var/lib/dpkg/status > "$exclude_list_file" || true
+cat /packages.list /runtime/packages.list "$PREFIX/packages.list" >> "$exclude_list_file" || true
+# 在旧的base里面这些包需要强制安装，因为base中没有他们的dev包，如果dev包被安装到/opt目录，而lib包在/usr 会有问题
+echo "libarchive13,libasan5,libasm1,libbabeltrace1,libcairo-script-interpreter2,libcc1-0,libcurl4,libdpkg-perl,libdw1,libevent-2.1-6,libgdbm-compat4,libgdbm6,libgirepository-1.0-1,libgles1,libgles2,libglib2.0-data,libgmpxx4ldbl,libgnutls-dane0,libgnutls-openssl27,libgnutlsxx28,libharfbuzz-gobject0,libharfbuzz-icu0,libipt2,libisl19,libitm1,libjsoncpp1,libldap-2.4-2,libldap-common,liblsan0,liblzo2-2,libmpc3,libmpdec2,libmpfr6,libmpx2,libncurses6,libnghttp2-14,libpcrecpp0v5,libperl5.28,libpopt0,libprocps7,libpython3-stdlib,libpython3.7,libpython3.7-minimal,libpython3.7-stdlib,libquadmath0,libreadline7,librhash0,librtmp1,libsasl2-2,libsasl2-modules-db,libssh2-1,libtiffxx5,libtsan0,libubsan1,libunbound8,libuv1" | tr ',' '\n' >> "$include_list_file"
+
 # 遍历文件列表
 while IFS= read -r file
 do
@@ -33,10 +41,8 @@ do
     # 获取包名
     pkg=$(tar -xf "$control_file" ./control -O | grep '^Package:' | awk '{print $2}')
     rm "$control_file"
-    # 如果已安装则跳过
-    if (grep -q "^Package: $pkg$" /packages.list /runtime/packages.list "$PREFIX/packages.list" 2>/dev/null) && \
-        ! grep -q "^$pkg$" "$include_list_file" && \
-        [[ ! " ${not_skip_package[*]} " =~ " $pkg " ]]; then
+    # 如果在base和runtime中已安装，并且不包含在include列表则跳过安装
+    if grep -q "^Package: $pkg$" "$exclude_list_file" && ! grep -q "^$pkg$" "$include_list_file"; then
         echo " skip"
         echo "$file" >> /tmp/deb-source-file/skip.list
     else
