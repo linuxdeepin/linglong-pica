@@ -9,6 +9,7 @@ package deb
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -455,8 +456,6 @@ func (d *Deb) GenerateBuildScript() {
 		fmt.Sprintf("echo \"cd $PREFIX/%s && ./%s \\$@\" >> %s", ePath, binFile, execFile),
 	}...)
 
-	d.Command = fmt.Sprintf("/opt/apps/%s/files/bin/%s", d.Id, execFile)
-
 	d.Build = append(d.Build, []string{
 		"install -d $PREFIX/share",
 		"install -d $PREFIX/bin",
@@ -464,13 +463,16 @@ func (d *Deb) GenerateBuildScript() {
 		fmt.Sprintf("install -m 0755 %s $PREFIX/bin", execFile),
 	}...)
 
-	if d.FromAppStore {
+	if entries, err := os.ReadDir(debDirPath + "/opt/apps"); err == nil {
+		d.Id = entries[0].Name()
 		d.Build = append(d.Build, []string{
 			"# move files",
-			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/entries/* $PREFIX/share", d.Name, d.Name),
-			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/files/* $PREFIX", d.Name, d.Name),
+			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/entries/* $PREFIX/share", d.Name, d.Id),
+			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/files/* $PREFIX", d.Name, d.Id),
 		}...)
-	} else {
+	}
+
+	if _, err := os.ReadDir(debDirPath + "/usr"); err == nil {
 		d.Build = append(d.Build, []string{
 			"# move files",
 			fmt.Sprintf("cp -r $SOURCES/%s/usr/* $PREFIX", d.Name),
@@ -478,6 +480,8 @@ func (d *Deb) GenerateBuildScript() {
 	}
 
 	d.Build = append(d.Build, "#>>> auto generate by ll-pica end")
+
+	d.Command = fmt.Sprintf("/opt/apps/%s/files/bin/%s", d.Id, execFile)
 }
 
 // 获取 deb 包
