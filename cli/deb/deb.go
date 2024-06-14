@@ -332,7 +332,13 @@ func (d *Deb) GenerateBuildScript() {
 	// 读取desktop 文件
 	var desktopData fs.DesktopData
 	var status bool
-	var binFile, ePath, iconValue, newExecLine string
+	var execLine, iconValue, realPackageName string
+
+	// 商店包存在包名和 内部 appid 名无法对应的情况，获取解包后真实路径
+	if entries, err := os.ReadDir(debDirPath + "/opt/apps"); err == nil {
+		realPackageName = entries[0].Name()
+	}
+
 	// 如果存在多个 desktop 文件进行循环, 生成对应的 sed 操作
 	for _, desktop := range strings.Split(desktopFiles, "\n") {
 		if desktop == "" {
@@ -346,53 +352,13 @@ func (d *Deb) GenerateBuildScript() {
 
 		//获取 desktop 文件，Exec 行的内容,并且对字符串做处理
 		pattern := regexp.MustCompile(`Exec=|"|\n`)
-		execLine := pattern.ReplaceAllLiteralString(desktopData["Desktop Entry"]["Exec"], "")
-		execSlice := strings.Split(execLine, " ")
+		execLine = pattern.ReplaceAllLiteralString(desktopData["Desktop Entry"]["Exec"], "")
 
-		// 获取 files 和可执行文件之间路径的字符串
-		extractPath := func(path string) string {
-			// 查找"files"在路径中的位置
-			filesIndex := strings.Index(path, "files/")
+		// 正则表达式，匹配"/usr/"或者"/opt/apps/$appid/file/"，参考 https://regex101.com/r/oyo0YX/1
+		pattern = regexp.MustCompile(`/usr/|/opt/apps/[^/]+/files/`)
 
-			// 找到该部分中最后一个斜杠的位置
-			part := execSlice[0][filesIndex+len("files/"):]
-			lastFolderIndex := strings.LastIndex(part, "/")
-			if lastFolderIndex == -1 {
-				// 如果没有找到斜杠，返回空
-				return ""
-			}
-			return part[:lastFolderIndex]
-		}
-
-		// 以 /opt/apps 开头
-		if strings.HasPrefix(execSlice[0], "/opt/apps") {
-			ePath = extractPath(execSlice[0])
-		} else if strings.HasPrefix(execSlice[0], "env") {
-			// env开头的多是appimage应用，使用原本的 DesktopInit 逻辑无法读取正确的 Exec 内容，因为该字段又嵌套了 env key=value 无法被该函数正确识别。
-			if ret, msg, err := comm.ExecAndWait(10, "sh", "-c",
-				fmt.Sprintf("grep -oP 'Exec=\\K.*' %s", desktop)); err != nil {
-				log.Logger.Warnf(": %+v", msg)
-			} else {
-				execSlice = strings.Split(ret, " ")
-				for index, item := range execSlice {
-					if strings.HasPrefix(item, "/opt/apps") {
-						execSlice = execSlice[index:]
-						break
-					}
-				}
-			}
-			ePath = extractPath(execSlice[0])
-		} else {
-			ePath = "bin"
-		}
-
-		// 获取可执行文件的名称
-		binFile = filepath.Base(execSlice[0])
-		execSlice[0] = execFile
-
-		lastIndex := len(execSlice) - 1
-		execSlice[lastIndex] = strings.TrimSpace(execSlice[lastIndex])
-		newExecLine = strings.Join(execSlice, " ")
+		// 使用正则表达式找到匹配的部分并替换
+		execLine = pattern.ReplaceAllLiteralString(execLine, fmt.Sprintf("/opt/apps/%s/files/", d.Id))
 
 		iconValue = fs.TransIconToLl(desktopData["Desktop Entry"]["Icon"])
 		index := strings.Index(desktop, comm.LlSourceDir)
@@ -401,9 +367,25 @@ func (d *Deb) GenerateBuildScript() {
 			modiDesktopPath := "$SOURCES" + desktop[index+len(comm.LlSourceDir):]
 			d.Build = append(d.Build, []string{
 				"# modify desktop, Exec and Icon should not contanin absolut paths",
-				fmt.Sprintf("sed -i '/Exec*/c\\Exec=%s' %s", newExecLine, modiDesktopPath),
+				fmt.Sprintf("sed -i '/Exec*/c\\Exec=%s' %s", execFile, modiDesktopPath),
 				fmt.Sprintf("sed -i '/Icon*/c\\Icon=%s' %s", iconValue, modiDesktopPath),
 			}...)
+		}
+	}
+
+	// 如果以 sh 前缀，替换脚本中的路径，考虑到deb包定义包名和玲珑id名不一样的情况
+	if strings.HasPrefix(execLine, "sh") && d.Name != d.Id {
+		if ret, _, err := comm.ExecAndWait(10, "sh", "-c",
+			fmt.Sprintf("find %s -name '*.sh' | grep %s", debDirPath, d.Name)); err == nil {
+			index := strings.Index(ret, comm.LlSourceDir)
+			if index != -1 {
+				// 如果找到了子串，则移除它及其之前的部分
+				modiShellPath := "$SOURCES" + ret[index+len(comm.LlSourceDir):]
+				d.Build = append(d.Build, []string{
+					"# if exec shell file, replace $PREFIX",
+					fmt.Sprintf("sed -i 's/%s/%s/g' %s", d.Name, d.Id, modiShellPath),
+				}...)
+			}
 		}
 	}
 
@@ -453,7 +435,7 @@ func (d *Deb) GenerateBuildScript() {
 		"rm -r $OUT_DIR", // # 清理临时目录
 		"# use a script as program",
 		fmt.Sprintf("echo \"#!/usr/bin/env bash\" > %s", execFile),
-		fmt.Sprintf("echo \"cd $PREFIX/%s && ./%s \\$@\" >> %s", ePath, binFile, execFile),
+		fmt.Sprintf("echo \"%s\" >> %s", execLine, execFile),
 	}...)
 
 	d.Build = append(d.Build, []string{
@@ -463,12 +445,11 @@ func (d *Deb) GenerateBuildScript() {
 		fmt.Sprintf("install -m 0755 %s $PREFIX/bin", execFile),
 	}...)
 
-	if entries, err := os.ReadDir(debDirPath + "/opt/apps"); err == nil {
-		d.Id = entries[0].Name()
+	if d.FromAppStore {
 		d.Build = append(d.Build, []string{
 			"# move files",
-			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/entries/* $PREFIX/share", d.Name, d.Id),
-			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/files/* $PREFIX", d.Name, d.Id),
+			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/entries/* $PREFIX/share", d.Name, realPackageName),
+			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/files/* $PREFIX", d.Name, realPackageName),
 		}...)
 	}
 
