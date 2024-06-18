@@ -448,7 +448,7 @@ func DesktopInit(desktopFilePath string) (bool, DesktopData) {
 	}
 
 	parseKeyValue := func(line string) (string, string) {
-		value := strings.Split(line, "=")
+		value := strings.SplitN(line, "=", 2)
 		return value[0], value[1]
 	}
 	data := make(DesktopData, 10)
