@@ -1,3 +1,14 @@
+linglong-pica (1.2.0-1) unstable; urgency=medium
+
+  * chore: add install_dep
+  * fix: fix split Exec=
+  * fix: fix get bin file error
+  * feat: check dir add script
+  * fix: The old version of base does not support skip installation
+  * feat: Hide unimportant error messages
+
+ -- bluesky <chenchongbiao@deepin.org>  Wed, 19 Jun 2024 14:55:57 +0800
+
 linglong-pica (1.1.2-1) UNRELEASED; urgency=medium
 
   * fix: format version
