@@ -26,8 +26,10 @@ test:
 	${GoPath} ${GOTEST} ./tools/...
 
 install:
-	install -Dm0755  ${BINARY_DIR}/${BINARY_NAME} ${DESTDIR}/${PREFIX}/${BINARY_DIR}/${BINARY_NAME}
+	install -Dm0755 ${BINARY_DIR}/${BINARY_NAME} ${DESTDIR}/${PREFIX}/${BINARY_DIR}/${BINARY_NAME}
 
+	install -d ${DESTDIR}/${PREFIX}/share/linglong/builder/helper/
+	install -Dm0755 misc/libexec/linglong/builder/helper/install_dep ${DESTDIR}/${PREFIX}/share/linglong/builder/helper/
 clean:
 	rm -rf ${BINARY_DIR}
 	rm -rf ${GO_PATH}
