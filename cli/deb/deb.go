@@ -401,15 +401,15 @@ func (d *Deb) GenerateBuildScript() {
 		"    CONTROL_FILE=$(ar -t $file | grep control.tar)", // 提取control文件
 		"    ar -x \"$file\" $CONTROL_FILE",
 		"    PKG=$(tar -xf $CONTROL_FILE ./control -O | grep '^Package:' | awk '{print $2}')", // 获取包名
-		"    rm $CONTROL_FILE",
+		"    rm $CONTROL_FILE || true",
 		"    DATA_FILE=$(ar -t $file | grep data.tar)", // 提取data.tar文件
 		"    ar -x $file $DATA_FILE",
 		"    mkdir -p $DATA_LIST_DIR",
 		"    tar -xvf $DATA_FILE -C $DATA_LIST_DIR >> \"/tmp/deb-source-file/$(basename $file).list\"", // 解压data.tar文件到输出目录
-		"    rm -rf $DATA_FILE 2>/dev/null",
-		"    rm -r ${DATA_LIST_DIR:?}/usr/share/applications* 2>/dev/null",                           // 清理不需要复制的目录
-		"    sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/lib/$TRIPLET/pkgconfig/*.pc 2>/dev/null", // # 修改pc文件的prefix
-		"    sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/share/pkgconfig/*.pc 2>/dev/null",
+		"    rm -rf $DATA_FILE 2>/dev/null || true",
+		"    rm -r ${DATA_LIST_DIR:?}/usr/share/applications* 2>/dev/null || true",                           // 清理不需要复制的目录
+		"    sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/lib/$TRIPLET/pkgconfig/*.pc 2>/dev/null || true", // # 修改pc文件的prefix
+		"    sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/share/pkgconfig/*.pc 2>/dev/null || true",
 		"    find $DATA_LIST_DIR -type l | while IFS= read -r file; do", // 修改指向/lib的绝对路径的软链接
 		"        Link_Target=$(readlink $file)",
 		"        if echo $Link_Target | grep -q ^/lib && ! [ -f $Link_Target ]; then", // 如果指向的路径以/lib开头，并且文件不存在，则添加 /runtime 前缀, 部分 dev 包会创建 so 文件的绝对链接指向 /lib 目录下
@@ -428,11 +428,11 @@ func (d *Deb) GenerateBuildScript() {
 		"            echo \"    FIX RUNPATH $file $runpath => $newRunpath\"",
 		"        fi",
 		"    done",
-		"    cp -rP $DATA_LIST_DIR/lib $PREFIX 2>/dev/null",
-		"    cp -rP $DATA_LIST_DIR/bin $PREFIX 2>/dev/null",
-		"    cp -rP $DATA_LIST_DIR/usr/* $PREFIX 2>/dev/null",
+		"    cp -rP $DATA_LIST_DIR/lib $PREFIX 2>/dev/null || true",
+		"    cp -rP $DATA_LIST_DIR/bin $PREFIX 2>/dev/null || true",
+		"    cp -rP $DATA_LIST_DIR/usr/* $PREFIX 2>/dev/null || true",
 		"done < \"$DEPS_LIST\"",
-		"rm -r $OUT_DIR", // # 清理临时目录
+		"rm -r $OUT_DIR || true", // # 清理临时目录
 		"# use a script as program",
 		fmt.Sprintf("echo \"#!/usr/bin/env bash\" > %s", execFile),
 		fmt.Sprintf("echo \"%s\" >> %s", execLine, execFile),
