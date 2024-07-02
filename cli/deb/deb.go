@@ -435,6 +435,27 @@ func (d *Deb) GenerateBuildScript() {
 		"rm -r $OUT_DIR || true", // # 清理临时目录
 		"# use a script as program",
 		fmt.Sprintf("echo \"#!/usr/bin/env bash\" > %s", execFile),
+	}...)
+
+	// 查找应用自带的 qt 插件，添加环境变量不要使用 base 中自带的。
+	if ret, _, err := comm.ExecAndWait(10, "sh", "-c",
+		fmt.Sprintf("cd %s && find . -name 'plugins'", debDirPath)); ret != "" && err == nil {
+		// ret[1:] 切片为了移除开头的.号，替换掉换行符号
+		replacedStr := strings.Replace(ret[1:], "\n", "", -1)
+		d.Build = append(d.Build,
+			fmt.Sprintf("echo \"export QT_PLUGIN_PATH=%s\" >> %s", replacedStr, execFile),
+		)
+	}
+	if ret, _, err := comm.ExecAndWait(10, "sh", "-c",
+		fmt.Sprintf("cd %s && find . -name 'platforms'", debDirPath)); ret != "" && err == nil {
+		// ret[1:] 切片为了移除开头的.号，替换掉换行符号
+		replacedStr := strings.Replace(ret[1:], "\n", "", -1)
+		d.Build = append(d.Build,
+			fmt.Sprintf("echo \"export QT_QPA_PLATFORM_PLUGIN_PATH=%s\" >> %s", replacedStr, execFile),
+		)
+	}
+
+	d.Build = append(d.Build, []string{
 		fmt.Sprintf("echo \"%s\" >> %s", execLine, execFile),
 	}...)
 
