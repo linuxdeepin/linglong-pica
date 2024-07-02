@@ -373,17 +373,20 @@ func (d *Deb) GenerateBuildScript() {
 		}
 	}
 
-	// 如果以 sh 前缀，替换脚本中的路径，考虑到deb包定义包名和玲珑id名不一样的情况
-	if strings.HasPrefix(execLine, "sh") && d.Name != d.Id {
-		if ret, _, err := comm.ExecAndWait(10, "sh", "-c",
-			fmt.Sprintf("find %s -name '*.sh' | grep %s", debDirPath, d.Name)); err == nil {
-			index := strings.Index(ret, comm.LlSourceDir)
+	// 以 sh 后缀的脚本，替换脚本中的路径，考虑到deb包定义包名和玲珑id名不一样的情况
+	if execFiles, _, err := comm.ExecAndWait(10, "sh", "-c",
+		// 找到可执行文件，以 .sh 后缀的脚本。统一将内部的原包名替换为设置的玲珑id，少部分存在没写 .sh 后缀的人工判断，其他方式很难判断该脚本为shell.
+		fmt.Sprintf("find %s -name '*.sh'", debDirPath)); err == nil {
+		for _, execFile := range strings.Split(execFiles, "\n") {
+			if execFile == "" {
+				continue
+			}
+			index := strings.Index(execFile, comm.LlSourceDir)
 			if index != -1 {
 				// 如果找到了子串，则移除它及其之前的部分
-				modiShellPath := "$SOURCES" + ret[index+len(comm.LlSourceDir):]
+				modiExecFilePath := "$SOURCES" + execFile[index+len(comm.LlSourceDir):]
 				d.Build = append(d.Build, []string{
-					"# if exec shell file, replace $PREFIX",
-					fmt.Sprintf("sed -i 's/%s/%s/g' %s", d.Name, d.Id, modiShellPath),
+					fmt.Sprintf("sed -i 's/%s/%s/g' %s", d.Name, d.Id, modiExecFilePath),
 				}...)
 			}
 		}
