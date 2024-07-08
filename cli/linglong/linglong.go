@@ -163,10 +163,14 @@ func (ts *LinglongBuilder) LinglongBuild(path string) bool {
 	return true
 }
 
-func (ts *LinglongBuilder) LinglongExport(path string) bool {
+func (ts *LinglongBuilder) LinglongExport(path string, exportFile string) bool {
+	runCmd := "ll-builder export"
+	if exportFile == "layer" {
+		runCmd += " --layer"
+	}
 	// caller ll-builder export --local
 	if ret, msg, err := comm.ExecAndWait(1<<20, "sh", "-c",
-		fmt.Sprintf("cd %s && ll-builder export", path)); err != nil {
+		fmt.Sprintf("cd %s && %s", path, runCmd)); err != nil {
 		log.Logger.Fatalf("msg: %+v err:%+v, out: %+v", msg, err, ret)
 	} else {
 		log.Logger.Infof("%s export success.", path)

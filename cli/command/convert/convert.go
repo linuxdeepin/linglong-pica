@@ -29,6 +29,7 @@ type convertOptions struct {
 	packageName string
 	withDep     bool // 带上依赖树
 	buildFlag   bool
+	exportFile  string
 }
 
 func NewConvertCommand() *cobra.Command {
@@ -50,6 +51,7 @@ func NewConvertCommand() *cobra.Command {
 	flags.StringVar(&options.packageName, "pn", "", "package name")
 	flags.BoolVar(&options.withDep, "withDep", false, "Add dependency tree")
 	flags.BoolVarP(&options.buildFlag, "build", "b", false, "build linglong")
+	flags.StringVar(&options.exportFile, "exportFile", "uab", "export uab or layer")
 	return cmd
 }
 
@@ -200,7 +202,7 @@ func runConvert(options *convertOptions) error {
 			if options.buildFlag {
 				buildLinglongPath := filepath.Dir(linglongYamlPath)
 				builder.LinglongBuild(buildLinglongPath)
-				builder.LinglongExport(buildLinglongPath)
+				builder.LinglongExport(buildLinglongPath, options.exportFile)
 			}
 		}
 	}
