@@ -39,7 +39,7 @@ Simple:
 	ll-pica convert -c package.yaml -w work-dir
 	ll-pica help
 		`,
-		Version: "1.2.1",
+		Version: "1.2.2",
 	}
 
 	cmd.CompletionOptions.DisableDefaultCmd = true
