@@ -96,5 +96,31 @@ do
 done < "$deb_list_file"
 
 
+# 修复相对路径的软链接(dev包内的软连接尝试修复指向base)
+find "$target" -type l | while IFS= read -r file; do
+    # 获取链接的绝对路径
+    linkTarget=$(readlink -m "$file") 
+    # 如果链接指向的文件不存在
+    if [ ! -e "$linkTarget" ]; then
+        # 去掉前缀查看/lib下是否存在
+        linkTarget="${linkTarget#$target}"
+        if [ -e "$linkTarget" ]; then
+            ln -sf "$linkTarget" "$file"
+            echo "    FIX LINK" "$file" "=>" "$target$linkTarget"
+        fi
+        # 添加usr前缀查看/usr/lib下是否存在
+        linkTarget="/usr$target"
+        if [ -e "$linkTarget" ]; then
+            ln -sf "$target$linkTarget" "$file"
+            echo "    FIX LINK" "$file" "=>" "$target$linkTarget"
+        fi
+    fi
+done
+
+# 更新ld.so.cache
+if [ -n "$LINGLONG_LD_SO_CACHE" ]; then
+    ldconfig -C "$LINGLONG_LD_SO_CACHE"
+fi
+
 # 清理临时目录
 rm -r "$out_dir"
