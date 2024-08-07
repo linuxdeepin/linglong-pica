@@ -43,6 +43,10 @@ func NewADepCommand() *cobra.Command {
 }
 
 func runAdep(options *adepOptions) error {
+	if options.deps == "" {
+		log.Logger.Fatal("The parameter d has not been set ")
+	}
+
 	path, err := filepath.Abs(options.path)
 	if ret, _ := fs.CheckFileExits(path); !ret {
 		log.Logger.Errorf("%s not found", path)
