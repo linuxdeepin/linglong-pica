@@ -34,6 +34,11 @@ func setupCommonRootCommand(rootCmd *cobra.Command) (*cliflags.CliOptions, *cobr
 	return opts, nil
 }
 
+func AppimageConvertSetupRootCommand(rootCmd *cobra.Command) (opts *cliflags.CliOptions, helpCmd *cobra.Command) {
+	rootCmd.SetVersionTemplate("ll-appimage-convert version {{.Version}}\n")
+	return setupCommonRootCommand(rootCmd)
+}
+
 func SetupRootCommand(rootCmd *cobra.Command) (opts *cliflags.CliOptions, helpCmd *cobra.Command) {
 	rootCmd.SetVersionTemplate("pica version {{.Version}}\n")
 	return setupCommonRootCommand(rootCmd)
