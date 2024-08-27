@@ -20,34 +20,39 @@ package gographviz
 
 import (
 	"github.com/awalterschulze/gographviz/ast"
-	"github.com/awalterschulze/gographviz/parser"
+	"github.com/awalterschulze/gographviz/internal/parser"
 )
 
 var _ Interface = NewGraph()
 
-//Implementing this interface allows you to parse the graph into your own structure.
+//Interface allows you to parse the graph into your own structure.
 type Interface interface {
-	SetStrict(strict bool)
-	SetDir(directed bool)
-	SetName(name string)
-	AddPortEdge(src, srcPort, dst, dstPort string, directed bool, attrs map[string]string)
-	AddEdge(src, dst string, directed bool, attrs map[string]string)
-	AddNode(parentGraph string, name string, attrs map[string]string)
-	AddAttr(parentGraph string, field, value string)
-	AddSubGraph(parentGraph string, name string, attrs map[string]string)
+	SetStrict(strict bool) error
+	SetDir(directed bool) error
+	SetName(name string) error
+	AddPortEdge(src, srcPort, dst, dstPort string, directed bool, attrs map[string]string) error
+	AddEdge(src, dst string, directed bool, attrs map[string]string) error
+	AddNode(parentGraph string, name string, attrs map[string]string) error
+	AddAttr(parentGraph string, field, value string) error
+	AddSubGraph(parentGraph string, name string, attrs map[string]string) error
 	String() string
 }
 
-//Parses the buffer into a abstract syntax tree representing the graph.
+//Parse parses the buffer into a abstract syntax tree representing the graph.
 func Parse(buf []byte) (*ast.Graph, error) {
 	return parser.ParseBytes(buf)
 }
 
-//Parses and creates a new Graph from the data.
-func Read(buf []byte) (Interface, error) {
+//ParseString parses the buffer into a abstract syntax tree representing the graph.
+func ParseString(buf string) (*ast.Graph, error) {
+	return parser.ParseBytes([]byte(buf))
+}
+
+//Read parses and creates a new Graph from the data.
+func Read(buf []byte) (*Graph, error) {
 	st, err := Parse(buf)
 	if err != nil {
 		return nil, err
 	}
-	return NewAnalysedGraph(st), nil
+	return NewAnalysedGraph(st)
 }

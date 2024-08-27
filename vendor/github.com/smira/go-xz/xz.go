@@ -6,66 +6,52 @@ package xz
 import (
 	"io"
 	"os/exec"
+	"syscall"
 )
 
 // Reader does decompression using xz utility
 type Reader struct {
-	cmd    *exec.Cmd
-	input  io.WriteCloser
-	output io.ReadCloser
+	out io.ReadCloser
+	cmd *exec.Cmd
 }
 
 // NewReader creates .xz decompression reader
 //
 // Internally it starts xz program, sets up input and output pipes
 func NewReader(src io.Reader) (*Reader, error) {
-	var err error
-
-	result := &Reader{}
-
-	result.cmd = exec.Command("xz", "--decompress", "--stdout")
-	result.input, err = result.cmd.StdinPipe()
+	cmd := exec.Command("xz", "--decompress", "--stdout", "-T0")
+	cmd.Stdin = src
+	out, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err
 	}
-	result.output, err = result.cmd.StdoutPipe()
+	err = cmd.Start()
 	if err != nil {
 		return nil, err
 	}
-
-	err = result.cmd.Start()
-	if err != nil {
-		return nil, err
-	}
-
-	go func() {
-		io.Copy(result.input, src)
-		result.input.Close()
-	}()
-
-	return result, nil
+	return &Reader{out: out, cmd: cmd}, nil
 }
 
-// Read implements io.Reader interface
-func (r *Reader) Read(p []byte) (n int, err error) {
-	return r.output.Read(p)
+func (rd *Reader) Read(p []byte) (n int, err error) {
+	return rd.out.Read(p)
 }
 
-// Close implements io.Closer interface
-func (r *Reader) Close() error {
-	if r.input != nil {
-		r.input.Close()
+func (rd *Reader) Close() error {
+	if err := rd.out.Close(); err != nil {
+		return err
 	}
-	if r.output != nil {
-		r.output.Close()
+
+	if err := rd.cmd.Wait(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			status, ok := exitErr.Sys().(syscall.WaitStatus)
+			if ok && status.Signaled() && status.Signal() == syscall.SIGPIPE {
+				// SIGPIPE is normal because xz's stdout was closed.
+				return nil
+			}
+		}
+
+		return err
 	}
-	if r.cmd != nil {
-		return r.cmd.Wait()
-	}
+
 	return nil
 }
-
-// Check interface
-var (
-	_ io.ReadCloser = &Reader{}
-)

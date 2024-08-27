@@ -1,4 +1,4 @@
-// Copyright 2014 Manu Martinez-Almeida.  All rights reserved.
+// Copyright 2014 Manu Martinez-Almeida. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-const ginSupportMinGoVer = 13
+const ginSupportMinGoVer = 18
 
 // IsDebugging returns true if the framework is running in debug mode.
 // Use SetMode(gin.ReleaseMode) to disable debug mode.
@@ -22,6 +22,9 @@ func IsDebugging() bool {
 
 // DebugPrintRouteFunc indicates debug log output format.
 var DebugPrintRouteFunc func(httpMethod, absolutePath, handlerName string, nuHandlers int)
+
+// DebugPrintFunc indicates debug log output format.
+var DebugPrintFunc func(format string, values ...interface{})
 
 func debugPrintRoute(httpMethod, absolutePath string, handlers HandlersChain) {
 	if IsDebugging() {
@@ -47,13 +50,20 @@ func debugPrintLoadTemplate(tmpl *template.Template) {
 	}
 }
 
-func debugPrint(format string, values ...interface{}) {
-	if IsDebugging() {
-		if !strings.HasSuffix(format, "\n") {
-			format += "\n"
-		}
-		fmt.Fprintf(DefaultWriter, "[GIN-debug] "+format, values...)
+func debugPrint(format string, values ...any) {
+	if !IsDebugging() {
+		return
 	}
+
+	if DebugPrintFunc != nil {
+		DebugPrintFunc(format, values...)
+		return
+	}
+
+	if !strings.HasSuffix(format, "\n") {
+		format += "\n"
+	}
+	fmt.Fprintf(DefaultWriter, "[GIN-debug] "+format, values...)
 }
 
 func getMinVer(v string) (uint64, error) {
@@ -66,8 +76,8 @@ func getMinVer(v string) (uint64, error) {
 }
 
 func debugPrintWARNINGDefault() {
-	if v, e := getMinVer(runtime.Version()); e == nil && v <= ginSupportMinGoVer {
-		debugPrint(`[WARNING] Now Gin requires Go 1.13+.
+	if v, e := getMinVer(runtime.Version()); e == nil && v < ginSupportMinGoVer {
+		debugPrint(`[WARNING] Now Gin requires Go 1.18+.
 
 `)
 	}
@@ -95,9 +105,7 @@ at initialization. ie. before any route is registered or the router is listening
 }
 
 func debugPrintError(err error) {
-	if err != nil {
-		if IsDebugging() {
-			fmt.Fprintf(DefaultErrorWriter, "[GIN-debug] [ERROR] %v\n", err)
-		}
+	if err != nil && IsDebugging() {
+		fmt.Fprintf(DefaultErrorWriter, "[GIN-debug] [ERROR] %v\n", err)
 	}
 }
