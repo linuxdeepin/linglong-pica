@@ -69,6 +69,7 @@ sources:
 {{end}}
 {{- end}}
 build: |
+  set -x
   {{- range $line := .Build}}
   {{- printf "\n  %s" $line}}
   {{- end}}

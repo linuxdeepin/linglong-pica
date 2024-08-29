@@ -59,15 +59,6 @@ type Deb struct {
 }
 
 func (d *Deb) GetPackageUrl(source, distro, arch string) string {
-	aptlyCache := comm.AptlyCachePath()
-	// 删除掉aptly缓存的内容
-	if ret, _ := fs.CheckFileExits(aptlyCache); ret {
-		log.Logger.Debugf("%s is existd!", aptlyCache)
-		if ret, err := fs.RemovePath(aptlyCache); err != nil {
-			log.Logger.Warnf("err:%+v, out: %+v", err, ret)
-		}
-	}
-
 	root := cmd.RootCommand()
 	root.UsageLine = "aptly"
 
@@ -78,14 +69,14 @@ func (d *Deb) GetPackageUrl(source, distro, arch string) string {
 		"-ignore-signatures",
 		"-architectures=" + arch,
 		"-filter=" + d.Name,
-		d.Name,
+		distro,
 		source,
 		distro,
 	}
 
 	cmd.Run(root, args, cmd.GetContext() == nil)
 
-	d.GetPackageList()
+	d.GetPackageList(distro)
 	if len(d.Sources) > 0 {
 		return d.Sources[0].Url
 	} else {
@@ -252,14 +243,6 @@ func (d *Deb) ResolveDepends(source, distro string, withDep bool) {
 		}
 	}
 	filter = strings.Join(result, ",")
-	// 删除掉aptly缓存的内容
-	aptlyCache := comm.AptlyCachePath()
-	if ret, _ := fs.CheckFileExits(aptlyCache); ret {
-		log.Logger.Debugf("%s is existd!", aptlyCache)
-		if ret, err := fs.RemovePath(aptlyCache); err != nil {
-			log.Logger.Warnf("err:%+v, out: %+v", err, ret)
-		}
-	}
 
 	if d.Architecture == "" || d.Name == "" {
 		log.Logger.Errorf("arch or package name is empty")
@@ -287,14 +270,14 @@ func (d *Deb) ResolveDepends(source, distro string, withDep bool) {
 	}
 
 	args = append(args, []string{
-		d.Name,
+		distro,
 		source,
 		distro,
 	}...)
 
 	cmd.Run(root, args, cmd.GetContext() == nil)
 
-	d.GetPackageList()
+	d.GetPackageList(distro)
 }
 
 func (d *Deb) GenerateBuildScript() {
@@ -436,12 +419,16 @@ func (d *Deb) GenerateBuildScript() {
 		"    cp -rP $DATA_LIST_DIR/usr/* $PREFIX 2>/dev/null || true",
 		"done < \"$DEPS_LIST\"",
 		"rm -r $OUT_DIR || true", // # 清理临时目录
+		"",
 		"# use a script as program",
-		fmt.Sprintf("echo \"#!/usr/bin/env bash\" > %s", execFile),
-		fmt.Sprintf("echo \"%s\" >> %s", execLine, execFile),
+		fmt.Sprintf("tee %s<<EOF", execFile),
+		"#!/usr/bin/env bash",
+		execLine,
+		"EOF",
 	}...)
 
 	d.Build = append(d.Build, []string{
+		"",
 		"install -d $PREFIX/share",
 		"install -d $PREFIX/bin",
 		"install -d $PREFIX/lib",
@@ -450,14 +437,16 @@ func (d *Deb) GenerateBuildScript() {
 
 	if d.FromAppStore {
 		d.Build = append(d.Build, []string{
+			"",
 			"# move files",
 			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/entries/* $PREFIX/share", d.Name, realPackageName),
-			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/files/* $PREFIX", d.Name, realPackageName),
+			fmt.Sprintf("cp -rf $SOURCES/%s/opt/apps/%s/files/* $PREFIX", d.Name, realPackageName),
 		}...)
 	}
 
 	if _, err := os.ReadDir(debDirPath + "/usr"); err == nil {
 		d.Build = append(d.Build, []string{
+			"",
 			"# move files",
 			fmt.Sprintf("cp -r $SOURCES/%s/usr/* $PREFIX", d.Name),
 		}...)
@@ -469,11 +458,11 @@ func (d *Deb) GenerateBuildScript() {
 }
 
 // 获取 deb 包
-func (d *Deb) GetPackageList() {
+func (d *Deb) GetPackageList(distro string) {
 	context := cmd.GetContext()
 	defer context.Shutdown()
 	collectionFactory := context.NewCollectionFactory()
-	repo, err := collectionFactory.RemoteRepoCollection().ByName(d.Name)
+	repo, err := collectionFactory.RemoteRepoCollection().ByName(distro)
 
 	if err != nil {
 		log.Logger.Errorf("unable to update: %s", err)
