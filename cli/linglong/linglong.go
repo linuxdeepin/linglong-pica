@@ -213,6 +213,7 @@ func (cli *LinglongCli) GetBaseInsPack() []string {
 	config := comm.NewConfig()
 	config.ReadConfigJson()
 
+	cli.LinglongCliInstall(config.Id, config.Version)
 	// 获取 base 的 info
 	cli.LinglongCliInfo(config.BaseId)
 	if ret, msg, err := comm.ExecAndWait(60, "sh", "-c",
@@ -233,6 +234,7 @@ func (cli *LinglongCli) GetRuntimeInsPack() []string {
 	config := comm.NewConfig()
 	config.ReadConfigJson()
 
+	cli.LinglongCliInstall(config.Id, config.Version)
 	// 获取 runtime 的 info
 	cli.LinglongCliInfo(config.Id)
 	if ret, msg, err := comm.ExecAndWait(60, "sh", "-c",
@@ -243,4 +245,11 @@ func (cli *LinglongCli) GetRuntimeInsPack() []string {
 		packages = append(packages, strings.Split(ret, ",")...)
 	}
 	return packages
+}
+
+func (cli *LinglongCli) LinglongCliInstall(appid, version string) {
+	if ret, _, err := comm.ExecAndWait(1<<20, "sh", "-c",
+		fmt.Sprintf("ll-cli install %s/%s", appid, version)); err != nil {
+		log.Logger.Infof("out: %+v", ret)
+	}
 }
