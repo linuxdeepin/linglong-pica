@@ -26,10 +26,10 @@ type Config struct {
 
 func NewConfig() *Config {
 	return &Config{
-		Id:            "org.deepin.Runtime",
-		BaseId:        "org.deepin.foundation",
-		Version:       "23.0.1",
-		BaseVersion:   "23.0.0",
+		Id:            "org.deepin.runtime.dtk",
+		BaseId:        "org.deepin.base",
+		Version:       "23.1.0",
+		BaseVersion:   "23.1.0",
 		Source:        "https://community-packages.deepin.com/beige/",
 		DistroVersion: "beige",
 		Arch:          runtime.GOARCH,
