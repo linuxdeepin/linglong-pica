@@ -423,6 +423,17 @@ func (d *Deb) GenerateBuildScript() {
 		"# use a script as program",
 		fmt.Sprintf("tee %s<<EOF", execFile),
 		"#!/usr/bin/env bash",
+	}...)
+
+	if ret, _, err := comm.ExecAndWait(10, "sh", "-c",
+		fmt.Sprintf("cd %s && find . -name 'platforms'", debDirPath)); ret != "" && err == nil {
+		// deepin 上点击 desktop 启动应用，由于AM会继承 systemd 设置 QT_QPA_PLATFORM=dxcb变量，
+		// 但是应用本身并没有该插件，需要在启动脚本中取消 QT_QPA_PLATFORM 变量
+		d.Build = append(d.Build,
+			"unset QT_QPA_PLATFORM",
+		)
+	}
+	d.Build = append(d.Build, []string{
 		execLine,
 		"EOF",
 	}...)
