@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+function generate_ref_cache() {
+    echo "Generate reference cache for flathub"
+    ostree --repo=$FLATHUB_CACHE remote refs flathub | grep -E ":app/(.*[/ ]*)*?/$(uname -m)" > $LL_PICA_FLATPAK_REFS_FILE
+}
+
+function help() {
+    echo "
+Convert the flatpak to uab. For example:
+Simple:
+        ll-pica-flatpak convert [flatpak name] --build
+
+Usage:
+  ll-pica [command]
+
+Available Commands:
+  convert     Convert flatpak to uab
+  help        Help about any command
+
+Flags:
+  -h, --help      help for ll-pica-flatpak
+"
+}
+
+case $1 in
+    generate_ref_cache) generate_ref_cache;;
+    help) help;;
+esac

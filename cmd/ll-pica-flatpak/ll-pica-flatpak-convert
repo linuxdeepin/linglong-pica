@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+
+set -x
+
+APPID=$1
+VERSION=$2
+BUILD=$3
+LAYER=$4
+WORKDIR=$APPID
+
+SEARCH_REF=$(grep "$REF" $LL_PICA_FLATPAK_REFS_FILE)
+
+if [[ -z $SEARCH_REF ]];
+then
+    "${LL_PICA_FLATPAK_PATH}/ll-pica-flatpak-utils" generate_ref_cache
+fi
+
+ostree --repo=$FLATHUB_CACHE pull "$REF"
+rm -rf $WORKDIR && mkdir -p $WORKDIR
+ostree --repo=$FLATHUB_CACHE checkout "$REF" "$WORKDIR/flatpak"
+
+FLATPAK_RUNTIME=$(grep '^runtime=' $WORKDIR/flatpak/metadata | awk -F'=' '{print $2}' | awk -F'/' '{print $1}')
+FLATPAK_RUNTIME_VERSION=$(grep '^runtime=' $WORKDIR/flatpak/metadata | awk -F'=' '{print $2}' | awk -F'/' '{print $3}')
+
+LINGLONG_BASE_NAME="org.deepin.base.flatpak.$(echo "$FLATPAK_RUNTIME"|awk -F'.' '{print $2}')"
+LINGLONG_BASE_VERSION="$(echo "$FLATPAK_RUNTIME_VERSION.0.0.0" | awk -F'[-.]' 'BEGIN {OFS="."} {print $1,$2,$3}')"
+
+# 尝试获取 base 的信息
+LINGLONG_INSTALL_INFO=$(ll-cli install $LINGLONG_BASE_NAME)
+if [[ "$LINGLONG_INSTALL_INFO" != *installed* && "$LINGLONG_INSTALL_INFO" != *success* ]];
+then
+    echo "$LINGLONG_BASE_NAME not found"
+    exit 1
+fi
+
+# 如果没有存在这个 base 选择一个默认的
+ll-cli info $LINGLONG_BASE_NAME
+if [[ $? != 0 ]];
+then
+    LINGLONG_BASE_NAME=org.deepin.base.flatpak.kde
+    ll-cli install $LINGLONG_BASE_NAME
+    LINGLONG_BASE_VERSION=$BASE_VERSION
+fi
+
+if [[ -n $BASE ]];
+then
+    LINGLONG_BASE_NAME=$BASE
+fi
+
+if [[ -n $BASE_VERSION ]];
+then
+    LINGLONG_BASE_VERSION=$BASE_VERSION
+fi
+
+# 替换 desktop 文件里面 Exec 的 /app 开头路径
+for desktop in `ls -1 $WORKDIR/flatpak/files/share/applications/*desktop`
+do
+    # DESKTOP_PATH=$WORKDIR/flatpak/files/share/applications/$desktop
+    EXEC_OLD=$(grep -e '^Exec=.*' $desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+    if echo "$EXEC_OLD" | grep -q "/app";
+    then
+        # replace flatpak /app to linglong /opt/apps/$APPID/files
+        EXEC=$(echo $EXEC_OLD | sed "s|/app|/opt/apps/$APPID/files|g")
+        sed -i "/Exec*/c\\Exec=$EXEC" $desktop
+    else
+        EXEC=$EXEC_OLD
+    fi
+done
+
+BIN_FILE=${EXEC_OLD%% *}
+if [[ $BIN_FILE == /* ]];
+then
+    BIN_FILE_PATH=$(echo $BIN_FILE | sed "s|/app|$APPID/flatpak/files|g")
+else
+    BIN_FILE_PATH=$APPID/flatpak/files/bin/$BIN_FILE
+fi
+sed -i "s|/app|/opt/apps/$APPID/files|g" $BIN_FILE_PATH
+
+COMMAND="/opt/apps/$APPID/files/bin/start.sh"
+
+tee $WORKDIR/linglong.yaml <<EOF
+version: "1"
+package:
+  id: $APPID
+  name: $APPID
+  version: $VERSION
+  kind: app
+  description: flatpak runtime environment on linglong
+
+command: [$EXEC]
+base: $LINGLONG_BASE_NAME/$LINGLONG_BASE_VERSION
+
+build: |
+  cp -rf flatpak/files/* \$PREFIX
+
+EOF
+
+if $BUILD;
+then
+    cd $WORKDIR
+    ll-builder build
+
+    if $LAYER;
+    then
+        ll-builder export --layer
+    else
+        ll-builder export
+    fi
+fi
