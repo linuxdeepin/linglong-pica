@@ -15,5 +15,7 @@ Depends:
  ${misc:Depends},
  linglong-builder,
  grep,
+ jq,
+ ostree
 Description: Linglong transform package tools.
  Linglong transform package command line tool from deb.
