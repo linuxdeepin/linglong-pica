@@ -213,7 +213,7 @@ func (cli *LinglongCli) GetBaseInsPack() []string {
 	config := comm.NewConfig()
 	config.ReadConfigJson()
 
-	cli.LinglongCliInstall(config.Id, config.Version)
+	cli.LinglongCliInstall(config.BaseId, config.Version)
 	// 获取 base 的 info
 	cli.LinglongCliInfo(config.BaseId)
 	if ret, msg, err := comm.ExecAndWait(60, "sh", "-c",
