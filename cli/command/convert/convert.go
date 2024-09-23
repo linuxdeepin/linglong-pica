@@ -184,9 +184,7 @@ func runConvert(options *convertOptions) error {
 				},
 				Runtime: fmt.Sprintf("%s/%s", packConfig.Runtime.Id, packConfig.Runtime.Version),
 				Base:    fmt.Sprintf("%s/%s", packConfig.Runtime.BaseId, packConfig.Runtime.BaseVersion),
-				Command: []string{
-					packConfig.File.Deb[idx].Command,
-				},
+				Command: packConfig.File.Deb[idx].Command,
 				Sources: packConfig.File.Deb[idx].Sources,
 				Build:   packConfig.File.Deb[idx].Build,
 			}

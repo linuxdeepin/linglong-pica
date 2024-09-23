@@ -58,7 +58,7 @@ runtime: {{.Runtime}}
 
 command:
   {{- range $line := .Command}}
-  {{- printf "\n  - %s" $line}}
+  {{- printf "\n  - \"%s\"" $line}}
   {{- end}}
 {{if .Sources}}
 sources:
