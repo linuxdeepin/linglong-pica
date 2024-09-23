@@ -53,7 +53,7 @@ type Deb struct {
 	Filename     string `control:"Filename"`
 	FromAppStore bool
 	PackageKind  string
-	Command      string
+	Command      []string
 	Sources      []comm.Source
 	Build        []string
 }
@@ -281,8 +281,6 @@ func (d *Deb) ResolveDepends(source, distro string, withDep bool) {
 }
 
 func (d *Deb) GenerateBuildScript() {
-	execFile := "start.sh"
-
 	d.Build = append(d.Build, "#>>> auto generate by ll-pica begin")
 
 	// 设置 linglong/sources 目录
@@ -350,7 +348,7 @@ func (d *Deb) GenerateBuildScript() {
 			modiDesktopPath := "$SOURCES" + desktop[index+len(comm.LlSourceDir):]
 			d.Build = append(d.Build, []string{
 				"# modify desktop, Exec and Icon should not contanin absolut paths",
-				fmt.Sprintf("sed -i '/Exec*/c\\Exec=%s' %s", execFile, modiDesktopPath),
+				fmt.Sprintf("sed -i '/Exec*/c\\Exec=%s' %s", execLine, modiDesktopPath),
 				fmt.Sprintf("sed -i '/Icon*/c\\Icon=%s' %s", iconValue, modiDesktopPath),
 			}...)
 		}
@@ -419,12 +417,6 @@ func (d *Deb) GenerateBuildScript() {
 		"    cp -rP $DATA_LIST_DIR/usr/* $PREFIX 2>/dev/null || true",
 		"done < \"$DEPS_LIST\"",
 		"rm -r $OUT_DIR || true", // # 清理临时目录
-		"",
-		"# use a script as program",
-		fmt.Sprintf("tee %s<<EOF", execFile),
-		"#!/usr/bin/env bash",
-		execLine,
-		"EOF",
 	}...)
 
 	d.Build = append(d.Build, []string{
@@ -432,7 +424,6 @@ func (d *Deb) GenerateBuildScript() {
 		"install -d $PREFIX/share",
 		"install -d $PREFIX/bin",
 		"install -d $PREFIX/lib",
-		fmt.Sprintf("install -m 0755 %s $PREFIX/bin", execFile),
 	}...)
 
 	if d.FromAppStore {
@@ -454,7 +445,7 @@ func (d *Deb) GenerateBuildScript() {
 
 	d.Build = append(d.Build, "#>>> auto generate by ll-pica end")
 
-	d.Command = fmt.Sprintf("/opt/apps/%s/files/bin/%s", d.Id, execFile)
+	d.Command = strings.Split(execLine, " ")
 }
 
 // 获取 deb 包
