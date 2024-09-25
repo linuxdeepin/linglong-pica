@@ -44,7 +44,7 @@ function main() {
                 --base) test -z "$2" || BASE="$2"; shift 2;;
                 --base-version) test -z "$2" || BASE_VERSION="$2"; shift 2;;
                 # # 转换为玲珑的版本，规则是按'.'和'-'分割取前三位，不足三位补0，再末尾补充输入的打包版本号，如 5.15-23.08 生成 5.15.23.0
-                --version) test -z "$2" || VERSION="$(echo "$2.0.0.0" | awk -F'[-.]' 'BEGIN {OFS="."} {print $1,$2,$3}').0"; shift 2;;
+                --version) test -z "$2" || VERSION="$(echo "${2/.0/.}.0.0.0" | awk -F'[-.]' 'BEGIN {OFS="."} {print $1,$2,$3}').0"; shift 2;;
                 --build) test -z "$2" || BUILD=true; shift 1;;
                 --layer) test -z "$2" || LAYER=true; shift 1;;
                 -h|--help) test -z "$2" || "${LL_PICA_FLATPAK_PATH}/ll-pica-flatpak-utils" help; shift 1; exit 0;;

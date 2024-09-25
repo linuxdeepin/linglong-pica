@@ -19,28 +19,12 @@ ostree --repo="$FLATHUB_CACHE" pull "$REF"
 rm -rf "$WORKDIR" && mkdir -p "$WORKDIR"
 ostree --repo="$FLATHUB_CACHE" checkout "$REF" "$WORKDIR/flatpak"
 
+FLATPAK_COMMAND=$(grep '^command=' $WORKDIR/flatpak/metadata | awk -F'=' '{print $2}')
 FLATPAK_RUNTIME=$(grep '^runtime=' "$WORKDIR"/flatpak/metadata | awk -F'=' '{print $2}' | awk -F'/' '{print $1}')
 FLATPAK_RUNTIME_VERSION=$(grep '^runtime=' "$WORKDIR"/flatpak/metadata | awk -F'=' '{print $2}' | awk -F'/' '{print $3}')
 
 LINGLONG_BASE_NAME="org.deepin.base.flatpak.$(echo "$FLATPAK_RUNTIME"|awk -F'.' '{print $2}')"
-LINGLONG_BASE_VERSION="$(echo "$FLATPAK_RUNTIME_VERSION.0.0.0" | awk -F'[-.]' 'BEGIN {OFS="."} {print $1,$2,$3}')"
-
-# 尝试获取 base 的信息
-LINGLONG_INSTALL_INFO=$(ll-cli install "$LINGLONG_BASE_NAME")
-if [[ "$LINGLONG_INSTALL_INFO" != *installed* && "$LINGLONG_INSTALL_INFO" != *success* ]];
-then
-    echo "$LINGLONG_BASE_NAME not found"
-    exit 1
-fi
-
-# 如果没有存在这个 base 选择一个默认的
-ll-cli info "$LINGLONG_BASE_NAME"
-if [[ $? != 0 ]];
-then
-    LINGLONG_BASE_NAME=org.deepin.base.flatpak.kde
-    ll-cli install $LINGLONG_BASE_NAME
-    LINGLONG_BASE_VERSION=$BASE_VERSION
-fi
+LINGLONG_BASE_VERSION="$(echo "${FLATPAK_RUNTIME_VERSION/.0/.}.0.0.0" | awk -F'[-.]' 'BEGIN {OFS="."} {print $1,$2,$3}')"
 
 if [[ -n $BASE ]];
 then
@@ -74,7 +58,6 @@ then
 else
     BIN_FILE_PATH=$APPID/flatpak/files/bin/$BIN_FILE
 fi
-sed -i "s|/app|/opt/apps/$APPID/files|g" "$BIN_FILE_PATH"
 
 tee "$WORKDIR"/linglong.yaml <<EOF
 version: "1"
@@ -85,12 +68,19 @@ package:
   kind: app
   description: flatpak runtime environment on linglong
 
-command: [$EXEC]
+command: [$FLATPAK_COMMAND]
 base: $LINGLONG_BASE_NAME/$LINGLONG_BASE_VERSION
 
 build: |
+  mkdir \$PREFIX/etc
+  cp profile \$PREFIX/etc
   cp -rf flatpak/files/* \$PREFIX
+EOF
 
+tee $WORKDIR/profile<<EOF
+#!/bin/sh
+# bind /opt/apps/$APPID/files to /app
+ln -s "/opt/apps/\$LINGLONG_APPID/files" /run/linglong/app
 EOF
 
 if $BUILD;
