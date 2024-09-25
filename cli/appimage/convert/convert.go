@@ -132,7 +132,7 @@ func runConvert(options *convertOptions) error {
 			Kind:        "app",
 			Description: options.packageDescription,
 		},
-		Base: fmt.Sprintf("%s/%s", "org.deepin.foundation", "20.0.0"),
+		Base: fmt.Sprintf("%s/%s", "org.deepin.base", "23.1.0"),
 		Command: []string{
 			fmt.Sprintf("/opt/apps/%s/files/bin/%s", options.packageId, options.packageId),
 		},
