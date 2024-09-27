@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"os"
 	"runtime"
+	"strings"
 
 	"pkg.deepin.com/linglong/pica/tools/log"
 )
@@ -46,6 +47,11 @@ func (c *Config) ReadConfigJson() bool {
 		err = json.Unmarshal([]byte(picaConfigFd), &c)
 		if err != nil {
 			log.Logger.Errorf("unmarshal error: %s", err)
+		}
+
+		if strings.HasPrefix(c.BaseVersion, "20") {
+			c.BaseId = "org.deepin.foundation"
+			c.Id = "org.deepin.Runtime"
 		}
 		return true
 	}
