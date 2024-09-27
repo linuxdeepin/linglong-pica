@@ -1,3 +1,14 @@
+linglong-pica (1.2.3-1) unstable; urgency=medium
+
+  * feat: add ll-pica-flatpak
+  * fix: fix install Base version
+  * fix: glib version is too low when run app of conversion
+  * fix: fix Exec
+  * fix: fix install base
+  * feat: add appimage convert feature
+
+ -- dengbo <dengbo@deepin.org>  Fri, 27 Sep 2024 15:40:26 +0800
+
 linglong-pica (1.2.2-1) unstable; urgency=medium
 
   * fix: Fix install_dep path error for install
