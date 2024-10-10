@@ -154,9 +154,9 @@ func (ts *LinglongBuilder) CreateLinglongBuilder(path string) bool {
 }
 
 // 调用 ll-builder build
-func (ts *LinglongBuilder) LinglongBuild(path string) bool {
+func (ts *LinglongBuilder) LinglongBuild(path string, cmd string) bool {
 	if ret, msg, err := comm.ExecAndWait(300, "sh", "-c",
-		fmt.Sprintf("cd %s && ll-builder build", path)); err != nil {
+		fmt.Sprintf("cd %s && %s", path, cmd)); err != nil {
 		log.Logger.Fatalf("msg: %+v err:%+v, out: %+v", msg, err, ret)
 	} else {
 		log.Logger.Infof("msg: %+v err:%+v, out: %+v", msg, err, ret)
