@@ -199,7 +199,7 @@ func runConvert(options *convertOptions) error {
 			// 构建玲珑包
 			if options.buildFlag {
 				buildLinglongPath := filepath.Dir(linglongYamlPath)
-				builder.LinglongBuild(buildLinglongPath)
+				builder.LinglongBuild(buildLinglongPath, "ll-builder build")
 				builder.LinglongExport(buildLinglongPath, options.exportFile)
 			}
 		}
