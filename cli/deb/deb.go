@@ -59,6 +59,15 @@ type Deb struct {
 }
 
 func (d *Deb) GetPackageUrl(source, distro, arch string) string {
+	aptlyCache := comm.AptlyCachePath()
+	// 删除掉aptly缓存的内容
+	if ret, _ := fs.CheckFileExits(aptlyCache); ret {
+		log.Logger.Debugf("%s is existd!", aptlyCache)
+		if ret, err := fs.RemovePath(aptlyCache); err != nil {
+			log.Logger.Warnf("err:%+v, out: %+v", err, ret)
+		}
+	}
+
 	root := cmd.RootCommand()
 	root.UsageLine = "aptly"
 
@@ -243,6 +252,15 @@ func (d *Deb) ResolveDepends(source, distro string, withDep bool) {
 		}
 	}
 	filter = strings.Join(result, ",")
+
+	// 删除掉aptly缓存的内容
+	aptlyCache := comm.AptlyCachePath()
+	if ret, _ := fs.CheckFileExits(aptlyCache); ret {
+		log.Logger.Debugf("%s is existd!", aptlyCache)
+		if ret, err := fs.RemovePath(aptlyCache); err != nil {
+			log.Logger.Warnf("err:%+v, out: %+v", err, ret)
+		}
+	}
 
 	if d.Architecture == "" || d.Name == "" {
 		log.Logger.Errorf("arch or package name is empty")
