@@ -49,8 +49,8 @@ do
         echo "$deb_file" >> /tmp/deb-source-file/skip.list
         continue
     fi;
-    # 记录到 packages.json
-    echo "Package: $pkg" >> "$PREFIX/packages.json"
+    # 记录到 packages.list
+    echo "Package: $pkg" >> "$PREFIX/packages.list"
     # 换行
     echo ""
     # 缓存解压后的data.tar文件，便于在下次使用时，加快安装速度
