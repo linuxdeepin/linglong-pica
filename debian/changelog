@@ -1,3 +1,11 @@
+linglong-pica (1.2.4-1) unstable; urgency=medium
+
+  * feat: use caching to speed up installation
+  * fix: remove aptly cache
+  * fix(appimage-convert): failed to convert appimage
+
+ -- dengbo <dengbo@deepin.org>  Wed, 13 Nov 2024 15:37:34 +0800
+
 linglong-pica (1.2.3-1) unstable; urgency=medium
 
   * feat: add ll-pica-flatpak
