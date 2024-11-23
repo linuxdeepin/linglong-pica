@@ -88,18 +88,30 @@ while IFS= read -r deb_file; do
             echo "    FIX LINK" "$linkTarget" "=>" "$target$linkTarget"
         fi
     done
+
     # 修复动态库的RUNPATH
-    find "$data_list_dir" -type f -exec file {} \; | grep 'shared object' | awk -F: '{print $1}' | while IFS= read -r file; do
-        runpath=$(readelf -d "$file" | grep RUNPATH | awk '{print $NF}')
-        # 如果RUNPATH使用绝对路径，则添加/runtime前缀
-        if echo "$runpath" | grep -q '^\[/'; then
-            runpath=${runpath#[}
-            runpath=${runpath%]}
-            newRunpath=${runpath//usr\/lib/runtime\/lib}
-            newRunpath=${newRunpath//usr/runtime}
-            patchelf --set-rpath "$newRunpath" "$file"
-            echo "    FIX RUNPATH" "$file" "$runpath" "=>" "$newRunpath"
+    find "$data_list_dir" -type f | while IFS= read -r file; do
+        fileinfo=$(file "$file")
+        # skip non-dynamic librarie
+        if ! echo "$fileinfo" | grep -q 'shared object'; then
+            continue
         fi
+        # skip debug file
+        if echo "$fileinfo" | grep -q 'with debug_info'; then
+            continue
+        fi
+        runpath=$(readelf -d "$file" | grep RUNPATH | awk '{print $NF}')
+        # skip without runpath
+        if ! echo "$runpath" | grep -q '^\[/'; then
+            continue
+        fi
+        # 如果RUNPATH使用绝对路径，则添加/runtime前缀
+        runpath=${runpath#[}
+        runpath=${runpath%]}
+        newRunpath=${runpath//usr\/lib/runtime\/lib}
+        newRunpath=${newRunpath//usr/runtime}
+        patchelf --set-rpath "$newRunpath" "$file"
+        echo "    FIX RUNPATH" "$file" "$runpath" "=>" "$newRunpath"
     done
     # 复制/lib,/bin,/usr目录
     cp -rP "$data_list_dir/lib" "$target" 2>/dev/null || true
