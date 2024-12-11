@@ -1,0 +1,39 @@
+import { echo_info } from "std/env"
+
+pub fun mount_chroot(path) {
+    trust {
+        $sudo mount -t tmpfs -o \"size=99%\" tmpfs {path}/tmp$
+        $sudo mount -t tmpfs -o \"size=99%\" tmpfs {path}/var/tmp$
+        $sudo mount -t proc chproc {path}/proc$
+        $sudo mount -t sysfs chsys {path}/sys$
+        $sudo mount --bind /dev {path}/dev$
+    }
+}
+
+pub fun umount_chroot(path) {
+    loop {
+        let mount_path = trust $grep -E {path}\"/(dev|proc|sys|tmp|var/tmp)\" /proc/mounts$
+        if mount_path == "": break
+
+        silent trust {
+            $sudo umount -l --recursive {path}/dev || true$
+            $sudo umount {path}/proc || true$
+            $sudo umount {path}/sys || true$
+            $sudo umount {path}/tmp || true$
+            $sudo umount {path}/var/tmp || true$
+        }
+    }
+}
+
+pub fun run_command_in_chroot(rootfs_path, command): Text {
+    return trust $sudo chroot {rootfs_path} /usr/bin/env bash -e -o pipefail -c \"\
+    export DEBIAN_FRONTEND=noninteractive && \
+    unset LC_ALL && \
+    unset LANG && \
+    unset LANG_UAGE && \
+    {command}\"$
+}
+
+pub fun chroot_apt_install(rootfs_path, deb): Text {
+    return run_command_in_chroot(rootfs_path, "apt-get update && apt-get install -y {deb}")
+}

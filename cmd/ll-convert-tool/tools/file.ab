@@ -1,0 +1,55 @@
+import { dir_exists, dir_create, file_exists } from "std/fs"
+import { ends_with, split } from "std/text"
+import { echo_error, echo_info, echo_warning, env_const_get } from "std/env"
+
+pub fun get_cache_path(): Text {
+    return "/tmp"
+}
+
+pub fun get_linglong_convert_tool_cache_path(): Text {
+    return "{get_cache_path()}/linglong-convert-tool"
+}
+
+pub fun get_shell_scripts(path): [Text] {
+    let shell_scripts_list = [Text]
+    let find_sh_file = trust $find {path} -name "*.sh"$
+    let find_not_sh_file = trust $find {path} -type f ! -name "*.sh"$
+    for i, arg in split(find_sh_file, "\n") {
+        shell_scripts_list += [arg]
+    }
+    for i, arg in split(find_not_sh_file, "\n") {
+        arg = trust $grep -EIl '^#!.*\/(ba)?sh' {arg}$
+        if arg != "": shell_scripts_list += [arg]
+    }
+    return shell_scripts_list
+}
+
+pub fun tar_extract_cmd(output, tar_file): Text {
+    let flags = ""
+    if {
+        ends_with(tar_file, "tar"): flags = ""
+        ends_with(tar_file, "tar.gz"): flags = "z"
+        ends_with(tar_file, "tar.xz"): flags = "J"
+        ends_with(tar_file, "tar.bz2"): flags = "j"
+        ends_with(tar_file, "tar.lzma"): flags = "J"
+        ends_with(tar_file, "tar.zst"): flags = "I unzstd"
+        else {
+            echo_error("Error: Don't know how to extract {tar_file}")
+        }
+    }
+    return "tar -x{flags} -C {output}"
+}
+
+pub fun check_directory_empty(path): Bool {
+    let file = trust $ls -A {path}$
+    echo "{file}"
+    if file == "" {
+        echo_info("{path} is empty")
+        return true
+    }
+    return false
+}
+
+pub fun check_dotfiles() {
+    if not dir_exists(get_linglong_convert_tool_cache_path()): dir_create(get_linglong_convert_tool_cache_path())
+}

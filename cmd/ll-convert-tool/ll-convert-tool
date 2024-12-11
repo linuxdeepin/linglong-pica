@@ -1,0 +1,2252 @@
+#!/usr/bin/env bash
+# Written in [Amber](https://amber-lang.com/)
+# version: 0.4.0-alpha
+# date: 2025-01-10 10:09:22
+replace__0_v0() {
+    local source=$1
+    local search=$2
+    local replace=$3
+    __AF_replace0_v0="${source//${search}/${replace}}";
+    return 0
+}
+replace_regex__2_v0() {
+    local source=$1
+    local search=$2
+    local replace=$3
+    local extended=$4
+            replace__0_v0 "${search}" "/" "\/";
+        __AF_replace0_v0__16_18="${__AF_replace0_v0}";
+        search="${__AF_replace0_v0__16_18}"
+        replace__0_v0 "${replace}" "/" "\/";
+        __AF_replace0_v0__17_19="${__AF_replace0_v0}";
+        replace="${__AF_replace0_v0__17_19}"
+        if [ ${extended} != 0 ]; then
+            # GNU sed versions 4.0 through 4.2 support extended regex syntax,
+            # but only via the "-r" option; use that if the version information
+            # contains "GNU sed".
+             re='\bCopyright\b.+\bFree Software Foundation\b'; [[ $(sed --version 2>/dev/null) =~ $re ]] ;
+            __AS=$?
+            local flag=$(if [ $(echo $__AS '==' 0 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then echo "-r"; else echo "-E"; fi)
+            __AMBER_VAL_0=$( echo "${source}" | sed "${flag}" -e "s/${search}/${replace}/g" );
+            __AS=$?;
+            __AF_replace_regex2_v0="${__AMBER_VAL_0}";
+            return 0
+else
+            __AMBER_VAL_1=$( echo "${source}" | sed -e "s/${search}/${replace}/g" );
+            __AS=$?;
+            __AF_replace_regex2_v0="${__AMBER_VAL_1}";
+            return 0
+fi
+}
+split__3_v0() {
+    local text=$1
+    local delimiter=$2
+    __AMBER_ARRAY_2=();
+    local result=("${__AMBER_ARRAY_2[@]}")
+     IFS="${delimiter}" read -rd '' -a result < <(printf %s "$text") ;
+    __AS=$?
+    __AF_split3_v0=("${result[@]}");
+    return 0
+}
+split_lines__4_v0() {
+    local text=$1
+    split__3_v0 "${text}" "
+";
+    __AF_split3_v0__40_12=("${__AF_split3_v0[@]}");
+    __AF_split_lines4_v0=("${__AF_split3_v0__40_12[@]}");
+    return 0
+}
+join__6_v0() {
+    local list=("${!1}")
+    local delimiter=$2
+    __AMBER_VAL_3=$( IFS="${delimiter}" ; echo "${list[*]}" );
+    __AS=$?;
+    __AF_join6_v0="${__AMBER_VAL_3}";
+    return 0
+}
+lowercase__10_v0() {
+    local text=$1
+    __AMBER_VAL_4=$( echo "${text}" | tr '[:upper:]' '[:lower:]' );
+    __AS=$?;
+    __AF_lowercase10_v0="${__AMBER_VAL_4}";
+    return 0
+}
+text_contains__14_v0() {
+    local text=$1
+    local phrase=$2
+    __AMBER_VAL_5=$( if [[ "${text}" == *"${phrase}"* ]]; then
+    echo 1
+  fi );
+    __AS=$?;
+    local result="${__AMBER_VAL_5}"
+    __AF_text_contains14_v0=$([ "_${result}" != "_1" ]; echo $?);
+    return 0
+}
+ends_with__21_v0() {
+    local text=$1
+    local suffix=$2
+    __AMBER_VAL_6=$( if [[ "${text}" == *"${suffix}" ]]; then
+    echo 1
+  fi );
+    __AS=$?;
+    local result="${__AMBER_VAL_6}"
+    __AF_ends_with21_v0=$([ "_${result}" != "_1" ]; echo $?);
+    return 0
+}
+dir_exists__32_v0() {
+    local path=$1
+     [ -d "${path}" ] ;
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        __AF_dir_exists32_v0=0;
+        return 0
+fi
+    __AF_dir_exists32_v0=1;
+    return 0
+}
+file_exists__33_v0() {
+    local path=$1
+     [ -f "${path}" ] ;
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        __AF_file_exists33_v0=0;
+        return 0
+fi
+    __AF_file_exists33_v0=1;
+    return 0
+}
+dir_create__38_v0() {
+    local path=$1
+    dir_exists__32_v0 "${path}";
+    __AF_dir_exists32_v0__52_12="$__AF_dir_exists32_v0";
+    if [ $(echo  '!' "$__AF_dir_exists32_v0__52_12" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+         mkdir -p "${path}" ;
+        __AS=$?
+fi
+}
+env_const_get__89_v0() {
+    local name=$1
+    __AMBER_VAL_7=$( echo ${!name} );
+    __AS=$?;
+if [ $__AS != 0 ]; then
+__AF_env_const_get89_v0=''
+return $__AS
+fi;
+    __AF_env_const_get89_v0="${__AMBER_VAL_7}";
+    return 0
+}
+printf__99_v0() {
+    local format=$1
+    local args=("${!2}")
+     args=("${format}" "${args[@]}") ;
+    __AS=$?
+     printf "${args[@]}" ;
+    __AS=$?
+}
+echo_info__106_v0() {
+    local message=$1
+    __AMBER_ARRAY_8=("${message}");
+    printf__99_v0 "\x1b[1;3;97;44m%s\x1b[0m
+" __AMBER_ARRAY_8[@];
+    __AF_printf99_v0__147_5="$__AF_printf99_v0";
+    echo "$__AF_printf99_v0__147_5" > /dev/null 2>&1
+}
+echo_success__107_v0() {
+    local message=$1
+    __AMBER_ARRAY_9=("${message}");
+    printf__99_v0 "\x1b[1;3;97;42m%s\x1b[0m
+" __AMBER_ARRAY_9[@];
+    __AF_printf99_v0__152_5="$__AF_printf99_v0";
+    echo "$__AF_printf99_v0__152_5" > /dev/null 2>&1
+}
+echo_warning__108_v0() {
+    local message=$1
+    __AMBER_ARRAY_10=("${message}");
+    printf__99_v0 "\x1b[1;3;97;43m%s\x1b[0m
+" __AMBER_ARRAY_10[@];
+    __AF_printf99_v0__157_5="$__AF_printf99_v0";
+    echo "$__AF_printf99_v0__157_5" > /dev/null 2>&1
+}
+echo_error__109_v0() {
+    local message=$1
+    local exit_code=$2
+    __AMBER_ARRAY_11=("${message}");
+    printf__99_v0 "\x1b[1;3;97;41m%s\x1b[0m
+" __AMBER_ARRAY_11[@];
+    __AF_printf99_v0__162_5="$__AF_printf99_v0";
+    echo "$__AF_printf99_v0__162_5" > /dev/null 2>&1
+    if [ $(echo ${exit_code} '>' 0 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        exit ${exit_code}
+fi
+}
+get_linglong_convert_tool_name__128_v0() {
+    __AF_get_linglong_convert_tool_name128_v0="ll-convert-tool";
+    return 0
+}
+get_distro_version__129_v0() {
+    __AMBER_VAL_12=$(gawk -F '=' '/^NAME=/ { gsub(/"/,"",$2); print $2 }' /etc/os-release);
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "get distro id echo_error" 1;
+        __AF_echo_error109_v0__10_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__10_9" > /dev/null 2>&1
+fi;
+    local distro_name="${__AMBER_VAL_12}"
+    __AMBER_VAL_13=$(gawk -F '=' '/^VERSION=/ { gsub(/"/,"",$2); print $2 }' /etc/os-release | xargs);
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "get distro id error" 1;
+        __AF_echo_error109_v0__13_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__13_9" > /dev/null 2>&1
+fi;
+    local distro_version="${__AMBER_VAL_13}"
+    lowercase__10_v0 "${distro_name}-${distro_version}";
+    __AF_lowercase10_v0__16_14="${__AF_lowercase10_v0}";
+    __AF_get_distro_version129_v0="${__AF_lowercase10_v0__16_14}";
+    return 0
+}
+is_deepin_23__130_v0() {
+    get_distro_version__129_v0 ;
+    __AF_get_distro_version129_v0__20_12="${__AF_get_distro_version129_v0}";
+    __AF_is_deepin_23130_v0=$(if [ $([ "_${__AF_get_distro_version129_v0__20_12}" != "_deepin-23" ]; echo $?) != 0 ]; then echo 1; else echo 0; fi);
+    return 0
+}
+is_uos_20__131_v0() {
+    get_distro_version__129_v0 ;
+    __AF_get_distro_version129_v0__26_12="${__AF_get_distro_version129_v0}";
+    __AF_is_uos_20131_v0=$(if [ $([ "_${__AF_get_distro_version129_v0__26_12}" != "_uos-20" ]; echo $?) != 0 ]; then echo 1; else echo 0; fi);
+    return 0
+}
+get_cache_path__145_v0() {
+    __AF_get_cache_path145_v0="/tmp";
+    return 0
+}
+get_linglong_convert_tool_cache_path__146_v0() {
+    get_cache_path__145_v0 ;
+    __AF_get_cache_path145_v0__10_14="${__AF_get_cache_path145_v0}";
+    __AF_get_linglong_convert_tool_cache_path146_v0="${__AF_get_cache_path145_v0__10_14}/linglong-convert-tool";
+    return 0
+}
+get_shell_scripts__147_v0() {
+    local path=$1
+    __AMBER_ARRAY_14=();
+    local shell_scripts_list=("${__AMBER_ARRAY_14[@]}")
+    __AMBER_VAL_15=$(find ${path} -name "*.sh");
+    __AS=$?;
+    local find_sh_file="${__AMBER_VAL_15}"
+    __AMBER_VAL_16=$(find ${path} -type f ! -name "*.sh");
+    __AS=$?;
+    local find_not_sh_file="${__AMBER_VAL_16}"
+    split__3_v0 "${find_sh_file}" "
+";
+    __AF_split3_v0__17_19=("${__AF_split3_v0[@]}");
+    i=0;
+for arg in "${__AF_split3_v0__17_19[@]}"; do
+        __AMBER_ARRAY_17=("${arg}");
+        shell_scripts_list+=("${__AMBER_ARRAY_17[@]}")
+    (( i++ )) || true
+done
+    split__3_v0 "${find_not_sh_file}" "
+";
+    __AF_split3_v0__20_19=("${__AF_split3_v0[@]}");
+    i=0;
+for arg in "${__AF_split3_v0__20_19[@]}"; do
+        __AMBER_VAL_18=$(grep -EIl '^#!.*\/(ba)?sh' ${arg});
+        __AS=$?;
+        arg="${__AMBER_VAL_18}"
+        if [ $([ "_${arg}" == "_" ]; echo $?) != 0 ]; then
+            __AMBER_ARRAY_19=("${arg}");
+            shell_scripts_list+=("${__AMBER_ARRAY_19[@]}")
+fi
+    (( i++ )) || true
+done
+    __AF_get_shell_scripts147_v0=("${shell_scripts_list[@]}");
+    return 0
+}
+get_cache_path__176_v0() {
+    __AF_get_cache_path176_v0="/tmp";
+    return 0
+}
+get_linglong_convert_tool_cache_path__177_v0() {
+    get_cache_path__176_v0 ;
+    __AF_get_cache_path176_v0__10_14="${__AF_get_cache_path176_v0}";
+    __AF_get_linglong_convert_tool_cache_path177_v0="${__AF_get_cache_path176_v0__10_14}/linglong-convert-tool";
+    return 0
+}
+tar_extract_cmd__179_v0() {
+    local output=$1
+    local tar_file=$2
+    local flags=""
+    ends_with__21_v0 "${tar_file}" "tar";
+    __AF_ends_with21_v0__30_9="$__AF_ends_with21_v0";
+    ends_with__21_v0 "${tar_file}" "tar.gz";
+    __AF_ends_with21_v0__31_9="$__AF_ends_with21_v0";
+    ends_with__21_v0 "${tar_file}" "tar.xz";
+    __AF_ends_with21_v0__32_9="$__AF_ends_with21_v0";
+    ends_with__21_v0 "${tar_file}" "tar.bz2";
+    __AF_ends_with21_v0__33_9="$__AF_ends_with21_v0";
+    ends_with__21_v0 "${tar_file}" "tar.lzma";
+    __AF_ends_with21_v0__34_9="$__AF_ends_with21_v0";
+    ends_with__21_v0 "${tar_file}" "tar.zst";
+    __AF_ends_with21_v0__35_9="$__AF_ends_with21_v0";
+    if [ "$__AF_ends_with21_v0__30_9" != 0 ]; then
+        flags=""
+elif [ "$__AF_ends_with21_v0__31_9" != 0 ]; then
+        flags="z"
+elif [ "$__AF_ends_with21_v0__32_9" != 0 ]; then
+        flags="J"
+elif [ "$__AF_ends_with21_v0__33_9" != 0 ]; then
+        flags="j"
+elif [ "$__AF_ends_with21_v0__34_9" != 0 ]; then
+        flags="J"
+elif [ "$__AF_ends_with21_v0__35_9" != 0 ]; then
+        flags="I unzstd"
+else
+        echo_error__109_v0 "Error: Don't know how to extract ${tar_file}" 1;
+        __AF_echo_error109_v0__37_13="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__37_13" > /dev/null 2>&1
+fi
+    __AF_tar_extract_cmd179_v0="tar -x${flags} -C ${output}";
+    return 0
+}
+check_directory_empty__180_v0() {
+    local path=$1
+    __AMBER_VAL_20=$(ls -A ${path});
+    __AS=$?;
+    local file="${__AMBER_VAL_20}"
+    echo "${file}"
+    if [ $([ "_${file}" != "_" ]; echo $?) != 0 ]; then
+        echo_info__106_v0 "${path} is empty";
+        __AF_echo_info106_v0__47_9="$__AF_echo_info106_v0";
+        echo "$__AF_echo_info106_v0__47_9" > /dev/null 2>&1
+        __AF_check_directory_empty180_v0=1;
+        return 0
+fi
+    __AF_check_directory_empty180_v0=0;
+    return 0
+}
+umount_chroot__186_v0() {
+    local path=$1
+    while :
+do
+        __AMBER_VAL_21=$(grep -E ${path}"/(dev|proc|sys|tmp|var/tmp)" /proc/mounts);
+        __AS=$?;
+        local mount_path="${__AMBER_VAL_21}"
+        if [ $([ "_${mount_path}" != "_" ]; echo $?) != 0 ]; then
+            break
+fi
+                    sudo umount -l --recursive ${path}/dev || true > /dev/null 2>&1;
+            __AS=$?
+            sudo umount ${path}/proc || true > /dev/null 2>&1;
+            __AS=$?
+            sudo umount ${path}/sys || true > /dev/null 2>&1;
+            __AS=$?
+            sudo umount ${path}/tmp || true > /dev/null 2>&1;
+            __AS=$?
+            sudo umount ${path}/var/tmp || true > /dev/null 2>&1;
+            __AS=$?
+done
+}
+get_distro_version__193_v0() {
+    __AMBER_VAL_22=$(gawk -F '=' '/^NAME=/ { gsub(/"/,"",$2); print $2 }' /etc/os-release);
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "get distro id echo_error" 1;
+        __AF_echo_error109_v0__10_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__10_9" > /dev/null 2>&1
+fi;
+    local distro_name="${__AMBER_VAL_22}"
+    __AMBER_VAL_23=$(gawk -F '=' '/^VERSION=/ { gsub(/"/,"",$2); print $2 }' /etc/os-release | xargs);
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "get distro id error" 1;
+        __AF_echo_error109_v0__13_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__13_9" > /dev/null 2>&1
+fi;
+    local distro_version="${__AMBER_VAL_23}"
+    lowercase__10_v0 "${distro_name}-${distro_version}";
+    __AF_lowercase10_v0__16_14="${__AF_lowercase10_v0}";
+    __AF_get_distro_version193_v0="${__AF_lowercase10_v0__16_14}";
+    return 0
+}
+is_deepin_23__194_v0() {
+    get_distro_version__193_v0 ;
+    __AF_get_distro_version193_v0__20_12="${__AF_get_distro_version193_v0}";
+    __AF_is_deepin_23194_v0=$(if [ $([ "_${__AF_get_distro_version193_v0__20_12}" != "_deepin-23" ]; echo $?) != 0 ]; then echo 1; else echo 0; fi);
+    return 0
+}
+generator_version__197_v0() {
+    local deb_version=$1
+    # .或者-或者空格符号分割成数组
+    # 将版本号数组循环，如果新数组大于到4位了，停止循环。如果循环的数是1位数，直接添加到新的数组，如果大于1位将0的前导部分都替换为空。
+    # 对数组进行循环，如果少于3位数进行填充到4位。
+    split__3_v0 "${deb_version}" ".|-|' '";
+    __AF_split3_v0__13_24=("${__AF_split3_v0[@]}");
+    local version_list=("${__AF_split3_v0__13_24[@]}")
+    __AMBER_ARRAY_24=();
+    local linglong_version=("${__AMBER_ARRAY_24[@]}")
+    i=0;
+for part in "${version_list[@]}"; do
+        if [ $(echo "${#linglong_version[@]}" '>' 3 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            break
+fi
+        __AMBER_LEN="${part}";
+        __AMBER_LEN="${part}";
+        if [ $(echo "${#__AMBER_LEN}" '==' 1 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            __AMBER_ARRAY_25=("${part}");
+            linglong_version+=("${__AMBER_ARRAY_25[@]}")
+elif [ $(echo "${#__AMBER_LEN}" '>' 1 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            # part = replace_regex(part, "\/(\.0+)(\d+)", "") // 移除0前导的数字部分
+            replace_regex__2_v0 "${part}" "^0\\+" "" 0;
+            __AF_replace_regex2_v0__21_24="${__AF_replace_regex2_v0}";
+            part="${__AF_replace_regex2_v0__21_24}"
+            # 移除0前导的数字部分
+            replace_regex__2_v0 "${part}" "[a-zA-Z]" "" 0;
+            __AF_replace_regex2_v0__22_24="${__AF_replace_regex2_v0}";
+            part="${__AF_replace_regex2_v0__22_24}"
+            # 移除所有字母
+            replace_regex__2_v0 "${part}" "^[0-9]\\+:" "" 0;
+            __AF_replace_regex2_v0__23_24="${__AF_replace_regex2_v0}";
+            part="${__AF_replace_regex2_v0__23_24}"
+            # 移除以数字加冒号开头的部分
+            replace__0_v0 "${part}" "+" "";
+            __AF_replace0_v0__24_24="${__AF_replace0_v0}";
+            part="${__AF_replace0_v0__24_24}"
+            # 移除+符号
+            __AMBER_ARRAY_26=("${part}");
+            linglong_version+=("${__AMBER_ARRAY_26[@]}")
+fi
+    (( i++ )) || true
+done
+    while :
+do
+        if [ $(echo "${#linglong_version[@]}" '>' 3 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            break
+fi
+        __AMBER_ARRAY_27=("0");
+        linglong_version+=("${__AMBER_ARRAY_27[@]}")
+done
+    join__6_v0 linglong_version[@] ".";
+    __AF_join6_v0__33_12="${__AF_join6_v0}";
+    __AF_generator_version197_v0="${__AF_join6_v0__33_12}";
+    return 0
+}
+ll_cli_install__198_v0() {
+    local appid=$1
+    local linglong_path="/var/lib/linglong"
+    __AMBER_VAL_28=$(sudo ll-cli install ${appid} 2>&1 | (cat));
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "install ${appid} echo_error" 1;
+        __AF_echo_error109_v0__39_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__39_9" > /dev/null 2>&1
+fi;
+    local res="${__AMBER_VAL_28}"
+    text_contains__14_v0 "${res}" "success";
+    __AF_text_contains14_v0__41_8="$__AF_text_contains14_v0";
+    if [ "$__AF_text_contains14_v0__41_8" != 0 ]; then
+        echo_success__107_v0 "install ${appid} success";
+        __AF_echo_success107_v0__42_9="$__AF_echo_success107_v0";
+        echo "$__AF_echo_success107_v0__42_9" > /dev/null 2>&1
+fi
+    # if text_contains(res, "installed"): break
+}
+ll_cli_info__199_v0() {
+    local package_id=$1
+    __AMBER_VAL_29=$(ll-cli info ${package_id});
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "commmand error: ll-cli info ${package_id}" 1;
+        __AF_echo_error109_v0__49_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__49_9" > /dev/null 2>&1
+fi;
+    local package_info="${__AMBER_VAL_29}"
+    __AF_ll_cli_info199_v0="${package_info}";
+    return 0
+}
+ll_cli_install_by_layer__201_v0() {
+    local layer=$1
+    __AMBER_VAL_30=$(sudo ll-cli install ${layer});
+    __AS=$?;
+    local res="${__AMBER_VAL_30}"
+    text_contains__14_v0 "${res}" "installed";
+    __AF_text_contains14_v0__63_8="$__AF_text_contains14_v0";
+    text_contains__14_v0 "${res}" "successfully";
+    __AF_text_contains14_v0__63_43="$__AF_text_contains14_v0";
+    if [ $(echo "$__AF_text_contains14_v0__63_8" '||' "$__AF_text_contains14_v0__63_43" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        echo_success__107_v0 "install ${layer} success";
+        __AF_echo_success107_v0__64_9="$__AF_echo_success107_v0";
+        echo "$__AF_echo_success107_v0__64_9" > /dev/null 2>&1
+else
+        echo_error__109_v0 "install ${layer} echo_error" 1;
+        __AF_echo_error109_v0__66_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__66_9" > /dev/null 2>&1
+fi
+}
+ll_builder_build__202_v0() {
+    local path=$1
+    __AMBER_VAL_31=$(dirname ${path});
+    __AS=$?;
+    local parent_dir="${__AMBER_VAL_31}"
+    local res=""
+    pushd ${parent_dir} && \
+    ll-builder build --skip-output-check && \
+    popd;
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "ll-buildrer build ${path} error" 1;
+        __AF_echo_error109_v0__76_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__76_9" > /dev/null 2>&1
+fi
+    echo_success__107_v0 "ll-builder build success";
+    __AF_echo_success107_v0__79_5="$__AF_echo_success107_v0";
+    echo "$__AF_echo_success107_v0__79_5" > /dev/null 2>&1
+    __AF_ll_builder_build202_v0=1;
+    return 0
+}
+ll_builder_run__203_v0() {
+    local path=$1
+    local command=$2
+    __AMBER_VAL_32=$(dirname ${path});
+    __AS=$?;
+    local parent_dir="${__AMBER_VAL_32}"
+    if [ $([ "_${command}" == "_" ]; echo $?) != 0 ]; then
+        command="--exec ${command}"
+fi
+    __AMBER_VAL_33=$(cd ${parent_dir} && timeout 5 ll-builder run 2>&1 | (cat));
+    __AS=$?;
+    local res="${__AMBER_VAL_33}"
+    __AF_ll_builder_run203_v0="${res}";
+    return 0
+}
+ll_builder_export__204_v0() {
+    local path=$1
+    local output=$2
+    __AMBER_VAL_34=$(dirname ${path});
+    __AS=$?;
+    local parent_dir="${__AMBER_VAL_34}"
+    if [ $([ "_${output}" != "_layer" ]; echo $?) != 0 ]; then
+        output="--layer"
+elif [ $([ "_${output}" != "_uab" ]; echo $?) != 0 ]; then
+        output=""
+fi
+    cd ${parent_dir} && ll-builder export ${output};
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "ll-buildrer export ${parent_dir} echo_error" 1;
+        __AF_echo_error109_v0__97_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__97_9" > /dev/null 2>&1
+fi
+    echo_success__107_v0 "ll-builder export success";
+    __AF_echo_success107_v0__99_5="$__AF_echo_success107_v0";
+    echo "$__AF_echo_success107_v0__99_5" > /dev/null 2>&1
+}
+get_linglong_id__205_v0() {
+    local package_info=$1
+    __AMBER_VAL_35=$(echo ${package_info} | jq -r ".id");
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "get package id echo_error" 1;
+        __AF_echo_error109_v0__104_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__104_9" > /dev/null 2>&1
+fi;
+    local id="${__AMBER_VAL_35}"
+    __AF_get_linglong_id205_v0="${id}";
+    return 0
+}
+get_linglong_name__206_v0() {
+    local package_info=$1
+    __AMBER_VAL_36=$(echo ${package_info} | jq -r ".name");
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "get package name echo_error" 1;
+        __AF_echo_error109_v0__111_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__111_9" > /dev/null 2>&1
+fi;
+    local name="${__AMBER_VAL_36}"
+    __AF_get_linglong_name206_v0="${name}";
+    return 0
+}
+get_linglong_version__207_v0() {
+    local package_info=$1
+    __AMBER_VAL_37=$(echo ${package_info} | jq -r ".version");
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "get package version echo_error" 1;
+        __AF_echo_error109_v0__118_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__118_9" > /dev/null 2>&1
+fi;
+    local version="${__AMBER_VAL_37}"
+    __AF_get_linglong_version207_v0="${version}";
+    return 0
+}
+get_linglong_arch__208_v0() {
+    local package_info=$1
+    __AMBER_VAL_38=$(echo ${package_info} | jq -r ".arch[0]");
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "get package arch echo_error" 1;
+        __AF_echo_error109_v0__125_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__125_9" > /dev/null 2>&1
+fi;
+    local arch="${__AMBER_VAL_38}"
+    __AF_get_linglong_arch208_v0="${arch}";
+    return 0
+}
+get_linglong_base__209_v0() {
+    local package_info=$1
+    __AMBER_VAL_39=$(echo ${package_info} | jq -r ".base");
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "get package base echo_error" 1;
+        __AF_echo_error109_v0__132_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__132_9" > /dev/null 2>&1
+fi;
+    local base="${__AMBER_VAL_39}"
+    get_linglong_arch__208_v0 "${package_info}";
+    __AF_get_linglong_arch208_v0__134_16="${__AF_get_linglong_arch208_v0}";
+    local arch="${__AF_get_linglong_arch208_v0__134_16}"
+    replace__0_v0 "${base}" "main:" "";
+    __AF_replace0_v0__135_12="${__AF_replace0_v0}";
+    base="${__AF_replace0_v0__135_12}"
+    replace__0_v0 "${base}" "/${arch}" "";
+    __AF_replace0_v0__136_12="${__AF_replace0_v0}";
+    base="${__AF_replace0_v0__136_12}"
+    __AF_get_linglong_base209_v0="${base}";
+    return 0
+}
+get_linglong_runtime__210_v0() {
+    local package_info=$1
+    __AMBER_VAL_40=$(echo ${package_info} | jq -r ".runtime");
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "get package runtime echo_error" 1;
+        __AF_echo_error109_v0__142_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__142_9" > /dev/null 2>&1
+fi;
+    local runtime="${__AMBER_VAL_40}"
+    get_linglong_arch__208_v0 "${package_info}";
+    __AF_get_linglong_arch208_v0__144_16="${__AF_get_linglong_arch208_v0}";
+    local arch="${__AF_get_linglong_arch208_v0__144_16}"
+    replace__0_v0 "${runtime}" "main:" "";
+    __AF_replace0_v0__145_15="${__AF_replace0_v0}";
+    runtime="${__AF_replace0_v0__145_15}"
+    replace__0_v0 "${runtime}" "/${arch}" "";
+    __AF_replace0_v0__146_15="${__AF_replace0_v0}";
+    runtime="${__AF_replace0_v0__146_15}"
+    __AF_get_linglong_runtime210_v0="${runtime}";
+    return 0
+}
+get_linglong_description__211_v0() {
+    local package_info=$1
+    __AMBER_VAL_41=$(echo ${package_info} | jq -r ".description");
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "get package description echo_error" 1;
+        __AF_echo_error109_v0__152_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__152_9" > /dev/null 2>&1
+fi;
+    local description="${__AMBER_VAL_41}"
+    replace__0_v0 "${description}" "
+" "";
+    __AF_replace0_v0__154_12="${__AF_replace0_v0}";
+    __AF_get_linglong_description211_v0="${__AF_replace0_v0__154_12}";
+    return 0
+}
+get_linglong_command__212_v0() {
+    local package_info=$1
+    __AMBER_VAL_42=$(echo ${package_info} | jq -r ".command[0]");
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "get package command error" 1;
+        __AF_echo_error109_v0__160_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__160_9" > /dev/null 2>&1
+fi;
+    local command="${__AMBER_VAL_42}"
+    __AF_get_linglong_command212_v0="${command}";
+    return 0
+}
+# 获取玲珑应用在 /var/lib/linglong 下的路径
+get_linglong_package_path__213_v0() {
+    local appid=$1
+    local linglong_path="/var/lib/linglong"
+    local states_json="${linglong_path}/states.json"
+    # 传进来的 appid 是 org.deepin.base/23.0.0 形式的
+    split__3_v0 "${appid}" "/";
+    __AF_split3_v0__170_30=("${__AF_split3_v0[@]}");
+    local appid_version_list=("${__AF_split3_v0__170_30[@]}")
+    __AMBER_VAL_43=$(cat ${states_json} | jq -c ".layers | .[] | select(.info.id == \"${appid_version_list[0]}\")");
+    __AS=$?;
+    local package_list="${__AMBER_VAL_43}"
+    split_lines__4_v0 "${package_list}";
+    __AF_split_lines4_v0__172_23=("${__AF_split_lines4_v0[@]}");
+    i=0;
+for package in "${__AF_split_lines4_v0__172_23[@]}"; do
+        __AMBER_VAL_44=$(echo ${package} | jq -r ".info.version");
+        __AS=$?;
+        local package_version="${__AMBER_VAL_44}"
+        __AMBER_VAL_45=$(echo ${package} | jq -r ".commit");
+        __AS=$?;
+        local package_commit="${__AMBER_VAL_45}"
+        text_contains__14_v0 "${package_version}" "${appid_version_list[1]}";
+        __AF_text_contains14_v0__175_12="$__AF_text_contains14_v0";
+        if [ "$__AF_text_contains14_v0__175_12" != 0 ]; then
+            __AF_get_linglong_package_path213_v0="/var/lib/linglong/layers/${package_commit}/files";
+            return 0
+fi
+    (( i++ )) || true
+done
+    __AF_get_linglong_package_path213_v0="";
+    return 0
+    # return "/var/lib/linglong/layers/{package_commit}/files"
+}
+get_base_cache_path__214_v0() {
+    local base=$1
+    get_linglong_convert_tool_cache_path__177_v0 ;
+    __AF_get_linglong_convert_tool_cache_path177_v0__182_35="${__AF_get_linglong_convert_tool_cache_path177_v0}";
+    local convert_tool_cache_path="${__AF_get_linglong_convert_tool_cache_path177_v0__182_35}"
+    ll_cli_install__198_v0 "${base}";
+    __AF_ll_cli_install198_v0__183_5="$__AF_ll_cli_install198_v0";
+    echo "$__AF_ll_cli_install198_v0__183_5" > /dev/null 2>&1
+    ll_cli_info__199_v0 "${base}";
+    __AF_ll_cli_info199_v0__184_24="${__AF_ll_cli_info199_v0}";
+    local package_info="${__AF_ll_cli_info199_v0__184_24}"
+    get_linglong_id__205_v0 "${package_info}";
+    __AF_get_linglong_id205_v0__185_14="${__AF_get_linglong_id205_v0}";
+    local id="${__AF_get_linglong_id205_v0__185_14}"
+    get_linglong_version__207_v0 "${package_info}";
+    __AF_get_linglong_version207_v0__186_19="${__AF_get_linglong_version207_v0}";
+    local version="${__AF_get_linglong_version207_v0__186_19}"
+    local base_cache_path="${convert_tool_cache_path}/${id}/${version}"
+    __AF_get_base_cache_path214_v0="${base_cache_path}";
+    return 0
+}
+generator_linglong_base_cache__215_v0() {
+    local base=$1
+    get_linglong_package_path__213_v0 "${base}";
+    __AF_get_linglong_package_path213_v0__193_21="${__AF_get_linglong_package_path213_v0}";
+    local base_path="${__AF_get_linglong_package_path213_v0__193_21}"
+    get_base_cache_path__214_v0 "${base}";
+    __AF_get_base_cache_path214_v0__194_27="${__AF_get_base_cache_path214_v0}";
+    local base_cache_path="${__AF_get_base_cache_path214_v0__194_27}"
+    umount_chroot__186_v0 "${base_cache_path}";
+    __AF_umount_chroot186_v0__195_5="$__AF_umount_chroot186_v0";
+    echo "$__AF_umount_chroot186_v0__195_5" > /dev/null 2>&1
+    dir_exists__32_v0 "${base_cache_path}";
+    __AF_dir_exists32_v0__196_12="$__AF_dir_exists32_v0";
+    if [ $(echo  '!' "$__AF_dir_exists32_v0__196_12" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        echo_info__106_v0 "${base_cache_path} not exist";
+        __AF_echo_info106_v0__197_9="$__AF_echo_info106_v0";
+        echo "$__AF_echo_info106_v0__197_9" > /dev/null 2>&1
+        echo_info__106_v0 "create ${base_cache_path}";
+        __AF_echo_info106_v0__198_9="$__AF_echo_info106_v0";
+        echo "$__AF_echo_info106_v0__198_9" > /dev/null 2>&1
+        dir_create__38_v0 "${base_cache_path}";
+        __AF_dir_create38_v0__200_9="$__AF_dir_create38_v0";
+        echo "$__AF_dir_create38_v0__200_9" > /dev/null 2>&1
+fi
+    check_directory_empty__180_v0 "${base_cache_path}" > /dev/null 2>&1;
+    __AF_check_directory_empty180_v0__203_28="$__AF_check_directory_empty180_v0";
+    local check_dir="$__AF_check_directory_empty180_v0__203_28"
+    if [ ${check_dir} != 0 ]; then
+        echo_info__106_v0 "
+copy ${base_path}
+to
+${base_cache_path}
+";
+        __AF_echo_info106_v0__205_9="$__AF_echo_info106_v0";
+        echo "$__AF_echo_info106_v0__205_9" > /dev/null 2>&1
+        sudo cp -a ${base_path}/* ${base_cache_path};
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_error__109_v0 "copy base error" 1;
+            __AF_echo_error109_v0__211_13="$__AF_echo_error109_v0";
+            echo "$__AF_echo_error109_v0__211_13" > /dev/null 2>&1
+fi
+fi
+    __AF_generator_linglong_base_cache215_v0="${base_cache_path}";
+    return 0
+}
+generator_linglong_yaml__216_v0() {
+    local appid=$1
+    local package_name=$2
+    local package_version=$3
+    local package_description=$4
+    local package_base=$5
+    local package_runtime=$6
+    local package_command=$7
+    local linglong_file_path=$8
+    local sort_keys=""
+    # uos 20 的python-yaml 不支持这个参数，只给23加，生成的yaml默认是按ASCII码排序的，添加参数sort_keys=False，不要用ASCII码排序
+    is_deepin_23__194_v0 ;
+    __AF_is_deepin_23194_v0__220_8="$__AF_is_deepin_23194_v0";
+    if [ "$__AF_is_deepin_23194_v0__220_8" != 0 ]; then
+        sort_keys="sort_keys=False,"
+fi
+    {
+echo "
+from yaml import SafeDumper, dump
+
+
+class MDumper(SafeDumper):
+    def write_line_break(self, data=None):
+        super().write_line_break(data)
+
+    def increase_indent(self, flow=False, indentless=False):
+        return super().increase_indent(
+            flow, False
+        )  # 禁用 increase_indent() 的 indentless 参数，确保每个键值对都会有缩进。
+
+
+yml = {
+    'version': '1',
+    'package': {
+        'id': '${appid}',
+        'name': '${package_name}',
+        'version': '${package_version}',
+        'kind': 'app',
+        'description': '''${package_description}''',
+    },
+    'base': '${package_base}',
+    'command': '${package_command}'.split(),
+    'build': 'cp -r files/* \$PREFIX;'
+}
+
+if '${package_runtime}':
+    yml['runtime'] = '${package_runtime}'
+
+with open('${linglong_file_path}', 'w') as repof:
+    dump(yml, repof, allow_unicode=True, ${sort_keys} Dumper=MDumper)
+"
+} | python3;
+    __AS=$?
+}
+# 检查玲珑应用目录下必要的文件夹
+check_linglong_files__217_v0() {
+    local appid=$1
+    dir_exists__32_v0 "${appid}";
+    __AF_dir_exists32_v0__263_12="$__AF_dir_exists32_v0";
+    if [ $(echo  '!' "$__AF_dir_exists32_v0__263_12" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        dir_create__38_v0 "${appid}";
+        __AF_dir_create38_v0__263_31="$__AF_dir_create38_v0";
+        echo "$__AF_dir_create38_v0__263_31" > /dev/null 2>&1
+fi
+    local linglong_app_file="${appid}/files"
+    dir_exists__32_v0 "${linglong_app_file}";
+    __AF_dir_exists32_v0__266_12="$__AF_dir_exists32_v0";
+    if [ $(echo  '!' "$__AF_dir_exists32_v0__266_12" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        dir_create__38_v0 "${linglong_app_file}";
+        __AF_dir_create38_v0__266_43="$__AF_dir_create38_v0";
+        echo "$__AF_dir_create38_v0__266_43" > /dev/null 2>&1
+fi
+    __AMBER_VAL_46=$(uname -m);
+    __AS=$?;
+    local arch="${__AMBER_VAL_46}"
+    __AMBER_ARRAY_47=("bin" "lib" "share" "lib/${arch}-linux-gnu");
+    i=0;
+for arg in "${__AMBER_ARRAY_47[@]}"; do
+        dir_exists__32_v0 "${linglong_app_file}/${arg}";
+        __AF_dir_exists32_v0__269_16="$__AF_dir_exists32_v0";
+        if [ $(echo  '!' "$__AF_dir_exists32_v0__269_16" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            dir_create__38_v0 "${linglong_app_file}/${arg}";
+            __AF_dir_create38_v0__269_57="$__AF_dir_create38_v0";
+            echo "$__AF_dir_create38_v0__269_57" > /dev/null 2>&1
+fi
+    (( i++ )) || true
+done
+}
+mount_chroot__228_v0() {
+    local path=$1
+            sudo mount -t tmpfs -o "size=99%" tmpfs ${path}/tmp;
+        __AS=$?
+        sudo mount -t tmpfs -o "size=99%" tmpfs ${path}/var/tmp;
+        __AS=$?
+        sudo mount -t proc chproc ${path}/proc;
+        __AS=$?
+        sudo mount -t sysfs chsys ${path}/sys;
+        __AS=$?
+        sudo mount --bind /dev ${path}/dev;
+        __AS=$?
+}
+umount_chroot__229_v0() {
+    local path=$1
+    while :
+do
+        __AMBER_VAL_48=$(grep -E ${path}"/(dev|proc|sys|tmp|var/tmp)" /proc/mounts);
+        __AS=$?;
+        local mount_path="${__AMBER_VAL_48}"
+        if [ $([ "_${mount_path}" != "_" ]; echo $?) != 0 ]; then
+            break
+fi
+                    sudo umount -l --recursive ${path}/dev || true > /dev/null 2>&1;
+            __AS=$?
+            sudo umount ${path}/proc || true > /dev/null 2>&1;
+            __AS=$?
+            sudo umount ${path}/sys || true > /dev/null 2>&1;
+            __AS=$?
+            sudo umount ${path}/tmp || true > /dev/null 2>&1;
+            __AS=$?
+            sudo umount ${path}/var/tmp || true > /dev/null 2>&1;
+            __AS=$?
+done
+}
+run_command_in_chroot__230_v0() {
+    local rootfs_path=$1
+    local command=$2
+    __AMBER_VAL_49=$(sudo chroot ${rootfs_path} /usr/bin/env bash -e -o pipefail -c "    export DEBIAN_FRONTEND=noninteractive &&     unset LC_ALL &&     unset LANG &&     unset LANG_UAGE &&     ${command}");
+    __AS=$?;
+    __AF_run_command_in_chroot230_v0="${__AMBER_VAL_49}";
+    return 0
+}
+chroot_apt_install__231_v0() {
+    local rootfs_path=$1
+    local deb=$2
+    run_command_in_chroot__230_v0 "${rootfs_path}" "apt-get update && apt-get install -y ${deb}";
+    __AF_run_command_in_chroot230_v0__38_12="${__AF_run_command_in_chroot230_v0}";
+    __AF_chroot_apt_install231_v0="${__AF_run_command_in_chroot230_v0__38_12}";
+    return 0
+}
+get_deb_package_name_from_control__241_v0() {
+    local control_file=$1
+    __AMBER_VAL_50=$(gawk '/^Package:/ { split($0,a," "); print a[2]}' ${control_file});
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "Error in obtaining Package from ${control_file}" 1;
+        __AF_echo_error109_v0__9_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__9_9" > /dev/null 2>&1
+fi;
+    local package_name="${__AMBER_VAL_50}"
+    __AF_get_deb_package_name_from_control241_v0="${package_name}";
+    return 0
+}
+get_deb_version_from_control__242_v0() {
+    local control_file=$1
+    __AMBER_VAL_51=$(gawk '/^Version:/ { split($0,a," "); print a[2]}' ${control_file});
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "Error in obtaining Version from ${control_file}" 1;
+        __AF_echo_error109_v0__16_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__16_9" > /dev/null 2>&1
+fi;
+    local version="${__AMBER_VAL_51}"
+    __AF_get_deb_version_from_control242_v0="${version}";
+    return 0
+}
+get_deb_description_from_control__243_v0() {
+    local control_file=$1
+    # let description = $gawk '/^Description:/ \{flag=1; next} flag && /^\$/ \{flag=0; print \"\"; next} flag \{print}' {control_file}$ failed {
+    __AMBER_VAL_52=$(gawk '/^Description:/ {flag=1; print substr($0, index($0, $2)); next} flag {if ($1 ~ /^[A-Za-z0-9-]+:/) {flag=0; print ""} else {print}}' ${control_file});
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "Error in obtaining Description from ${control_file}" 1;
+        __AF_echo_error109_v0__24_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__24_9" > /dev/null 2>&1
+fi;
+    local description="${__AMBER_VAL_52}"
+    __AF_get_deb_description_from_control243_v0="${description}";
+    return 0
+}
+extract_deb__244_v0() {
+    local deb_path=$1
+    local target_path=$2
+    __AMBER_VAL_53=$(ar t ${deb_path} | grep -m 1 "control\.tar");
+    __AS=$?;
+    local control_tar_check="${__AMBER_VAL_53}"
+    tar_extract_cmd__179_v0 "${target_path}" "${control_tar_check}";
+    __AF_tar_extract_cmd179_v0__31_27="${__AF_tar_extract_cmd179_v0}";
+    local control_extract="${__AF_tar_extract_cmd179_v0__31_27}"
+    echo_info__106_v0 "unzip deb";
+    __AF_echo_info106_v0__32_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__32_5" > /dev/null 2>&1
+    ar p ${deb_path} ${control_tar_check} | ${control_extract};
+    __AS=$?
+    __AMBER_VAL_54=$(ar t ${deb_path} | grep -m 1 "data\.tar");
+    __AS=$?;
+    local data_tar_check="${__AMBER_VAL_54}"
+    tar_extract_cmd__179_v0 "${target_path}" "${data_tar_check}";
+    __AF_tar_extract_cmd179_v0__36_24="${__AF_tar_extract_cmd179_v0}";
+    local data_extract="${__AF_tar_extract_cmd179_v0__36_24}"
+    ar p ${deb_path} ${data_tar_check} | ${data_extract};
+    __AS=$?
+}
+# 拷贝deb的数据
+copy_deb_data__245_v0() {
+    local deb_extra_dir=$1
+    local target_path=$2
+    local prefix=""
+    local deb_opt_apps_path="${deb_extra_dir}/opt/apps"
+    dir_exists__32_v0 "${deb_opt_apps_path}";
+    __AF_dir_exists32_v0__44_8="$__AF_dir_exists32_v0";
+    if [ "$__AF_dir_exists32_v0__44_8" != 0 ]; then
+        __AMBER_VAL_55=$(ls -1 ${deb_opt_apps_path});
+        __AS=$?;
+        prefix="${__AMBER_VAL_55}"
+        cp -a ${deb_opt_apps_path}/${prefix}/files/* ${target_path} &&        cp -a ${deb_opt_apps_path}/${prefix}/entries/* ${target_path}/share;
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_warning__108_v0 "cp ${deb_opt_apps_path}/${prefix} to ${target_path} error";
+            __AF_echo_warning108_v0__48_13="$__AF_echo_warning108_v0";
+            echo "$__AF_echo_warning108_v0__48_13" > /dev/null 2>&1
+fi
+fi
+    local deb_usr_path="${deb_extra_dir}/usr"
+    dir_exists__32_v0 "${deb_usr_path}";
+    __AF_dir_exists32_v0__53_8="$__AF_dir_exists32_v0";
+    if [ "$__AF_dir_exists32_v0__53_8" != 0 ]; then
+        cp -a ${deb_usr_path}/* ${target_path};
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_warning__108_v0 "cp ${deb_usr_path} to ${target_path} error";
+            __AF_echo_warning108_v0__55_13="$__AF_echo_warning108_v0";
+            echo "$__AF_echo_warning108_v0__55_13" > /dev/null 2>&1
+fi
+fi
+    local deb_opt_path="${deb_extra_dir}/opt/"
+    dir_exists__32_v0 "${deb_opt_path}";
+    __AF_dir_exists32_v0__60_8="$__AF_dir_exists32_v0";
+    dir_exists__32_v0 "${deb_opt_apps_path}";
+    __AF_dir_exists32_v0__60_41="$__AF_dir_exists32_v0";
+    if [ $(echo "$__AF_dir_exists32_v0__60_8" '&&' $(echo  '!' "$__AF_dir_exists32_v0__60_41" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        __AMBER_VAL_56=$(ls -1 ${deb_opt_path});
+        __AS=$?;
+        prefix="${__AMBER_VAL_56}"
+        cp -a ${deb_opt_path}/${prefix}/* ${target_path};
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_warning__108_v0 "cp ${deb_opt_path}/${prefix} to ${target_path} error";
+            __AF_echo_warning108_v0__63_13="$__AF_echo_warning108_v0";
+            echo "$__AF_echo_warning108_v0__63_13" > /dev/null 2>&1
+fi
+fi
+}
+extract_appimage__254_v0() {
+    local appimage_path=$1
+    local appimage_extra_dir=$2
+    echo_info__106_v0 "unzip appimage";
+    __AF_echo_info106_v0__6_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__6_5" > /dev/null 2>&1
+    __AMBER_VAL_57=$(pwd);
+    __AS=$?;
+    local cur_path="${__AMBER_VAL_57}"
+    cd ${appimage_extra_dir} &&     chmod +x ${appimage_path} &&     ${appimage_path} --appimage-extract > /dev/null 2>&1;
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "extract appimage echo_error" 1;
+        __AF_echo_error109_v0__12_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__12_9" > /dev/null 2>&1
+fi
+    cd ${cur_path};
+    __AS=$?
+}
+copy_appimage_data__255_v0() {
+    local appimage_extra_dir=$1
+    local target_path=$2
+    local squashfs_root_path="${appimage_extra_dir}/squashfs-root"
+    dir_exists__32_v0 "${squashfs_root_path}";
+    __AF_dir_exists32_v0__19_8="$__AF_dir_exists32_v0";
+    if [ "$__AF_dir_exists32_v0__19_8" != 0 ]; then
+        cp -a ${squashfs_root_path}/* ${target_path};
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_error__109_v0 "cp ${squashfs_root_path} to ${target_path} error" 1;
+            __AF_echo_error109_v0__21_13="$__AF_echo_error109_v0";
+            echo "$__AF_echo_error109_v0__21_13" > /dev/null 2>&1
+fi
+fi
+    dir_exists__32_v0 "${target_path}/usr";
+    __AF_dir_exists32_v0__25_8="$__AF_dir_exists32_v0";
+    if [ "$__AF_dir_exists32_v0__25_8" != 0 ]; then
+        cp -a ${target_path}/usr/* ${target_path}/ && rm -rf ${target_path}/usr;
+        __AS=$?
+fi
+    local applications_path="${target_path}/share/applications"
+    dir_exists__32_v0 "${applications_path}";
+    __AF_dir_exists32_v0__28_12="$__AF_dir_exists32_v0";
+    if [ $(echo  '!' "$__AF_dir_exists32_v0__28_12" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        dir_create__38_v0 "${applications_path}";
+        __AF_dir_create38_v0__28_43="$__AF_dir_create38_v0";
+        echo "$__AF_dir_create38_v0__28_43" > /dev/null 2>&1
+fi
+    __AMBER_VAL_58=$(find ${applications_path} -name "*.desktop");
+    __AS=$?;
+    local desktop_path="${__AMBER_VAL_58}"
+    if [ $([ "_${desktop_path}" != "_" ]; echo $?) != 0 ]; then
+        __AMBER_VAL_59=$(find ${target_path} -name "*.desktop");
+        __AS=$?;
+        desktop_path="${__AMBER_VAL_59}"
+        # 有人做了软链接，获取实际路径
+        __AMBER_VAL_60=$(readlink -f ${desktop_path});
+        __AS=$?;
+        desktop_path="${__AMBER_VAL_60}"
+        mv ${desktop_path} ${applications_path};
+        __AS=$?
+fi
+    # 如果是软链接，会读取路径，如果是文件，读取为空
+    __AMBER_ARRAY_61=("AppRun" "AppRun.wrapped");
+    local apprun_list=("${__AMBER_ARRAY_61[@]}")
+    i=0;
+for apprun in "${apprun_list[@]}"; do
+        __AMBER_VAL_62=$(readlink -n ${target_path}/${apprun});
+        __AS=$?;
+        local real_apprun="${__AMBER_VAL_62}"
+        if [ $([ "_${real_apprun}" == "_" ]; echo $?) != 0 ]; then
+            text_contains__14_v0 "${real_apprun}" "usr/bin";
+            __AF_text_contains14_v0__45_17="$__AF_text_contains14_v0";
+            if [ "$__AF_text_contains14_v0__45_17" != 0 ]; then
+                replace__0_v0 "${real_apprun}" "usr/" "";
+                __AF_replace0_v0__45_70="${__AF_replace0_v0}";
+                real_apprun="${__AF_replace0_v0__45_70}"
+fi
+            rm ${target_path}/${apprun} && ln -s ${real_apprun} ${target_path}/${apprun} > /dev/null 2>&1;
+            __AS=$?
+fi
+    (( i++ )) || true
+done
+}
+help__261_v0() {
+    get_linglong_convert_tool_name__128_v0 ;
+    __AF_get_linglong_convert_tool_name128_v0__17_4="${__AF_get_linglong_convert_tool_name128_v0}";
+    echo "Convert deb or appimage or flatpak to linglong
+
+Usage:
+  ${__AF_get_linglong_convert_tool_name128_v0__17_4} convert [target] [flags]
+
+Available Target:
+  deb         Deb Package
+  appimage    Appimage Package
+  flatpak     Flatpak Package
+
+Flags:
+  --id                 linglong id (demo)
+  --base               linglong base (org.deepin.base/23.1.0)
+  --runtime            linglong runtime (org.deepin.runtime.dtk/23.1.0)
+  --source             apt source (deb https://community-packages.deepin.com/beige/ beige main commercial community)
+  --output             generator file: uab, layer
+  --version            linglong version (1.0.0.0)
+  -h, --help           help info
+"
+}
+convert_deb__262_v0() {
+    local file=$1
+    local appid=$2
+    local base=$3
+    local runtime=$4
+    local source=$5
+    local output=$6
+    local version=$7
+    get_linglong_convert_tool_cache_path__146_v0 ;
+    __AF_get_linglong_convert_tool_cache_path146_v0__36_27="${__AF_get_linglong_convert_tool_cache_path146_v0}";
+    local deb_extra_dir="${__AF_get_linglong_convert_tool_cache_path146_v0__36_27}/deb"
+    rm -rf ${deb_extra_dir};
+    __AS=$?
+    dir_create__38_v0 "${deb_extra_dir}";
+    __AF_dir_create38_v0__39_5="$__AF_dir_create38_v0";
+    echo "$__AF_dir_create38_v0__39_5" > /dev/null 2>&1
+    __AMBER_VAL_63=$(readlink -f ${file});
+    __AS=$?;
+    local package_with_full_path="${__AMBER_VAL_63}"
+    file_exists__33_v0 "${package_with_full_path}";
+    __AF_file_exists33_v0__42_12="$__AF_file_exists33_v0";
+    if [ $(echo  '!' "$__AF_file_exists33_v0__42_12" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        echo_error__109_v0 "${file} not found" 1;
+        __AF_echo_error109_v0__43_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__43_9" > /dev/null 2>&1
+fi
+    extract_deb__244_v0 "${package_with_full_path}" "${deb_extra_dir}";
+    __AF_extract_deb244_v0__46_5="$__AF_extract_deb244_v0";
+    echo "$__AF_extract_deb244_v0__46_5" > /dev/null 2>&1
+    get_distro_version__129_v0 ;
+    __AF_get_distro_version129_v0__48_26="${__AF_get_distro_version129_v0}";
+    local distro_version="${__AF_get_distro_version129_v0__48_26}"
+    local control_file="${deb_extra_dir}/control"
+    get_deb_package_name_from_control__241_v0 "${control_file}";
+    __AF_get_deb_package_name_from_control241_v0__51_24="${__AF_get_deb_package_name_from_control241_v0}";
+    local package_name="${__AF_get_deb_package_name_from_control241_v0__51_24}"
+    get_deb_description_from_control__243_v0 "${control_file}";
+    __AF_get_deb_description_from_control243_v0__52_40="${__AF_get_deb_description_from_control243_v0}";
+    split_lines__4_v0 "${__AF_get_deb_description_from_control243_v0__52_40}";
+    __AF_split_lines4_v0__52_28=("${__AF_split_lines4_v0[@]}");
+    join__6_v0 __AF_split_lines4_v0__52_28[@] "";
+    __AF_join6_v0__52_23="${__AF_join6_v0}";
+    local description="${__AF_join6_v0__52_23}"
+    get_deb_version_from_control__242_v0 "${control_file}";
+    __AF_get_deb_version_from_control242_v0__53_23="${__AF_get_deb_version_from_control242_v0}";
+    local deb_version="${__AF_get_deb_version_from_control242_v0__53_23}"
+    if [ $([ "_${appid}" != "_" ]; echo $?) != 0 ]; then
+        appid="${package_name}.linyaps"
+fi
+    generator_version__197_v0 "${deb_version}";
+    __AF_generator_version197_v0__56_27="${__AF_generator_version197_v0}";
+    local package_version="${__AF_generator_version197_v0__56_27}"
+    echo_info__106_v0 "distro version is ${distro_version}
+
+Package: ${package_name}
+Description: ${description}
+Version: ${deb_version}
+";
+    __AF_echo_info106_v0__58_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__58_5" > /dev/null 2>&1
+    if [ $([ "_${base}" != "_" ]; echo $?) != 0 ]; then
+        is_deepin_23__130_v0 ;
+        __AF_is_deepin_23130_v0__67_13="$__AF_is_deepin_23130_v0";
+        is_uos_20__131_v0 ;
+        __AF_is_uos_20131_v0__71_13="$__AF_is_uos_20131_v0";
+        if [ "$__AF_is_deepin_23130_v0__67_13" != 0 ]; then
+            base="org.deepin.base/23.1.0"
+elif [ "$__AF_is_uos_20131_v0__71_13" != 0 ]; then
+            base="org.deepin.foundation/20.0.0"
+else
+            base="org.deepin.base/23.1.0"
+fi
+fi
+    check_linglong_files__217_v0 "${appid}";
+    __AF_check_linglong_files217_v0__81_5="$__AF_check_linglong_files217_v0";
+    echo "$__AF_check_linglong_files217_v0__81_5" > /dev/null 2>&1
+    local linglong_app_file="${appid}/files"
+    # 可能存在 shell 脚本，通过sh后缀判断，以及文件里的 shebang
+    # 脚本中可执行文件路径可能是 /usr 这种 需要替换，另外由于商店打包要求添加 .linyaps 后缀导致一些应用也需要修改新路径来替换。
+    get_shell_scripts__147_v0 "${deb_extra_dir}";
+    __AF_get_shell_scripts147_v0__87_25=("${__AF_get_shell_scripts147_v0[@]}");
+    local shell_scripts=("${__AF_get_shell_scripts147_v0__87_25[@]}")
+    i=0;
+for script in "${shell_scripts[@]}"; do
+        sed -i -E "s|/usr/|/opt/apps/${appid}/files/|g; s|/opt/apps/[^/]+/files|/opt/apps/${appid}/files|g" ${script};
+        __AS=$?
+    (( i++ )) || true
+done
+    # 过滤出 application 下的desktop
+    __AMBER_VAL_64=$(find ${deb_extra_dir} -name "*.desktop" | grep "application");
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_warning__108_v0 "not found desktop from ${deb_extra_dir}";
+        __AF_echo_warning108_v0__94_9="$__AF_echo_warning108_v0";
+        echo "$__AF_echo_warning108_v0__94_9" > /dev/null 2>&1
+fi;
+    local desktops="${__AMBER_VAL_64}"
+    local package_command=""
+    # 多个 desktop 循环
+    split__3_v0 "${desktops}" "
+";
+    __AF_split3_v0__99_23=("${__AF_split3_v0[@]}");
+    i=0;
+for desktop in "${__AF_split3_v0__99_23[@]}"; do
+        # 去除 desktop 文件里 = 两边的空格
+        sed -i 's/ *= */=/g' ${desktop};
+        __AS=$?
+        # 可能一个desktop 文件有多个Exec字段，获取第一个后退出
+        __AMBER_VAL_65=$(gawk -F 'Exec=' '/^Exec/ {print $2; exit}' ${desktop});
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_warning__108_v0 "not get Exec= from ${desktop}";
+            __AF_echo_warning108_v0__104_13="$__AF_echo_warning108_v0";
+            echo "$__AF_echo_warning108_v0__104_13" > /dev/null 2>&1
+fi;
+        local exec="${__AMBER_VAL_65}"
+        if [ $([ "_${package_command}" != "_" ]; echo $?) != 0 ]; then
+            text_contains__14_v0 "${exec}" "/opt/apps/";
+            __AF_text_contains14_v0__109_17="$__AF_text_contains14_v0";
+            text_contains__14_v0 "${exec}" "/usr/";
+            __AF_text_contains14_v0__110_17="$__AF_text_contains14_v0";
+            text_contains__14_v0 "${exec}" "/opt/";
+            __AF_text_contains14_v0__111_17="$__AF_text_contains14_v0";
+            text_contains__14_v0 "${exec}" "/apps/";
+            __AF_text_contains14_v0__111_54="$__AF_text_contains14_v0";
+            if [ "$__AF_text_contains14_v0__109_17" != 0 ]; then
+                replace_regex__2_v0 "${exec}" "opt/apps/[^/]\+" "opt/apps/${appid}" 0;
+                __AF_replace_regex2_v0__109_70="${__AF_replace_regex2_v0}";
+                package_command="${__AF_replace_regex2_v0__109_70}"
+elif [ "$__AF_text_contains14_v0__110_17" != 0 ]; then
+                replace_regex__2_v0 "${exec}" "usr" "opt/apps/${appid}/files" 0;
+                __AF_replace_regex2_v0__110_65="${__AF_replace_regex2_v0}";
+                package_command="${__AF_replace_regex2_v0__110_65}"
+elif [ $(echo "$__AF_text_contains14_v0__111_17" '&&' $(echo  '!' "$__AF_text_contains14_v0__111_54" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+                replace_regex__2_v0 "${exec}" "opt/[^/]\+" "opt/apps/${appid}/files" 0;
+                __AF_replace_regex2_v0__111_103="${__AF_replace_regex2_v0}";
+                package_command="${__AF_replace_regex2_v0__111_103}"
+else
+                package_command="${exec}"
+fi
+            # 生成在 linglong.yaml 中的 Exec 需要将 双引号去除掉。否则 Exec 双引号包裹住生成到 command 字段中，不识别文件。
+            replace__0_v0 "${package_command}" "\"" "";
+            __AF_replace0_v0__116_31="${__AF_replace0_v0}";
+            package_command="${__AF_replace0_v0__116_31}"
+fi
+        sed -i -E "s|/usr/|/opt/apps/${appid}/files/|; s|/opt/apps/[^/]+/files/|/opt/apps/${appid}/files/|" ${desktop};
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_info__106_v0 "sed ${desktop} echo_error, skip";
+            __AF_echo_info106_v0__120_13="$__AF_echo_info106_v0";
+            echo "$__AF_echo_info106_v0__120_13" > /dev/null 2>&1
+            continue
+fi
+        text_contains__14_v0 "${exec}" "/opt/";
+        __AF_text_contains14_v0__123_12="$__AF_text_contains14_v0";
+        text_contains__14_v0 "${exec}" "/apps/";
+        __AF_text_contains14_v0__123_49="$__AF_text_contains14_v0";
+        if [ $(echo "$__AF_text_contains14_v0__123_12" '&&' $(echo  '!' "$__AF_text_contains14_v0__123_49" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            sed -i -E "s|/opt/[^/]+/|/opt/apps/${appid}/files/|" ${desktop};
+            __AS=$?;
+if [ $__AS != 0 ]; then
+                echo_info__106_v0 "sed ${desktop} echo_error";
+                __AF_echo_info106_v0__125_17="$__AF_echo_info106_v0";
+                echo "$__AF_echo_info106_v0__125_17" > /dev/null 2>&1
+                continue
+fi
+fi
+        __AMBER_VAL_66=$(gawk -F '=' '/^Icon/ {print $2; exit}' ${desktop});
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_error__109_v0 "get Icon= from ${desktop} echo_error" 1;
+            __AF_echo_error109_v0__131_13="$__AF_echo_error109_v0";
+            echo "$__AF_echo_error109_v0__131_13" > /dev/null 2>&1
+fi;
+        local icon="${__AMBER_VAL_66}"
+        __AMBER_VAL_67=$(echo ${icon} | sed -E 's#.*/([^.]*)\..*$#\1#');
+        __AS=$?;
+        icon="${__AMBER_VAL_67}"
+        # 移除路径中的目录部分，还会移除文件名的扩展名
+        sed -i "/Icon*/c\Icon=${icon}" ${desktop};
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_error__109_v0 "sed Icon error" 1;
+            __AF_echo_error109_v0__136_13="$__AF_echo_error109_v0";
+            echo "$__AF_echo_error109_v0__136_13" > /dev/null 2>&1
+fi
+    (( i++ )) || true
+done
+    copy_deb_data__245_v0 "${deb_extra_dir}" "${linglong_app_file}";
+    __AF_copy_deb_data245_v0__140_5="$__AF_copy_deb_data245_v0";
+    echo "$__AF_copy_deb_data245_v0__140_5" > /dev/null 2>&1
+    # kde 上的游戏应用将二进制放到了games目录，这里做一个判断，将games二进制软链到bin目录
+    local games_path="${appid}/files/games"
+    dir_exists__32_v0 "${games_path}";
+    __AF_dir_exists32_v0__144_8="$__AF_dir_exists32_v0";
+    if [ "$__AF_dir_exists32_v0__144_8" != 0 ]; then
+        __AMBER_VAL_68=$(ls -1 ${games_path});
+        __AS=$?;
+        local games_files="${__AMBER_VAL_68}"
+        split__3_v0 "${games_files}" "
+";
+        __AF_split3_v0__146_23=("${__AF_split3_v0[@]}");
+        i=0;
+for arg in "${__AF_split3_v0__146_23[@]}"; do
+            ln -s ../games/${arg} ${appid}/files/bin/${arg};
+            __AS=$?
+    (( i++ )) || true
+done
+fi
+    __AMBER_VAL_69=$(uname -m);
+    __AS=$?;
+    local arch="${__AMBER_VAL_69}"
+    echo_info__106_v0 "generator linglng.yaml";
+    __AF_echo_info106_v0__152_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__152_5" > /dev/null 2>&1
+    local linglong_file_path="${appid}/linglong.yaml"
+    generator_linglong_yaml__216_v0 "${appid}" "${package_name}" "${package_version}" "${description}" "${base}" "${runtime}" "${package_command}" "${linglong_file_path}";
+    __AF_generator_linglong_yaml216_v0__154_5="$__AF_generator_linglong_yaml216_v0";
+    echo "$__AF_generator_linglong_yaml216_v0__154_5" > /dev/null 2>&1
+    echo_info__106_v0 "ll-builder build";
+    __AF_echo_info106_v0__156_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__156_5" > /dev/null 2>&1
+    ll_builder_build__202_v0 "${linglong_file_path}";
+    __AF_ll_builder_build202_v0__157_5="$__AF_ll_builder_build202_v0";
+    echo "$__AF_ll_builder_build202_v0__157_5" > /dev/null 2>&1
+    local run_success=0
+    echo_info__106_v0 "ll-builder run";
+    __AF_echo_info106_v0__160_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__160_5" > /dev/null 2>&1
+    local err_text="error while loading shared libraries:"
+    __AMBER_VAL_70=$(uname -m);
+    __AS=$?;
+    local arch="${__AMBER_VAL_70}"
+    ll_builder_run__203_v0 "${linglong_file_path}" "";
+    __AF_ll_builder_run203_v0__164_15="${__AF_ll_builder_run203_v0}";
+    local res="${__AF_ll_builder_run203_v0__164_15}"
+    text_contains__14_v0 "${res}" "${err_text}";
+    __AF_text_contains14_v0__166_8="$__AF_text_contains14_v0";
+    if [ "$__AF_text_contains14_v0__166_8" != 0 ]; then
+        generator_linglong_base_cache__215_v0 "${base}";
+        __AF_generator_linglong_base_cache215_v0__167_9="${__AF_generator_linglong_base_cache215_v0}";
+        echo "${__AF_generator_linglong_base_cache215_v0__167_9}" > /dev/null 2>&1
+        get_base_cache_path__214_v0 "${base}";
+        __AF_get_base_cache_path214_v0__168_31="${__AF_get_base_cache_path214_v0}";
+        local base_cache_path="${__AF_get_base_cache_path214_v0__168_31}"
+        local resolv_conf="${base_cache_path}/etc/resolv.conf"
+        file_exists__33_v0 "${resolv_conf}";
+        __AF_file_exists33_v0__171_12="$__AF_file_exists33_v0";
+        if [ "$__AF_file_exists33_v0__171_12" != 0 ]; then
+            sudo rm ${resolv_conf};
+            __AS=$?
+fi
+        sudo cp /etc/resolv.conf ${base_cache_path}/etc/;
+        __AS=$?
+        if [ $([ "_${source}" != "_" ]; echo $?) != 0 ]; then
+            is_deepin_23__130_v0 ;
+            __AF_is_deepin_23130_v0__176_17="$__AF_is_deepin_23130_v0";
+            if [ "$__AF_is_deepin_23130_v0__176_17" != 0 ]; then
+                echo "deb https://community-packages.deepin.com/beige/ beige main commercial community" | sudo tee ${base_cache_path}/etc/apt/sources.list 2>/dev/null > /dev/null 2>&1;
+                __AS=$?
+fi
+else
+            echo "${source}" | sudo tee ${base_cache_path}/etc/apt/sources.list > /dev/null > /dev/null 2>&1;
+            __AS=$?
+fi
+        cat ${base_cache_path}/etc/apt/sources.list;
+        __AS=$?
+        echo_info__106_v0 "mount /dev /proc /sys to ${base_cache_path}";
+        __AF_echo_info106_v0__185_9="$__AF_echo_info106_v0";
+        echo "$__AF_echo_info106_v0__185_9" > /dev/null 2>&1
+        mount_chroot__228_v0 "${base_cache_path}";
+        __AF_mount_chroot228_v0__186_9="$__AF_mount_chroot228_v0";
+        echo "$__AF_mount_chroot228_v0__186_9" > /dev/null 2>&1
+        cp ${package_with_full_path} ${base_cache_path}/tmp;
+        __AS=$?
+        __AMBER_VAL_71=$(basename ${file});
+        __AS=$?;
+        local file_name="${__AMBER_VAL_71}"
+        cp ${file} ${base_cache_path}/tmp;
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_error__109_v0 "cp ${file} to ${base_cache_path}/tmp error" 1;
+            __AF_echo_error109_v0__192_13="$__AF_echo_error109_v0";
+            echo "$__AF_echo_error109_v0__192_13" > /dev/null 2>&1
+fi
+        sudo apt-file update > /dev/null 2>&1;
+        __AS=$?
+        local prev_package_lib=""
+        while :
+do
+            text_contains__14_v0 "${res}" "${err_text}";
+            __AF_text_contains14_v0__198_20="$__AF_text_contains14_v0";
+            if [ $(echo  '!' "$__AF_text_contains14_v0__198_20" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+                run_success=1
+                umount_chroot__229_v0 "${base_cache_path}";
+                __AF_umount_chroot229_v0__200_17="$__AF_umount_chroot229_v0";
+                echo "$__AF_umount_chroot229_v0__200_17" > /dev/null 2>&1
+                break
+fi
+            split_lines__4_v0 "${res}";
+            __AF_split_lines4_v0__204_27=("${__AF_split_lines4_v0[@]}");
+            i=0;
+for arg in "${__AF_split_lines4_v0__204_27[@]}"; do
+                text_contains__14_v0 "${arg}" "${err_text}";
+                __AF_text_contains14_v0__205_24="$__AF_text_contains14_v0";
+                if [ $(echo  '!' "$__AF_text_contains14_v0__205_24" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+                    continue
+fi
+                __AMBER_VAL_72=$(echo "${arg}" | gawk -F': ' '{print $3}');
+                __AS=$?;
+                local lib_name="${__AMBER_VAL_72}"
+                __AMBER_VAL_73=$(apt-file search ${lib_name});
+                __AS=$?;
+                local search_res="${__AMBER_VAL_73}"
+                local run_count=0
+                # 计算单个动态库拷贝的次数
+                local package_lib=""
+                # 跳过搜索结果为deepin-wine-runtime和-cross（可能有交叉编译的包判断此部分去除）的部分,和调试符号包
+                # 部分带应用带动态库也需要忽略 /opt/apps
+                # com.jetbrains.irisking 将动态库放到了 /usr/lib/x86_64-linux-gnu/irisking-300A 也需要排除
+                # /usr/libx32 提供__atomic内置函数的支持库（x32）
+                split_lines__4_v0 "${search_res}";
+                __AF_split_lines4_v0__216_32=("${__AF_split_lines4_v0[@]}");
+                i=0;
+for pack in "${__AF_split_lines4_v0__216_32[@]}"; do
+                    text_contains__14_v0 "${pack}" "deepin-wine-runtime";
+                    __AF_text_contains14_v0__217_28="$__AF_text_contains14_v0";
+                    text_contains__14_v0 "${pack}" "-cross:";
+                    __AF_text_contains14_v0__218_33="$__AF_text_contains14_v0";
+                    text_contains__14_v0 "${pack}" "/usr/libx32";
+                    __AF_text_contains14_v0__219_33="$__AF_text_contains14_v0";
+                    text_contains__14_v0 "${pack}" "-dbg";
+                    __AF_text_contains14_v0__220_33="$__AF_text_contains14_v0";
+                    text_contains__14_v0 "${pack}" "/opt/apps";
+                    __AF_text_contains14_v0__221_33="$__AF_text_contains14_v0";
+                    text_contains__14_v0 "${pack}" "com.jetbrains.irisking";
+                    __AF_text_contains14_v0__222_33="$__AF_text_contains14_v0";
+                    if [ $(echo $(echo $(echo $(echo $(echo $(echo  '!' "$__AF_text_contains14_v0__217_28" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') '&&' $(echo  '!' "$__AF_text_contains14_v0__218_33" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') '&&' $(echo  '!' "$__AF_text_contains14_v0__219_33" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') '&&' $(echo  '!' "$__AF_text_contains14_v0__220_33" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') '&&' $(echo  '!' "$__AF_text_contains14_v0__221_33" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') '&&' $(echo  '!' "$__AF_text_contains14_v0__222_33" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+                        package_lib="${pack}"
+fi
+    (( i++ )) || true
+done
+                if [ $([ "_${prev_package_lib}" != "_${package_lib}" ]; echo $?) != 0 ]; then
+                    echo_error__109_v0 "not found ${package_lib}" 1;
+                    __AF_echo_error109_v0__228_21="$__AF_echo_error109_v0";
+                    echo "$__AF_echo_error109_v0__228_21" > /dev/null 2>&1
+else
+                    prev_package_lib="${package_lib}"
+fi
+                # 如果搜索不到动态库直接停止循环
+                if [ $([ "_${package_lib}" != "_" ]; echo $?) != 0 ]; then
+                    break
+fi
+                __AMBER_VAL_74=$(echo "${package_lib}" | gawk -F': ' '{print $1}');
+                __AS=$?;
+                local packcage_name="${__AMBER_VAL_74}"
+                __AMBER_VAL_75=$(echo "${package_lib}" | gawk -F': ' '{print $2}');
+                __AS=$?;
+                local lib_path="${__AMBER_VAL_75}"
+                chroot_apt_install__231_v0 "${base_cache_path}" "${packcage_name}";
+                __AF_chroot_apt_install231_v0__239_17="${__AF_chroot_apt_install231_v0}";
+                echo "${__AF_chroot_apt_install231_v0__239_17}" > /dev/null 2>&1
+                run_command_in_chroot__230_v0 "${base_cache_path}" "readlink -f ${lib_path}";
+                __AF_run_command_in_chroot230_v0__240_33="${__AF_run_command_in_chroot230_v0}";
+                local real_path="${__AF_run_command_in_chroot230_v0__240_33}"
+                local copy_lib_target="lib"
+                text_contains__14_v0 "${lib_path}" "${arch}-linux-gnu";
+                __AF_text_contains14_v0__242_20="$__AF_text_contains14_v0";
+                if [ "$__AF_text_contains14_v0__242_20" != 0 ]; then
+                    copy_lib_target+="/${arch}-linux-gnu"
+fi
+                echo_info__106_v0 "copy ${base_cache_path}/${lib_path} to ${linglong_app_file}/${copy_lib_target}";
+                __AF_echo_info106_v0__244_17="$__AF_echo_info106_v0";
+                echo "$__AF_echo_info106_v0__244_17" > /dev/null 2>&1
+                cp -d ${base_cache_path}/${lib_path} ${linglong_app_file}/${copy_lib_target};
+                __AS=$?
+                echo_info__106_v0 "copy ${base_cache_path}/${real_path} to ${linglong_app_file}/${copy_lib_target}";
+                __AF_echo_info106_v0__246_17="$__AF_echo_info106_v0";
+                echo "$__AF_echo_info106_v0__246_17" > /dev/null 2>&1
+                cp ${base_cache_path}/${real_path} ${linglong_app_file}/${copy_lib_target};
+                __AS=$?
+                ll_builder_build__202_v0 "${linglong_file_path}";
+                __AF_ll_builder_build202_v0__249_17="$__AF_ll_builder_build202_v0";
+                echo "$__AF_ll_builder_build202_v0__249_17" > /dev/null 2>&1
+                ll_builder_run__203_v0 "${linglong_file_path}" "";
+                __AF_ll_builder_run203_v0__250_23="${__AF_ll_builder_run203_v0}";
+                res="${__AF_ll_builder_run203_v0__250_23}"
+    (( i++ )) || true
+done
+done
+else
+        run_success=1
+fi
+    if [ ${run_success} != 0 ]; then
+        echo_success__107_v0 "ll-builder run success";
+        __AF_echo_success107_v0__258_9="$__AF_echo_success107_v0";
+        echo "$__AF_echo_success107_v0__258_9" > /dev/null 2>&1
+        echo_info__106_v0 "ll-builder export";
+        __AF_echo_info106_v0__259_9="$__AF_echo_info106_v0";
+        echo "$__AF_echo_info106_v0__259_9" > /dev/null 2>&1
+        ll_builder_export__204_v0 "${linglong_file_path}" "${output}";
+        __AF_ll_builder_export204_v0__260_9="$__AF_ll_builder_export204_v0";
+        echo "$__AF_ll_builder_export204_v0__260_9" > /dev/null 2>&1
+fi
+    rm -rf ${deb_extra_dir};
+    __AS=$?
+}
+convert_appimage__263_v0() {
+    local file=$1
+    local appid=$2
+    local base=$3
+    local output=$4
+    local version=$5
+    get_linglong_convert_tool_cache_path__146_v0 ;
+    __AF_get_linglong_convert_tool_cache_path146_v0__267_32="${__AF_get_linglong_convert_tool_cache_path146_v0}";
+    local appimage_extra_dir="${__AF_get_linglong_convert_tool_cache_path146_v0__267_32}/appimage"
+    rm -rf ${appimage_extra_dir};
+    __AS=$?
+    dir_create__38_v0 "${appimage_extra_dir}";
+    __AF_dir_create38_v0__270_5="$__AF_dir_create38_v0";
+    echo "$__AF_dir_create38_v0__270_5" > /dev/null 2>&1
+    __AMBER_VAL_76=$(readlink -f ${file});
+    __AS=$?;
+    local package_with_full_path="${__AMBER_VAL_76}"
+    file_exists__33_v0 "${package_with_full_path}";
+    __AF_file_exists33_v0__273_12="$__AF_file_exists33_v0";
+    if [ $(echo  '!' "$__AF_file_exists33_v0__273_12" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        echo_error__109_v0 "${file} not found" 1;
+        __AF_echo_error109_v0__274_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__274_9" > /dev/null 2>&1
+fi
+    __AMBER_VAL_77=$(basename ${package_with_full_path});
+    __AS=$?;
+    local filename="${__AMBER_VAL_77}"
+    local tmp_appimage="${appimage_extra_dir}/${filename}"
+    cp ${package_with_full_path} ${appimage_extra_dir};
+    __AS=$?
+    extract_appimage__254_v0 "${tmp_appimage}" "${appimage_extra_dir}";
+    __AF_extract_appimage254_v0__281_5="$__AF_extract_appimage254_v0";
+    echo "$__AF_extract_appimage254_v0__281_5" > /dev/null 2>&1
+    # appimage 应用，squashfs-root 必须有一个 desktop 文件
+    __AMBER_VAL_78=$(cd ${appimage_extra_dir}/squashfs-root && ls -1 *.desktop);
+    __AS=$?;
+    local desktop="${__AMBER_VAL_78}"
+    # 以desktop名当作默认包名
+    replace__0_v0 "${desktop}" ".desktop" "";
+    __AF_replace0_v0__286_24="${__AF_replace0_v0}";
+    local package_name="${__AF_replace0_v0__286_24}"
+    if [ $([ "_${appid}" != "_" ]; echo $?) != 0 ]; then
+        appid="${package_name}.linyaps"
+fi
+    local package_version=$(if [ $([ "_${version}" == "_" ]; echo $?) != 0 ]; then echo "${version}"; else echo "1.0.0.0"; fi)
+    local description="convert appimage ${filename}"
+    echo_info__106_v0 "
+Package: ${package_name}
+Description: ${description}
+Version: ${package_version}
+";
+    __AF_echo_info106_v0__294_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__294_5" > /dev/null 2>&1
+    if [ $([ "_${base}" != "_" ]; echo $?) != 0 ]; then
+        base="org.deepin.base/23.1.0"
+fi
+    check_linglong_files__217_v0 "${appid}";
+    __AF_check_linglong_files217_v0__302_5="$__AF_check_linglong_files217_v0";
+    echo "$__AF_check_linglong_files217_v0__302_5" > /dev/null 2>&1
+    local linglong_app_file="${appid}/files"
+    copy_appimage_data__255_v0 "${appimage_extra_dir}" "${linglong_app_file}";
+    __AF_copy_appimage_data255_v0__305_5="$__AF_copy_appimage_data255_v0";
+    echo "$__AF_copy_appimage_data255_v0__305_5" > /dev/null 2>&1
+    # 可能存在 shell 脚本，通过sh后缀判断，使用 file 来判断文件类型的话，还是依赖文件头，所以直接以 sh 后缀为判断标准
+    # 脚本中可执行文件路径可能是 /usr 这种 需要替换，另外由于商店打包要求添加 .linyaps 后缀导致一些应用也需要修改新路径来替换。
+    get_shell_scripts__147_v0 "${appimage_extra_dir}";
+    __AF_get_shell_scripts147_v0__309_25=("${__AF_get_shell_scripts147_v0[@]}");
+    local shell_scripts=("${__AF_get_shell_scripts147_v0__309_25[@]}")
+    i=0;
+for script in "${shell_scripts[@]}"; do
+        sed -i -E "s|/usr/|/opt/apps/${appid}/files/|g" ${script};
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_error__109_v0 "sed ${script} echo_error" 1;
+            __AF_echo_error109_v0__312_13="$__AF_echo_error109_v0";
+            echo "$__AF_echo_error109_v0__312_13" > /dev/null 2>&1
+fi
+    (( i++ )) || true
+done
+    # 有些在AppRun路径下会写固定的/usr/bin /usr/lib 路径
+    __AMBER_ARRAY_79=("AppRun" "AppRun.wrapped");
+    local apprun_list=("${__AMBER_ARRAY_79[@]}")
+    i=0;
+for apprun in "${apprun_list[@]}"; do
+        local apprun_path="${linglong_app_file}/${apprun}"
+        file_exists__33_v0 "${apprun_path}";
+        __AF_file_exists33_v0__320_16="$__AF_file_exists33_v0";
+        if [ $(echo  '!' "$__AF_file_exists33_v0__320_16" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            continue
+fi
+        __AMBER_VAL_80=$(file ${apprun_path});
+        __AS=$?;
+        local apprun_file_info="${__AMBER_VAL_80}"
+        text_contains__14_v0 "${apprun_file_info}" "POSIX shell script";
+        __AF_text_contains14_v0__322_12="$__AF_text_contains14_v0";
+        text_contains__14_v0 "${apprun_file_info}" "ASCII text";
+        __AF_text_contains14_v0__322_69="$__AF_text_contains14_v0";
+        if [ $(echo "$__AF_text_contains14_v0__322_12" '||' "$__AF_text_contains14_v0__322_69" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            sed -i -E "s|\{HERE\}/usr/bin/|\{HERE\}/bin/|g;                         s|\{HERE\}/usr/lib/|\{HERE\}/lib/|g;                         s|HERE/usr/bin/|HERE/bin/|g;                         s|HERE/usr/lib/|HERE/lib/|g;" ${apprun_path};
+            __AS=$?;
+if [ $__AS != 0 ]; then
+                echo_error__109_v0 "sed ${apprun_path} echo_error" 1;
+                __AF_echo_error109_v0__327_17="$__AF_echo_error109_v0";
+                echo "$__AF_echo_error109_v0__327_17" > /dev/null 2>&1
+fi
+fi
+    (( i++ )) || true
+done
+    __AMBER_VAL_81=$(find ${appimage_extra_dir} -name "*.desktop");
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_warning__108_v0 "not found desktop from ${linglong_app_file}";
+        __AF_echo_warning108_v0__334_9="$__AF_echo_warning108_v0";
+        echo "$__AF_echo_warning108_v0__334_9" > /dev/null 2>&1
+fi;
+    local desktop_path="${__AMBER_VAL_81}"
+    __AMBER_VAL_82=$(gawk -F '=' '/^Icon/ {print $2; exit}' ${desktop_path});
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "get Icon= from ${desktop_path} error" 1;
+        __AF_echo_error109_v0__338_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__338_9" > /dev/null 2>&1
+fi;
+    local icon="${__AMBER_VAL_82}"
+    __AMBER_VAL_83=$(echo ${icon} | sed -E 's#.*/([^.]*)\..*$#\1#');
+    __AS=$?;
+    icon="${__AMBER_VAL_83}"
+    # 移除路径中的目录部分，还会移除文件名的扩展名
+    sed -i "/Icon*/c\Icon=${icon}" ${desktop_path};
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_warning__108_v0 "sed Icon error";
+        __AF_echo_warning108_v0__342_9="$__AF_echo_warning108_v0";
+        echo "$__AF_echo_warning108_v0__342_9" > /dev/null 2>&1
+fi
+    local package_command="/opt/apps/${appid}/files/AppRun"
+    __AMBER_VAL_84=$(gawk -F 'Exec=' '/^Exec/ {print $2; exit}' ${desktop_path});
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_warning__108_v0 "not get Exec= from ${desktop_path}";
+        __AF_echo_warning108_v0__347_9="$__AF_echo_warning108_v0";
+        echo "$__AF_echo_warning108_v0__347_9" > /dev/null 2>&1
+fi;
+    local exec="${__AMBER_VAL_84}"
+    text_contains__14_v0 "${exec}" "AppRun";
+    __AF_text_contains14_v0__349_8="$__AF_text_contains14_v0";
+    if [ "$__AF_text_contains14_v0__349_8" != 0 ]; then
+        sed -i -E "s|AppRun|${package_command}|" ${desktop_path};
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_warning__108_v0 "sed Exec error";
+            __AF_echo_warning108_v0__351_13="$__AF_echo_warning108_v0";
+            echo "$__AF_echo_warning108_v0__351_13" > /dev/null 2>&1
+fi
+fi
+    copy_appimage_data__255_v0 "${appimage_extra_dir}" "${linglong_app_file}";
+    __AF_copy_appimage_data255_v0__355_5="$__AF_copy_appimage_data255_v0";
+    echo "$__AF_copy_appimage_data255_v0__355_5" > /dev/null 2>&1
+    echo_info__106_v0 "generator linglng.yaml";
+    __AF_echo_info106_v0__357_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__357_5" > /dev/null 2>&1
+    local linglong_file_path="${appid}/linglong.yaml"
+    generator_linglong_yaml__216_v0 "${appid}" "${package_name}" "${package_version}" "${description}" "${base}" "" "${package_command}" "${linglong_file_path}";
+    __AF_generator_linglong_yaml216_v0__359_5="$__AF_generator_linglong_yaml216_v0";
+    echo "$__AF_generator_linglong_yaml216_v0__359_5" > /dev/null 2>&1
+    echo_info__106_v0 "ll-builder build";
+    __AF_echo_info106_v0__361_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__361_5" > /dev/null 2>&1
+    ll_builder_build__202_v0 "${linglong_file_path}";
+    __AF_ll_builder_build202_v0__362_5="$__AF_ll_builder_build202_v0";
+    echo "$__AF_ll_builder_build202_v0__362_5" > /dev/null 2>&1
+    echo_info__106_v0 "ll-builder run";
+    __AF_echo_info106_v0__364_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__364_5" > /dev/null 2>&1
+    ll_builder_run__203_v0 "${linglong_file_path}" "";
+    __AF_ll_builder_run203_v0__365_5="${__AF_ll_builder_run203_v0}";
+    echo "${__AF_ll_builder_run203_v0__365_5}" > /dev/null 2>&1
+    echo_info__106_v0 "ll-builder export";
+    __AF_echo_info106_v0__367_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__367_5" > /dev/null 2>&1
+    ll_builder_export__204_v0 "${linglong_file_path}" "${output}";
+    __AF_ll_builder_export204_v0__368_5="$__AF_ll_builder_export204_v0";
+    echo "$__AF_ll_builder_export204_v0__368_5" > /dev/null 2>&1
+    rm -rf ${appimage_extra_dir};
+    __AS=$?
+}
+convert_flatpak__264_v0() {
+    local file=$1
+    local appid=$2
+    local base=$3
+    local output=$4
+    local version=$5
+    get_linglong_convert_tool_cache_path__146_v0 ;
+    __AF_get_linglong_convert_tool_cache_path146_v0__374_31="${__AF_get_linglong_convert_tool_cache_path146_v0}";
+    local flatpak_extra_dir="${__AF_get_linglong_convert_tool_cache_path146_v0__374_31}/flatpak"
+    rm -rf ${flatpak_extra_dir};
+    __AS=$?
+    dir_create__38_v0 "${flatpak_extra_dir}";
+    __AF_dir_create38_v0__377_5="$__AF_dir_create38_v0";
+    echo "$__AF_dir_create38_v0__377_5" > /dev/null 2>&1
+    local flatpak_repo="${flatpak_extra_dir}/repo"
+    local flatpak_data="${flatpak_extra_dir}/data"
+    local flatpak_files="${flatpak_data}/files"
+    __AMBER_VAL_85=$(readlink -f ${file});
+    __AS=$?;
+    local package_with_full_path="${__AMBER_VAL_85}"
+    file_exists__33_v0 "${package_with_full_path}";
+    __AF_file_exists33_v0__384_12="$__AF_file_exists33_v0";
+    if [ $(echo  '!' "$__AF_file_exists33_v0__384_12" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        echo_error__109_v0 "${file} not found" 1;
+        __AF_echo_error109_v0__385_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__385_9" > /dev/null 2>&1
+fi
+    __AMBER_VAL_86=$(basename ${package_with_full_path});
+    __AS=$?;
+    local filename="${__AMBER_VAL_86}"
+    __AMBER_VAL_87=$(uname -m);
+    __AS=$?;
+    local arch="${__AMBER_VAL_87}"
+    echo_info__106_v0 "init flatpak repo";
+    __AF_echo_info106_v0__391_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__391_5" > /dev/null 2>&1
+    ostree init --repo=${flatpak_repo} --mode bare-user-only;
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "init flatpak echo_error" 1;
+        __AF_echo_error109_v0__393_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__393_9" > /dev/null 2>&1
+fi
+    echo_info__106_v0 "import flatpak application";
+    __AF_echo_info106_v0__396_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__396_5" > /dev/null 2>&1
+    flatpak build-import-bundle ${flatpak_repo} ${package_with_full_path} > /dev/null 2>&1;
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "import ${package_with_full_path} to ${flatpak_repo}" 1;
+        __AF_echo_error109_v0__398_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__398_9" > /dev/null 2>&1
+fi
+    __AMBER_VAL_88=$(ls -1 ${flatpak_repo}/refs/heads/app);
+    __AS=$?;
+    local flatpak_name="${__AMBER_VAL_88}"
+    echo_info__106_v0 "export ${filename} data";
+    __AF_echo_info106_v0__402_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__402_5" > /dev/null 2>&1
+    ostree --repo=${flatpak_repo} checkout app/${flatpak_name}/${arch}/stable ${flatpak_data};
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "export ${flatpak_name} data error" 1;
+        __AF_echo_error109_v0__404_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__404_9" > /dev/null 2>&1
+fi
+    if [ $([ "_${appid}" != "_" ]; echo $?) != 0 ]; then
+        appid="${flatpak_name}.linyaps"
+fi
+    local package_version=$(if [ $([ "_${version}" == "_" ]; echo $?) != 0 ]; then echo "${version}"; else echo "1.0.0.0"; fi)
+    local description="convert flatpak ${flatpak_name}"
+    if [ $([ "_${base}" != "_" ]; echo $?) != 0 ]; then
+        __AMBER_VAL_89=$(cat ${flatpak_files}/manifest.json | jq -r '.runtime');
+        __AS=$?;
+        local flatpak_runtime="${__AMBER_VAL_89}"
+        split__3_v0 "${flatpak_runtime}" ".";
+        __AF_split3_v0__415_36=("${__AF_split3_v0[@]}");
+        local flatpak_runtime_list=("${__AF_split3_v0__415_36[@]}")
+        __AMBER_VAL_90=$(cat ${flatpak_files}/manifest.json | jq -r '.["runtime-version"]');
+        __AS=$?;
+        local flatpak_runtime_version="${__AMBER_VAL_90}"
+        split__3_v0 "${flatpak_runtime_version}" ".|-|' '";
+        __AF_split3_v0__417_44=("${__AF_split3_v0[@]}");
+        local flatpak_runtime_version_list=("${__AF_split3_v0__417_44[@]}")
+        __AMBER_ARRAY_91=();
+        local runtime_version=("${__AMBER_ARRAY_91[@]}")
+        i=0;
+for part in "${flatpak_runtime_version_list[@]}"; do
+            if [ $(echo "${#runtime_version[@]}" '>' 2 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+                break
+fi
+            __AMBER_LEN="${part}";
+            __AMBER_LEN="${part}";
+            if [ $(echo "${#__AMBER_LEN}" '==' 1 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+                __AMBER_ARRAY_92=("${part}");
+                runtime_version+=("${__AMBER_ARRAY_92[@]}")
+elif [ $(echo "${#__AMBER_LEN}" '>' 1 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+                replace_regex__2_v0 "${part}" "^0\\+" "" 0;
+                __AF_replace_regex2_v0__425_28="${__AF_replace_regex2_v0}";
+                part="${__AF_replace_regex2_v0__425_28}"
+                # 移除0前导的数字部分
+                __AMBER_ARRAY_93=("${part}");
+                runtime_version+=("${__AMBER_ARRAY_93[@]}")
+fi
+    (( i++ )) || true
+done
+        while :
+do
+            if [ $(echo "${#runtime_version[@]}" '>' 2 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+                break
+fi
+            __AMBER_ARRAY_94=("0");
+            runtime_version+=("${__AMBER_ARRAY_94[@]}")
+done
+        join__6_v0 runtime_version[@] ".";
+        __AF_join6_v0__436_67="${__AF_join6_v0}";
+        base="org.deepin.base.flatpak.${flatpak_runtime_list[1]}/${__AF_join6_v0__436_67}"
+fi
+    check_linglong_files__217_v0 "${appid}";
+    __AF_check_linglong_files217_v0__439_5="$__AF_check_linglong_files217_v0";
+    echo "$__AF_check_linglong_files217_v0__439_5" > /dev/null 2>&1
+    local linglong_app_file="${appid}/files"
+    __AMBER_VAL_95=$(find ${flatpak_extra_dir} -name "*.desktop" | grep "application");
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_warning__108_v0 "not found desktop from ${flatpak_extra_dir}";
+        __AF_echo_warning108_v0__444_9="$__AF_echo_warning108_v0";
+        echo "$__AF_echo_warning108_v0__444_9" > /dev/null 2>&1
+fi;
+    local desktops="${__AMBER_VAL_95}"
+    local package_command=""
+    split__3_v0 "${desktops}" "
+";
+    __AF_split3_v0__449_23=("${__AF_split3_v0[@]}");
+    i=0;
+for desktop in "${__AF_split3_v0__449_23[@]}"; do
+        # 可能一个desktop 文件有多个Exec字段，获取第一个后退出
+        __AMBER_VAL_96=$(gawk -F 'Exec=' '/^Exec/ {print $2; exit}' ${desktop});
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_warning__108_v0 "not get Exec= from ${desktop}";
+            __AF_echo_warning108_v0__452_13="$__AF_echo_warning108_v0";
+            echo "$__AF_echo_warning108_v0__452_13" > /dev/null 2>&1
+fi;
+        local exec="${__AMBER_VAL_96}"
+        if [ $([ "_${package_command}" != "_" ]; echo $?) != 0 ]; then
+            text_contains__14_v0 "${exec}" "/app";
+            __AF_text_contains14_v0__457_17="$__AF_text_contains14_v0";
+            if [ "$__AF_text_contains14_v0__457_17" != 0 ]; then
+                replace_regex__2_v0 "${exec}" "app" "opt/apps/${appid}/files" 0;
+                __AF_replace_regex2_v0__457_64="${__AF_replace_regex2_v0}";
+                package_command="${__AF_replace_regex2_v0__457_64}"
+else
+                package_command="${exec}"
+fi
+fi
+        sed -i -E "s|/app/|/opt/apps/${appid}/files/|" ${desktop};
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_warning__108_v0 "sed Exec error";
+            __AF_echo_warning108_v0__466_13="$__AF_echo_warning108_v0";
+            echo "$__AF_echo_warning108_v0__466_13" > /dev/null 2>&1
+fi
+        __AMBER_VAL_97=$(gawk -F '=' '/^Icon/ {print $2; exit}' ${desktop});
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_warning__108_v0 "get Icon= from ${desktop} error";
+            __AF_echo_warning108_v0__470_13="$__AF_echo_warning108_v0";
+            echo "$__AF_echo_warning108_v0__470_13" > /dev/null 2>&1
+fi;
+        local icon="${__AMBER_VAL_97}"
+        __AMBER_VAL_98=$(echo ${icon} | sed -E 's#.*/([^.]*)\..*$#\1#');
+        __AS=$?;
+        icon="${__AMBER_VAL_98}"
+        # 移除路径中的目录部分，还会移除文件名的扩展名
+        sed -i "/Icon*/c\Icon=${icon}" ${desktop};
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_warning__108_v0 "sed Icon error";
+            __AF_echo_warning108_v0__475_13="$__AF_echo_warning108_v0";
+            echo "$__AF_echo_warning108_v0__475_13" > /dev/null 2>&1
+fi
+    (( i++ )) || true
+done
+    echo_info__106_v0 "copy ${flatpak_files} to ${linglong_app_file}";
+    __AF_echo_info106_v0__479_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__479_5" > /dev/null 2>&1
+    cp -a ${flatpak_files}/* ${linglong_app_file};
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_warning__108_v0 "copy ${flatpak_files} error";
+        __AF_echo_warning108_v0__481_9="$__AF_echo_warning108_v0";
+        echo "$__AF_echo_warning108_v0__481_9" > /dev/null 2>&1
+fi
+    # 创建一个 profile 文件
+    local files_etc="${linglong_app_file}/etc"
+    dir_exists__32_v0 "${files_etc}";
+    __AF_dir_exists32_v0__486_12="$__AF_dir_exists32_v0";
+    if [ $(echo  '!' "$__AF_dir_exists32_v0__486_12" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        dir_create__38_v0 "${files_etc}";
+        __AF_dir_create38_v0__486_35="$__AF_dir_create38_v0";
+        echo "$__AF_dir_create38_v0__486_35" > /dev/null 2>&1
+fi
+    {
+echo "#!/bin/sh
+# bind /opt/apps/$APPID/files to /app
+ln -s "/opt/apps/\$LINGLONG_APPID/files" /run/linglong/app
+"
+} > ${files_etc}/profile;
+    __AS=$?
+    echo_info__106_v0 "generator linglng.yaml";
+    __AF_echo_info106_v0__494_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__494_5" > /dev/null 2>&1
+    local linglong_file_path="${appid}/linglong.yaml"
+    generator_linglong_yaml__216_v0 "${appid}" "${flatpak_name}" "${package_version}" "${description}" "${base}" "" "${package_command}" "${linglong_file_path}";
+    __AF_generator_linglong_yaml216_v0__496_5="$__AF_generator_linglong_yaml216_v0";
+    echo "$__AF_generator_linglong_yaml216_v0__496_5" > /dev/null 2>&1
+    echo_info__106_v0 "ll-builder build";
+    __AF_echo_info106_v0__498_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__498_5" > /dev/null 2>&1
+    ll_builder_build__202_v0 "${linglong_file_path}";
+    __AF_ll_builder_build202_v0__499_5="$__AF_ll_builder_build202_v0";
+    echo "$__AF_ll_builder_build202_v0__499_5" > /dev/null 2>&1
+    echo_info__106_v0 "ll-builder run";
+    __AF_echo_info106_v0__501_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__501_5" > /dev/null 2>&1
+    ll_builder_run__203_v0 "${linglong_file_path}" "";
+    __AF_ll_builder_run203_v0__502_5="${__AF_ll_builder_run203_v0}";
+    echo "${__AF_ll_builder_run203_v0__502_5}" > /dev/null 2>&1
+    echo_info__106_v0 "ll-builder export";
+    __AF_echo_info106_v0__504_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__504_5" > /dev/null 2>&1
+    ll_builder_export__204_v0 "${linglong_file_path}" "${output}";
+    __AF_ll_builder_export204_v0__505_5="$__AF_ll_builder_export204_v0";
+    echo "$__AF_ll_builder_export204_v0__505_5" > /dev/null 2>&1
+    rm -rf ${flatpak_extra_dir};
+    __AS=$?
+}
+convert_cmd__265_v0() {
+    local target=$1
+    local appid=$2
+    local base=$3
+    local runtime=$4
+    local source=$5
+    local output=$6
+    local version=$7
+    local is_help=$8
+    if [ $(echo $([ "_${target}" != "_" ]; echo $?) '||' $(echo ${is_help} '==' 1 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        help__261_v0 ;
+        __AF_help261_v0__512_9="$__AF_help261_v0";
+        echo "$__AF_help261_v0__512_9" > /dev/null 2>&1
+fi
+    lowercase__10_v0 "${target}";
+    __AF_lowercase10_v0__516_23="${__AF_lowercase10_v0}";
+    text_contains__14_v0 "${__AF_lowercase10_v0__516_23}" ".deb";
+    __AF_text_contains14_v0__516_9="$__AF_text_contains14_v0";
+    lowercase__10_v0 "${target}";
+    __AF_lowercase10_v0__517_23="${__AF_lowercase10_v0}";
+    text_contains__14_v0 "${__AF_lowercase10_v0__517_23}" ".appimage";
+    __AF_text_contains14_v0__517_9="$__AF_text_contains14_v0";
+    lowercase__10_v0 "${target}";
+    __AF_lowercase10_v0__518_23="${__AF_lowercase10_v0}";
+    text_contains__14_v0 "${__AF_lowercase10_v0__518_23}" ".flatpak";
+    __AF_text_contains14_v0__518_9="$__AF_text_contains14_v0";
+    if [ "$__AF_text_contains14_v0__516_9" != 0 ]; then
+        convert_deb__262_v0 "${target}" "${appid}" "${base}" "${runtime}" "${source}" "${output}" "${version}";
+        __AF_convert_deb262_v0__516_51="$__AF_convert_deb262_v0";
+        echo "$__AF_convert_deb262_v0__516_51" > /dev/null 2>&1
+elif [ "$__AF_text_contains14_v0__517_9" != 0 ]; then
+        convert_appimage__263_v0 "${target}" "${appid}" "${base}" "${output}" "${version}";
+        __AF_convert_appimage263_v0__517_56="$__AF_convert_appimage263_v0";
+        echo "$__AF_convert_appimage263_v0__517_56" > /dev/null 2>&1
+elif [ "$__AF_text_contains14_v0__518_9" != 0 ]; then
+        convert_flatpak__264_v0 "${target}" "${appid}" "${base}" "${output}" "${version}";
+        __AF_convert_flatpak264_v0__518_55="$__AF_convert_flatpak264_v0";
+        echo "$__AF_convert_flatpak264_v0__518_55" > /dev/null 2>&1
+else
+        echo_error__109_v0 "unknown target: ${target}" 1;
+        __AF_echo_error109_v0__521_13="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__521_13" > /dev/null 2>&1
+fi
+}
+help__286_v0() {
+    get_linglong_convert_tool_name__128_v0 ;
+    __AF_get_linglong_convert_tool_name128_v0__12_4="${__AF_get_linglong_convert_tool_name128_v0}";
+    echo "Generate content related to Linglong
+
+Usage:
+  ${__AF_get_linglong_convert_tool_name128_v0__12_4} generator [target] [flags]
+
+Available Target:
+  ll-file         linglong.yaml
+
+Flags:
+  -l, --layer          linglong layer file
+  -h, --help           help info
+"
+}
+generator_linglong_file__287_v0() {
+    local layer=$1
+    __AMBER_VAL_99=$(readlink -f ${layer});
+    __AS=$?;
+    local layer_with_full_path="${__AMBER_VAL_99}"
+    echo_info__106_v0 "install layer";
+    __AF_echo_info106_v0__26_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__26_5" > /dev/null 2>&1
+    ll_cli_install_by_layer__201_v0 "${layer_with_full_path}";
+    __AF_ll_cli_install_by_layer201_v0__27_5="$__AF_ll_cli_install_by_layer201_v0";
+    echo "$__AF_ll_cli_install_by_layer201_v0__27_5" > /dev/null 2>&1
+    __AMBER_VAL_100=$(ll-cli info ${layer_with_full_path});
+    __AS=$?;
+    local package_info="${__AMBER_VAL_100}"
+    get_linglong_id__205_v0 "${package_info}";
+    __AF_get_linglong_id205_v0__30_22="${__AF_get_linglong_id205_v0}";
+    local package_id="${__AF_get_linglong_id205_v0__30_22}"
+    get_linglong_name__206_v0 "${package_info}";
+    __AF_get_linglong_name206_v0__31_24="${__AF_get_linglong_name206_v0}";
+    local package_name="${__AF_get_linglong_name206_v0__31_24}"
+    get_linglong_command__212_v0 "${package_info}";
+    __AF_get_linglong_command212_v0__32_27="${__AF_get_linglong_command212_v0}";
+    local package_command="${__AF_get_linglong_command212_v0__32_27}"
+    get_linglong_base__209_v0 "${package_info}";
+    __AF_get_linglong_base209_v0__33_24="${__AF_get_linglong_base209_v0}";
+    local package_base="${__AF_get_linglong_base209_v0__33_24}"
+    get_linglong_runtime__210_v0 "${package_info}";
+    __AF_get_linglong_runtime210_v0__34_27="${__AF_get_linglong_runtime210_v0}";
+    local package_runtime="${__AF_get_linglong_runtime210_v0__34_27}"
+    get_linglong_version__207_v0 "${package_info}";
+    __AF_get_linglong_version207_v0__35_27="${__AF_get_linglong_version207_v0}";
+    local package_version="${__AF_get_linglong_version207_v0__35_27}"
+    get_linglong_description__211_v0 "${package_info}";
+    __AF_get_linglong_description211_v0__36_31="${__AF_get_linglong_description211_v0}";
+    local package_description="${__AF_get_linglong_description211_v0__36_31}"
+    dir_exists__32_v0 "${package_id}";
+    __AF_dir_exists32_v0__38_12="$__AF_dir_exists32_v0";
+    if [ $(echo  '!' "$__AF_dir_exists32_v0__38_12" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        dir_create__38_v0 "${package_id}";
+        __AF_dir_create38_v0__38_36="$__AF_dir_create38_v0";
+        echo "$__AF_dir_create38_v0__38_36" > /dev/null 2>&1
+fi
+    get_linglong_package_path__213_v0 "${package_id}";
+    __AF_get_linglong_package_path213_v0__40_24="${__AF_get_linglong_package_path213_v0}";
+    local package_path="${__AF_get_linglong_package_path213_v0__40_24}"
+    echo_info__106_v0 "copy package data";
+    __AF_echo_info106_v0__42_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__42_5" > /dev/null 2>&1
+    sudo cp -a ${package_path} ${package_id};
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "copy package data echo_error" 1;
+        __AF_echo_error109_v0__44_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__44_9" > /dev/null 2>&1
+fi
+    echo_info__106_v0 "change ${package_id} owner";
+    __AF_echo_info106_v0__47_5="$__AF_echo_info106_v0";
+    echo "$__AF_echo_info106_v0__47_5" > /dev/null 2>&1
+    env_const_get__89_v0 "USER";
+    __AS=$?;
+    __AF_env_const_get89_v0__48_22="${__AF_env_const_get89_v0}";
+    local user="${__AF_env_const_get89_v0__48_22}"
+    sudo chown -R ${user}:${user} ${package_id};
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "Error in changing the owner of ${package_id} to ${user}" 1;
+        __AF_echo_error109_v0__50_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__50_9" > /dev/null 2>&1
+fi
+    # 过滤出 application 下的desktop
+    __AMBER_VAL_101=$(find ${package_id}/files -name "*.desktop" | grep "application");
+    __AS=$?;
+if [ $__AS != 0 ]; then
+        echo_error__109_v0 "not found desktop from ${package_id}" 1;
+        __AF_echo_error109_v0__55_9="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__55_9" > /dev/null 2>&1
+fi;
+    local desktops="${__AMBER_VAL_101}"
+    # 多个 desktop 循环
+    split__3_v0 "${desktops}" "
+";
+    __AF_split3_v0__59_23=("${__AF_split3_v0[@]}");
+    i=0;
+for desktop in "${__AF_split3_v0__59_23[@]}"; do
+        sed -i "s|/usr/bin/ll-cli run ${package_id} -- ||g" ${desktop};
+        __AS=$?;
+if [ $__AS != 0 ]; then
+            echo_info__106_v0 "sed ${desktop} echo_error, skip";
+            __AF_echo_info106_v0__61_13="$__AF_echo_info106_v0";
+            echo "$__AF_echo_info106_v0__61_13" > /dev/null 2>&1
+            continue
+fi
+    (( i++ )) || true
+done
+    local linglong_file_path="${package_id}/linglong.yaml"
+    file_exists__33_v0 "${package_id}";
+    __AF_file_exists33_v0__67_12="$__AF_file_exists33_v0";
+    if [ $(echo  '!' "$__AF_file_exists33_v0__67_12" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        echo_info__106_v0 "generator linglng.yaml";
+        __AF_echo_info106_v0__68_9="$__AF_echo_info106_v0";
+        echo "$__AF_echo_info106_v0__68_9" > /dev/null 2>&1
+        generator_linglong_yaml__216_v0 "${package_id}" "${package_name}" "${package_version}" "${package_description}" "${package_base}" "${package_runtime}" "${package_command}" "${linglong_file_path}";
+        __AF_generator_linglong_yaml216_v0__69_9="$__AF_generator_linglong_yaml216_v0";
+        echo "$__AF_generator_linglong_yaml216_v0__69_9" > /dev/null 2>&1
+fi
+}
+generator_cmd__288_v0() {
+    local target=$1
+    local layer=$2
+    local is_help=$3
+    if [ $(echo $([ "_${target}" != "_" ]; echo $?) '||' $(echo ${is_help} '==' 1 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        help__286_v0 ;
+        __AF_help286_v0__75_9="$__AF_help286_v0";
+        echo "$__AF_help286_v0__75_9" > /dev/null 2>&1
+fi
+    if [ $([ "_${target}" != "_ll-file" ]; echo $?) != 0 ]; then
+        if [ $([ "_${layer}" == "_" ]; echo $?) != 0 ]; then
+            generator_linglong_file__287_v0 "${layer}";
+            __AF_generator_linglong_file287_v0__82_21="$__AF_generator_linglong_file287_v0";
+            echo "$__AF_generator_linglong_file287_v0__82_21" > /dev/null 2>&1
+else
+            get_linglong_convert_tool_name__128_v0 ;
+            __AF_get_linglong_convert_tool_name128_v0__86_60="${__AF_get_linglong_convert_tool_name128_v0}";
+            echo_error__109_v0 "not set flags, please use ${__AF_get_linglong_convert_tool_name128_v0__86_60} generator --help" 1;
+            __AF_echo_error109_v0__86_21="$__AF_echo_error109_v0";
+            echo "$__AF_echo_error109_v0__86_21" > /dev/null 2>&1
+fi
+else
+        echo_error__109_v0 "unknown target: ${target}" 1;
+        __AF_echo_error109_v0__93_13="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__93_13" > /dev/null 2>&1
+fi
+}
+get_cache_path__299_v0() {
+    __AF_get_cache_path299_v0="/tmp";
+    return 0
+}
+get_linglong_convert_tool_cache_path__300_v0() {
+    get_cache_path__299_v0 ;
+    __AF_get_cache_path299_v0__10_14="${__AF_get_cache_path299_v0}";
+    __AF_get_linglong_convert_tool_cache_path300_v0="${__AF_get_cache_path299_v0__10_14}/linglong-convert-tool";
+    return 0
+}
+check_dotfiles__304_v0() {
+    get_linglong_convert_tool_cache_path__300_v0 ;
+    __AF_get_linglong_convert_tool_cache_path300_v0__54_23="${__AF_get_linglong_convert_tool_cache_path300_v0}";
+    dir_exists__32_v0 "${__AF_get_linglong_convert_tool_cache_path300_v0__54_23}";
+    __AF_dir_exists32_v0__54_12="$__AF_dir_exists32_v0";
+    if [ $(echo  '!' "$__AF_dir_exists32_v0__54_12" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        get_linglong_convert_tool_cache_path__300_v0 ;
+        __AF_get_linglong_convert_tool_cache_path300_v0__54_75="${__AF_get_linglong_convert_tool_cache_path300_v0}";
+        dir_create__38_v0 "${__AF_get_linglong_convert_tool_cache_path300_v0__54_75}";
+        __AF_dir_create38_v0__54_64="$__AF_dir_create38_v0";
+        echo "$__AF_dir_create38_v0__54_64" > /dev/null 2>&1
+fi
+}
+get_linglong_convert_tool_name__308_v0() {
+    __AF_get_linglong_convert_tool_name308_v0="ll-convert-tool";
+    return 0
+}
+help__313_v0() {
+    get_linglong_convert_tool_name__308_v0 ;
+    __AF_get_linglong_convert_tool_name308_v0__11_4="${__AF_get_linglong_convert_tool_name308_v0}";
+    get_linglong_convert_tool_name__308_v0 ;
+    __AF_get_linglong_convert_tool_name308_v0__20_6="${__AF_get_linglong_convert_tool_name308_v0}";
+    echo "Usage:
+  ${__AF_get_linglong_convert_tool_name308_v0__11_4} [command]
+
+Available Commands:
+  convert     Convert Deb or Appimage or Flatpak to linglong
+  generate    Generate content related to Linglong
+
+Flags:
+  -h, --help           help info
+
+Use ${__AF_get_linglong_convert_tool_name308_v0__20_6} [command] --help for more information about a command.
+"
+}
+declare -r _args=("$0" "$@")
+    appid=""
+    base=""
+    runtime=""
+    source=""
+    layer=""
+    output="layer"
+    version=""
+    is_help=0
+    command="${_args[1]}"
+    target="${_args[2]}"
+    i=0;
+for arg in "${_args[@]}"; do
+        if [ $(echo $([ "_${arg}" != "_--id" ]; echo $?) '||' $([ "_${arg}" != "_-i" ]; echo $?) | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            appid="${_args[$(echo ${i} '+' 1 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//')]}"
+elif [ $(echo $([ "_${arg}" != "_--base" ]; echo $?) '||' $([ "_${arg}" != "_-b" ]; echo $?) | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            base="${_args[$(echo ${i} '+' 1 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//')]}"
+elif [ $(echo $([ "_${arg}" != "_--runtime" ]; echo $?) '||' $([ "_${arg}" != "_-r" ]; echo $?) | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            runtime="${_args[$(echo ${i} '+' 1 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//')]}"
+elif [ $(echo $([ "_${arg}" != "_--source" ]; echo $?) '||' $([ "_${arg}" != "_-s" ]; echo $?) | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            source="${_args[$(echo ${i} '+' 1 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//')]}"
+elif [ $(echo $([ "_${arg}" != "_--layer" ]; echo $?) '||' $([ "_${arg}" != "_-l" ]; echo $?) | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            layer="${_args[$(echo ${i} '+' 1 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//')]}"
+elif [ $(echo $([ "_${arg}" != "_--output" ]; echo $?) '||' $([ "_${arg}" != "_-o" ]; echo $?) | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            output="${_args[$(echo ${i} '+' 1 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//')]}"
+elif [ $(echo $([ "_${arg}" != "_--version" ]; echo $?) '||' $([ "_${arg}" != "_-v" ]; echo $?) | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            output="${_args[$(echo ${i} '+' 1 | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//')]}"
+elif [ $(echo $([ "_${arg}" != "_--help" ]; echo $?) '||' $([ "_${arg}" != "_-h" ]; echo $?) | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+            is_help=1
+fi
+    (( i++ )) || true
+done
+    # 检查配置目录
+    check_dotfiles__304_v0 ;
+    __AF_check_dotfiles304_v0__51_5="$__AF_check_dotfiles304_v0";
+    echo "$__AF_check_dotfiles304_v0__51_5" > /dev/null 2>&1
+    if [ $([ "_${command}" != "_convert" ]; echo $?) != 0 ]; then
+        convert_cmd__265_v0 "${target}" "${appid}" "${base}" "${runtime}" "${source}" "${output}" "${version}" ${is_help};
+        __AF_convert_cmd265_v0__55_13="$__AF_convert_cmd265_v0";
+        echo "$__AF_convert_cmd265_v0__55_13" > /dev/null 2>&1
+elif [ $([ "_${command}" != "_generate" ]; echo $?) != 0 ]; then
+        generator_cmd__288_v0 "${target}" "${layer}" ${is_help};
+        __AF_generator_cmd288_v0__59_13="$__AF_generator_cmd288_v0";
+        echo "$__AF_generator_cmd288_v0__59_13" > /dev/null 2>&1
+elif [ $(echo $(echo $([ "_${command}" != "_" ]; echo $?) '||' $([ "_${command}" != "_-h" ]; echo $?) | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') '||' $([ "_${command}" != "_--help" ]; echo $?) | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//') != 0 ]; then
+        help__313_v0 ;
+        __AF_help313_v0__63_13="$__AF_help313_v0";
+        echo "$__AF_help313_v0__63_13" > /dev/null 2>&1
+else
+        get_linglong_convert_tool_name__308_v0 ;
+        __AF_get_linglong_convert_tool_name308_v0__66_71="${__AF_get_linglong_convert_tool_name308_v0}";
+        echo_error__109_v0 "Error: unknown command ${command}, please use ${__AF_get_linglong_convert_tool_name308_v0__66_71} --help command" 1;
+        __AF_echo_error109_v0__66_13="$__AF_echo_error109_v0";
+        echo "$__AF_echo_error109_v0__66_13" > /dev/null 2>&1
+fi

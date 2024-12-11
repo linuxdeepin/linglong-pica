@@ -1,0 +1,70 @@
+import { echo_error, echo_info } from "std/env"
+
+import { convert_cmd } from "./cli/convert.ab"
+import { generator_cmd } from "./cli/generator.ab"
+import { check_dotfiles } from "./tools/file.ab"
+import { get_linglong_convert_tool_name } from "./tools/global.ab"
+
+
+fun help() {
+    echo("Usage:
+  {get_linglong_convert_tool_name()} [command]
+
+Available Commands:
+  convert     Convert Deb or Appimage or Flatpak to linglong
+  generate    Generate content related to Linglong
+
+Flags:
+  -h, --help           help info
+
+Use {get_linglong_convert_tool_name()} [command] --help for more information about a command.
+")
+}
+
+main (_args) {
+    let appid = ""
+    let base = ""
+    let runtime = ""
+    let source = ""
+    let layer = ""
+    let output = "layer"
+    let version = ""
+    let is_help = false
+
+    let command = _args[1]
+    let target = _args[2]
+
+    for i, arg in _args {
+        if {
+            arg == "--id" or arg == "-i": appid = _args[i+1]           // 指定 appid
+            arg == "--base" or arg == "-b": base = _args[i+1]         // 指定玲珑 base
+            arg == "--runtime" or arg == "-r": runtime = _args[i+1]   // 指定玲珑 runtime
+            arg == "--source" or arg == "-s": source = _args[i+1]     // 指定base使用的apt源
+            arg == "--layer" or arg == "-l": layer = _args[i+1]       // 玲珑 layer 文件
+            arg == "--output" or arg == "-o": output = _args[i+1]     // 生成的产物
+            arg == "--version" or arg == "-v": output = _args[i+1]    // 设置玲珑应用的版本
+            arg == "--help" or arg == "-h": is_help = true           // help 信息
+        }
+    }
+
+    // 检查配置目录
+    check_dotfiles()
+
+    if {
+        command == "convert" {
+            convert_cmd(target, appid, base, runtime, source, output, version, is_help)
+        }
+
+        command == "generate" {
+            generator_cmd(target, layer, is_help)
+        }
+
+        command == "" or command == "-h" or command == "--help" {
+            help()
+        }
+        else {
+            echo_error("Error: unknown command {command}, please use {get_linglong_convert_tool_name()} --help command")
+        }
+    }
+
+}

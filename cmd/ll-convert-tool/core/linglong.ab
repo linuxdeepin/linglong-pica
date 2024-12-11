@@ -1,0 +1,271 @@
+import { replace, replace_regex, split, join, slice, text_contains, split_lines } from "std/text"
+import { echo_error, echo_info, echo_success } from "std/env"
+import { dir_exists, dir_create, file_write } from "std/fs"
+
+import { get_linglong_convert_tool_cache_path, check_directory_empty } from "../tools/file.ab"
+import { umount_chroot } from "./chroot.ab"
+import { is_deepin_23 } from "../tools/global.ab"
+
+pub fun generator_version(deb_version): Text {
+    // .或者-或者空格符号分割成数组
+    // 将版本号数组循环，如果新数组大于到4位了，停止循环。如果循环的数是1位数，直接添加到新的数组，如果大于1位将0的前导部分都替换为空。
+    // 对数组进行循环，如果少于3位数进行填充到4位。
+    let version_list = split(deb_version, ".|-|' '")
+    let linglong_version = [Text]
+    for i, part in version_list {
+        if len(linglong_version) > 3: break
+        if {
+            len(part) == 1: linglong_version += [part]
+            len(part) > 1 {
+                // part = replace_regex(part, "\/(\.0+)(\d+)", "") // 移除0前导的数字部分
+                part = replace_regex(part, "^0\\+", "") // 移除0前导的数字部分
+                part = replace_regex(part, "[a-zA-Z]", "") // 移除所有字母
+                part = replace_regex(part, "^[0-9]\\+:", "") // 移除以数字加冒号开头的部分
+                part = replace(part, "+", "") // 移除+符号
+                linglong_version += [part]
+            }
+        }
+    }
+    loop {
+        if len(linglong_version) > 3: break
+        linglong_version += ["0"]
+    }
+    return join(linglong_version, ".")
+}
+
+pub fun ll_cli_install(appid) {
+    let linglong_path = "/var/lib/linglong"
+    let res = $sudo ll-cli install {appid} 2>&1 | (cat)$ failed {
+        echo_error("install {appid} echo_error")
+    }
+    if text_contains(res, "success") {
+        echo_success("install {appid} success")
+    }
+    // if text_contains(res, "installed"): break
+}
+
+pub fun ll_cli_info(package_id): Text {
+    let package_info = $ll-cli info {package_id}$ failed {
+        echo_error("commmand error: ll-cli info {package_id}")
+    }
+    return package_info
+}
+
+pub fun ll_cli_ps(output = "") {
+    let command = "ll-cli ps"
+    if output == "json": command += " --json"
+    let res = trust ${command}$
+    return res
+}
+
+pub fun ll_cli_install_by_layer(layer) {
+    let res = trust $sudo ll-cli install {layer}$
+    if text_contains(res, "installed") or text_contains(res, "successfully") {
+        echo_success("install {layer} success")
+    } else {
+        echo_error("install {layer} echo_error")
+    }
+}
+
+pub fun ll_builder_build(path): Bool {
+    let parent_dir = trust $dirname {path}$
+    let res = ""
+    $pushd {parent_dir} && \\
+    ll-builder build --skip-output-check && \\
+    popd$ failed {
+        echo_error("ll-buildrer build {path} error")
+    }
+
+    echo_success("ll-builder build success")
+    return true
+}
+
+pub fun ll_builder_run(path, command = ""): Text {
+    let parent_dir = trust $dirname {path}$
+    if command != "": command = "--exec {command}"
+    let res = trust $cd {parent_dir} && timeout 5 ll-builder run 2>&1 | (cat)$
+    return res
+}
+
+pub fun ll_builder_export(path, output) {
+    let parent_dir = trust $dirname {path}$
+    if {
+        output == "layer": output = "--layer"
+        output == "uab": output = ""
+    }
+    $cd {parent_dir} && ll-builder export {output}$ failed {
+        echo_error("ll-buildrer export {parent_dir} echo_error")
+    }
+    echo_success("ll-builder export success")
+}
+
+pub fun get_linglong_id(package_info): Text {
+    let id = $echo {package_info} | jq -r \".id\"$ failed {
+        echo_error("get package id echo_error")
+    }
+    return id
+}
+
+pub fun get_linglong_name(package_info): Text {
+    let name = $echo {package_info} | jq -r \".name\"$ failed {
+        echo_error("get package name echo_error")
+    }
+    return name
+}
+
+pub fun get_linglong_version(package_info): Text {
+    let version = $echo {package_info} | jq -r \".version\"$ failed {
+        echo_error("get package version echo_error")
+    }
+    return version
+}
+
+pub fun get_linglong_arch(package_info): Text {
+    let arch = $echo {package_info} | jq -r \".arch[0]\"$ failed {
+        echo_error("get package arch echo_error")
+    }
+    return arch
+}
+
+pub fun get_linglong_base(package_info): Text {
+    let base = $echo {package_info} | jq -r \".base\"$ failed {
+        echo_error("get package base echo_error")
+    }
+    let arch = get_linglong_arch(package_info)
+    base = replace(base, "main:", "")
+    base = replace(base, "/{arch}", "")
+    return base
+}
+
+pub fun get_linglong_runtime(package_info): Text {
+    let runtime = $echo {package_info} | jq -r \".runtime\"$ failed {
+        echo_error("get package runtime echo_error")
+    }
+    let arch = get_linglong_arch(package_info)
+    runtime = replace(runtime, "main:", "")
+    runtime = replace(runtime, "/{arch}", "")
+    return runtime
+}
+
+pub fun get_linglong_description(package_info): Text {
+    let description = $echo {package_info} | jq -r \".description\"$ failed {
+        echo_error("get package description echo_error")
+    }
+    return replace(description, "\n", "")
+}
+
+
+pub fun get_linglong_command(package_info): Text {
+    let command = $echo {package_info} | jq -r \".command[0]\"$ failed {
+        echo_error("get package command error")
+    }
+    return command
+}
+
+// 获取玲珑应用在 /var/lib/linglong 下的路径
+pub fun get_linglong_package_path(appid): Text {
+    let linglong_path = "/var/lib/linglong"
+    let states_json = "{linglong_path}/states.json"
+    // 传进来的 appid 是 org.deepin.base/23.0.0 形式的
+    let appid_version_list = split(appid, "/")
+    let package_list = trust $cat {states_json} | jq -c ".layers | .[] | select(.info.id == \\"{appid_version_list[0]}\\")"$
+    for i, package in split_lines(package_list) {
+        let package_version = trust $echo {package} | jq -r ".info.version"$
+        let package_commit = trust $echo {package} | jq -r ".commit"$
+        if text_contains(package_version, appid_version_list[1]): return "/var/lib/linglong/layers/{package_commit}/files"
+    }
+    return ""
+    // return "/var/lib/linglong/layers/{package_commit}/files"
+}
+
+pub fun get_base_cache_path(base): Text {
+    let convert_tool_cache_path = get_linglong_convert_tool_cache_path()
+    ll_cli_install(base)
+    let package_info = ll_cli_info(base)
+    let id = get_linglong_id(package_info)
+    let version = get_linglong_version(package_info)
+
+    let base_cache_path = "{convert_tool_cache_path}/{id}/{version}"
+    return base_cache_path
+}
+
+pub fun generator_linglong_base_cache(base): Text {
+    let base_path = get_linglong_package_path(base)
+    let base_cache_path = get_base_cache_path(base)
+    umount_chroot(base_cache_path)
+    if not dir_exists(base_cache_path) {
+        echo_info("{base_cache_path} not exist")
+        echo_info("create {base_cache_path}")
+
+        dir_create(base_cache_path)
+    }
+
+    let check_dir = silent check_directory_empty(base_cache_path)
+    if check_dir {
+        echo_info("
+copy {base_path}
+to
+{base_cache_path}
+")
+        $sudo cp -a {base_path}/* {base_cache_path}$ failed {
+            echo_error("copy base error")
+        }
+    }
+    return base_cache_path
+}
+
+pub fun generator_linglong_yaml(appid, package_name, package_version, package_description, package_base, package_runtime, package_command, linglong_file_path) {
+    let sort_keys = ""
+    // uos 20 的python-yaml 不支持这个参数，只给23加，生成的yaml默认是按ASCII码排序的，添加参数sort_keys=False，不要用ASCII码排序
+    if is_deepin_23() {
+        sort_keys = "sort_keys=False,"
+    }
+    trust $\{
+echo "
+from yaml import SafeDumper, dump
+
+
+class MDumper(SafeDumper):
+    def write_line_break(self, data=None):
+        super().write_line_break(data)
+
+    def increase_indent(self, flow=False, indentless=False):
+        return super().increase_indent(
+            flow, False
+        )  # 禁用 increase_indent() 的 indentless 参数，确保每个键值对都会有缩进。
+
+
+yml = \{
+    'version': '1',
+    'package': \{
+        'id': '{appid}',
+        'name': '{package_name}',
+        'version': '{package_version}',
+        'kind': 'app',
+        'description': '''{package_description}''',
+    },
+    'base': '{package_base}',
+    'command': '{package_command}'.split(),
+    'build': 'cp -r files/* \\\$PREFIX;'
+}
+
+if '{package_runtime}':
+    yml['runtime'] = '{package_runtime}'
+
+with open('{linglong_file_path}', 'w') as repof:
+    dump(yml, repof, allow_unicode=True, {sort_keys} Dumper=MDumper)
+"
+} | python3$
+}
+
+// 检查玲珑应用目录下必要的文件夹
+pub fun check_linglong_files(appid) {
+    if not dir_exists(appid): dir_create(appid)
+
+    let linglong_app_file = "{appid}/files"
+    if not dir_exists(linglong_app_file): dir_create(linglong_app_file)
+    let arch = trust $uname -m$
+    for i, arg in ["bin", "lib", "share", "lib/{arch}-linux-gnu"] {
+        if not dir_exists("{linglong_app_file}/{arg}"): dir_create("{linglong_app_file}/{arg}")
+    }
+}

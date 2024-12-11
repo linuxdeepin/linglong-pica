@@ -1,0 +1,66 @@
+import { echo_error, echo_warning } from "std/env"
+import { echo_info } from "std/env"
+import { dir_exists } from "std/fs"
+
+import { tar_extract_cmd } from "../tools/file.ab"
+
+pub fun get_deb_package_name_from_control(control_file): Text {
+    let package_name = $gawk '/^Package:/ \{ split(\$0,a,\" \"); print a[2]}' {control_file}$ failed {
+        echo_error("Error in obtaining Package from {control_file}")
+    }
+    return package_name
+}
+
+pub fun get_deb_version_from_control(control_file): Text {
+    let version = $gawk '/^Version:/ \{ split(\$0,a,\" \"); print a[2]}' {control_file}$ failed {
+        echo_error("Error in obtaining Version from {control_file}")
+    }
+    return version
+}
+
+pub fun get_deb_description_from_control(control_file): Text {
+    // let description = $gawk '/^Description:/ \{flag=1; next} flag && /^\$/ \{flag=0; print \"\"; next} flag \{print}' {control_file}$ failed {
+    let description = $gawk '/^Description:/ \{flag=1; print substr(\$0, index(\$0, \$2)); next} flag \{if (\$1 ~ /^[A-Za-z0-9-]+:/) \{flag=0; print ""} else \{print}}' {control_file}$ failed {
+        echo_error("Error in obtaining Description from {control_file}")
+    }
+    return description
+}
+
+pub fun extract_deb(deb_path, target_path) {
+    let control_tar_check=trust $ar t {deb_path} | grep -m 1 "control\.tar"$
+    let control_extract = tar_extract_cmd(target_path, control_tar_check)
+    echo_info("unzip deb")
+    trust $ar p {deb_path} {control_tar_check} | {control_extract}$
+
+    let data_tar_check=trust $ar t {deb_path} | grep -m 1 "data\.tar"$
+    let data_extract = tar_extract_cmd(target_path, data_tar_check)
+    trust $ar p {deb_path} {data_tar_check} | {data_extract}$
+}
+
+// 拷贝deb的数据
+pub fun copy_deb_data(deb_extra_dir, target_path) {
+    let prefix = ""
+    let deb_opt_apps_path = "{deb_extra_dir}/opt/apps"
+    if dir_exists(deb_opt_apps_path) {
+        prefix = trust $ls -1 {deb_opt_apps_path}$
+        $cp -a {deb_opt_apps_path}/{prefix}/files/* {target_path} &&\
+        cp -a {deb_opt_apps_path}/{prefix}/entries/* {target_path}/share$ failed {
+            echo_warning("cp {deb_opt_apps_path}/{prefix} to {target_path} error")
+        }
+    }
+
+    let deb_usr_path = "{deb_extra_dir}/usr"
+    if dir_exists(deb_usr_path) {
+        $cp -a {deb_usr_path}/* {target_path}$ failed {
+            echo_warning("cp {deb_usr_path} to {target_path} error")
+        }
+    }
+
+    let deb_opt_path = "{deb_extra_dir}/opt/"
+    if dir_exists(deb_opt_path) and not dir_exists(deb_opt_apps_path) {
+        prefix = trust $ls -1 {deb_opt_path}$
+        $cp -a {deb_opt_path}/{prefix}/* {target_path}$ failed {
+            echo_warning("cp {deb_opt_path}/{prefix} to {target_path} error")
+        }
+    }
+}

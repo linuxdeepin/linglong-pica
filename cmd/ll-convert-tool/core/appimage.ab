@@ -1,0 +1,51 @@
+import { echo_error, echo_info } from "std/env"
+import { text_contains, replace } from "std/text"
+import { dir_exists, dir_create } from "std/fs"
+
+pub fun extract_appimage(appimage_path, appimage_extra_dir) {
+    echo_info("unzip appimage")
+
+    let cur_path = trust $pwd$
+    silent $cd {appimage_extra_dir} && \
+    chmod +x {appimage_path} && \
+    {appimage_path} --appimage-extract$ failed {
+        echo_error("extract appimage echo_error")
+    }
+    trust $cd {cur_path}$
+}
+
+pub fun copy_appimage_data(appimage_extra_dir, target_path) {
+    let squashfs_root_path = "{appimage_extra_dir}/squashfs-root"
+    if dir_exists(squashfs_root_path) {
+        $cp -a {squashfs_root_path}/* {target_path}$ failed {
+            echo_error("cp {squashfs_root_path} to {target_path} error")
+        }
+    }
+
+    if dir_exists("{target_path}/usr"): trust $cp -a {target_path}/usr/* {target_path}/ && rm -rf {target_path}/usr$
+
+    let applications_path = "{target_path}/share/applications"
+    if not dir_exists(applications_path): dir_create(applications_path)
+
+    let desktop_path = trust $find {applications_path} -name "*.desktop"$
+
+    if desktop_path == "" {
+        desktop_path = trust $find {target_path} -name "*.desktop"$
+        // 有人做了软链接，获取实际路径
+        desktop_path = trust $readlink -f {desktop_path}$
+        trust $mv {desktop_path} {applications_path}$
+    }
+
+    // 如果是软链接，会读取路径，如果是文件，读取为空
+    let apprun_list = ["AppRun", "AppRun.wrapped"]
+    for i, apprun in apprun_list {
+        let real_apprun = trust $readlink -n {target_path}/{apprun}$
+        if real_apprun != "" {
+            if {
+                text_contains(real_apprun, "usr/bin"): real_apprun = replace(real_apprun, "usr/", "")
+            }
+            silent trust $rm {target_path}/{apprun} && ln -s {real_apprun} {target_path}/{apprun}$
+        }
+    }
+
+}
