@@ -1,0 +1,524 @@
+import { echo_info, echo_error, echo_success, echo_warning } from "std/env"
+import { join, split_lines, replace, split, replace_regex, text_contains, lowercase } from "std/text"
+import { dir_exists, dir_create, file_exists } from "std/fs"
+
+import { get_linglong_convert_tool_name, get_distro_version, is_deepin_23, is_uos_20 } from "../tools/global.ab"
+import { tar_extract_cmd, get_linglong_convert_tool_cache_path, get_shell_scripts } from "../tools/file.ab"
+import { generator_version, ll_cli_info, generator_linglong_base_cache, get_base_cache_path, generator_linglong_yaml, ll_builder_build, ll_builder_export, ll_builder_run, check_linglong_files } from "../core/linglong.ab"
+import { mount_chroot, umount_chroot, run_command_in_chroot, chroot_apt_install } from "../core/chroot.ab"
+import { copy_deb_data, extract_deb } from "../core/deb.ab"
+import { extract_appimage, copy_appimage_data } from "../core/appimage.ab"
+import { get_deb_package_name_from_control, get_deb_description_from_control, get_deb_version_from_control } from "../core/deb.ab"
+
+fun help() {
+    echo("Convert deb or appimage or flatpak to linglong
+
+Usage:
+  {get_linglong_convert_tool_name()} convert [target] [flags]
+
+Available Target:
+  deb         Deb Package
+  appimage    Appimage Package
+  flatpak     Flatpak Package
+
+Flags:
+  --id                 linglong id (demo)
+  --base               linglong base (org.deepin.base/23.1.0)
+  --runtime            linglong runtime (org.deepin.runtime.dtk/23.1.0)
+  --source             apt source (deb https://community-packages.deepin.com/beige/ beige main commercial community)
+  --output             generator file: uab, layer
+  --version            linglong version (1.0.0.0)
+  -h, --help           help info
+")
+}
+
+fun convert_deb(file, appid, base, runtime, source, output, version): Bool {
+    let deb_extra_dir = "{get_linglong_convert_tool_cache_path()}/deb"
+
+    trust $rm -rf {deb_extra_dir}$
+    dir_create(deb_extra_dir)
+
+    let package_with_full_path=trust $readlink -f {file}$
+    if not file_exists(package_with_full_path) {
+        echo_error("{file} not found")
+    }
+
+    extract_deb(package_with_full_path, deb_extra_dir)
+
+    let distro_version = get_distro_version()
+
+    let control_file = "{deb_extra_dir}/control"
+    let package_name = get_deb_package_name_from_control(control_file)
+    let description = join(split_lines(get_deb_description_from_control(control_file)), "")
+    let deb_version = get_deb_version_from_control(control_file)
+
+    if appid == "": appid = "{package_name}.linyaps"
+    let package_version = generator_version(deb_version)
+
+    echo_info("distro version is {distro_version}
+
+Package: {package_name}
+Description: {description}
+Version: {deb_version}
+")
+
+    if base == "" {
+        if {
+            is_deepin_23() {
+                base = "org.deepin.base/23.1.0"
+            }
+
+            is_uos_20() {
+                base = "org.deepin.foundation/20.0.0"
+            }
+
+            else{
+                base = "org.deepin.base/23.1.0"
+            }
+        }
+    }
+
+    check_linglong_files(appid)
+
+    let linglong_app_file = "{appid}/files"
+
+    // 可能存在 shell 脚本，通过sh后缀判断，以及文件里的 shebang
+    // 脚本中可执行文件路径可能是 /usr 这种 需要替换，另外由于商店打包要求添加 .linyaps 后缀导致一些应用也需要修改新路径来替换。
+    let shell_scripts = get_shell_scripts(deb_extra_dir)
+    for i, script in shell_scripts {
+        trust $sed -i -E "s|/usr/|/opt/apps/{appid}/files/|g; s|/opt/apps/[^/]+/files|/opt/apps/{appid}/files|g" {script}$
+    }
+
+    // 过滤出 application 下的desktop
+    let desktops = $find {deb_extra_dir} -name "*.desktop" | grep "application"$ failed {
+        echo_warning("not found desktop from {deb_extra_dir}")
+    }
+    let package_command = ""
+
+    // 多个 desktop 循环
+    for i, desktop in split(desktops, "\n") {
+        // 去除 desktop 文件里 = 两边的空格
+        trust $sed -i 's/ *= */=/g' {desktop}$
+        // 可能一个desktop 文件有多个Exec字段，获取第一个后退出
+        let exec = $gawk -F 'Exec=' '/^Exec/ \{print \$2; exit}' {desktop}$ failed {
+            echo_warning("not get Exec= from {desktop}")
+        }
+
+        if package_command == ""{
+            if {
+                text_contains(exec, "/opt/apps/"): package_command = replace_regex(exec, "opt/apps/[^/]\+", "opt/apps/{appid}")
+                text_contains(exec, "/usr/"): package_command = replace_regex(exec, "usr", "opt/apps/{appid}/files")
+                text_contains(exec, "/opt/") and not text_contains(exec, "/apps/"): package_command = replace_regex(exec, "opt/[^/]\+", "opt/apps/{appid}/files")
+                else: package_command=exec
+            }
+
+            // 生成在 linglong.yaml 中的 Exec 需要将 双引号去除掉。否则 Exec 双引号包裹住生成到 command 字段中，不识别文件。
+            package_command = replace(package_command, "\"", "")
+        }
+
+        $sed -i -E "s|/usr/|/opt/apps/{appid}/files/|; s|/opt/apps/[^/]+/files/|/opt/apps/{appid}/files/|" {desktop}$ failed {
+            echo_info("sed {desktop} echo_error, skip")
+            continue
+        }
+        if text_contains(exec, "/opt/") and not text_contains(exec, "/apps/") {
+            $sed -i -E "s|/opt/[^/]+/|/opt/apps/{appid}/files/|" {desktop}$ failed {
+                echo_info("sed {desktop} echo_error")
+                continue
+            }
+        }
+
+        let icon = $gawk -F '=' '/^Icon/ \{print \$2; exit}' {desktop}$ failed {
+            echo_error("get Icon= from {desktop} echo_error")
+        }
+
+        icon = trust $echo {icon} | sed -E 's#.*/([^.]*)\..*\$#\\1#'$ // 移除路径中的目录部分，还会移除文件名的扩展名
+        $sed -i "/Icon*/c\\Icon={icon}" {desktop}$ failed {
+            echo_error("sed Icon error")
+        }
+    }
+
+    copy_deb_data(deb_extra_dir, linglong_app_file)
+
+    // kde 上的游戏应用将二进制放到了games目录，这里做一个判断，将games二进制软链到bin目录
+    let games_path = "{appid}/files/games"
+    if dir_exists(games_path) {
+        let games_files = trust $ls -1 {games_path}$
+        for i, arg in split(games_files, "\n") {
+            trust $ln -s ../games/{arg} {appid}/files/bin/{arg}$
+        }
+    }
+    let arch = trust $uname -m$
+
+    echo_info("generator linglng.yaml")
+    let linglong_file_path = "{appid}/linglong.yaml"
+    generator_linglong_yaml(appid, package_name, package_version, description, base, runtime, package_command, linglong_file_path)
+
+    echo_info("ll-builder build")
+    ll_builder_build(linglong_file_path)
+
+    let run_success = false
+    echo_info("ll-builder run")
+
+    let err_text = "error while loading shared libraries:"
+    let arch = trust $uname -m$
+    let res = ll_builder_run(linglong_file_path)
+
+    if text_contains(res, err_text) {
+        generator_linglong_base_cache(base)
+        let base_cache_path = get_base_cache_path(base)
+
+        let resolv_conf = "{base_cache_path}/etc/resolv.conf"
+        if file_exists(resolv_conf):  trust $sudo rm {resolv_conf}$
+        trust $sudo cp /etc/resolv.conf {base_cache_path}/etc/$
+
+        if source == "" {
+            if {
+                is_deepin_23() {
+                    trust silent $echo "deb https://community-packages.deepin.com/beige/ beige main commercial community" | sudo tee {base_cache_path}/etc/apt/sources.list 2>/dev/null$
+                }
+            }
+        } else {
+            trust silent $echo "{source}" | sudo tee {base_cache_path}/etc/apt/sources.list > /dev/null$
+        }
+        trust $cat {base_cache_path}/etc/apt/sources.list$
+
+        echo_info("mount /dev /proc /sys to {base_cache_path}")
+        mount_chroot(base_cache_path)
+
+        trust $cp {package_with_full_path} {base_cache_path}/tmp$
+
+        let file_name = trust $basename {file}$
+        $cp {file} {base_cache_path}/tmp$ failed {
+            echo_error("cp {file} to {base_cache_path}/tmp error")
+        }
+        silent trust $sudo apt-file update$
+
+        let prev_package_lib = ""
+        loop {
+            if not text_contains(res, err_text) {
+                run_success = true
+                umount_chroot(base_cache_path)
+                break
+            }
+
+            for i, arg in split_lines(res) {
+                if not text_contains(arg, err_text): continue
+
+                let lib_name = trust $echo "{arg}" | gawk -F': ' '\{print \$3}'$
+                let search_res = trust $apt-file search {lib_name}$
+                let run_count = 0 // 计算单个动态库拷贝的次数
+                let package_lib = ""
+
+                // 跳过搜索结果为deepin-wine-runtime和-cross（可能有交叉编译的包判断此部分去除）的部分,和调试符号包
+                // 部分带应用带动态库也需要忽略 /opt/apps
+                // com.jetbrains.irisking 将动态库放到了 /usr/lib/x86_64-linux-gnu/irisking-300A 也需要排除
+                // /usr/libx32 提供__atomic内置函数的支持库（x32）
+                for i, pack in split_lines(search_res) {
+                    if not text_contains(pack, "deepin-wine-runtime")
+                        and not text_contains(pack, "-cross:")
+                        and not text_contains(pack, "/usr/libx32")
+                        and not text_contains(pack, "-dbg")
+                        and not text_contains(pack, "/opt/apps")
+                        and not text_contains(pack, "com.jetbrains.irisking") {
+                        package_lib = pack
+                    }
+                }
+
+                if prev_package_lib == package_lib {
+                    echo_error("not found {package_lib}")
+                } else {
+                    prev_package_lib = package_lib
+                }
+
+                // 如果搜索不到动态库直接停止循环
+                if package_lib == "": break
+
+                let packcage_name = trust $echo "{package_lib}" | gawk -F': ' '\{print \$1}'$
+                let lib_path = trust $echo "{package_lib}" | gawk -F': ' '\{print \$2}'$
+
+                chroot_apt_install(base_cache_path, "{packcage_name}")
+                let real_path = run_command_in_chroot(base_cache_path, "readlink -f {lib_path}")
+                let copy_lib_target = "lib"
+                if text_contains(lib_path, "{arch}-linux-gnu"): copy_lib_target += "/{arch}-linux-gnu"
+
+                echo_info("copy {base_cache_path}/{lib_path} to {linglong_app_file}/{copy_lib_target}")
+                trust $cp -d {base_cache_path}/{lib_path} {linglong_app_file}/{copy_lib_target}$
+                echo_info("copy {base_cache_path}/{real_path} to {linglong_app_file}/{copy_lib_target}")
+                trust $cp {base_cache_path}/{real_path} {linglong_app_file}/{copy_lib_target}$
+
+                ll_builder_build(linglong_file_path)
+                res = ll_builder_run(linglong_file_path)
+            }
+        }
+    } else {
+        run_success = true
+    }
+
+    if run_success {
+        echo_success("ll-builder run success")
+        echo_info("ll-builder export")
+        ll_builder_export(linglong_file_path, output)
+    }
+
+    trust $rm -rf {deb_extra_dir}$
+}
+
+fun convert_appimage(file, appid, base, output, version) {
+    let appimage_extra_dir = "{get_linglong_convert_tool_cache_path()}/appimage"
+
+    trust $rm -rf {appimage_extra_dir}$
+    dir_create(appimage_extra_dir)
+
+    let package_with_full_path=trust $readlink -f {file}$
+    if not file_exists(package_with_full_path) {
+        echo_error("{file} not found")
+    }
+
+    let filename = trust $basename {package_with_full_path}$
+    let tmp_appimage = "{appimage_extra_dir}/{filename}"
+    trust $cp {package_with_full_path} {appimage_extra_dir}$
+
+    extract_appimage(tmp_appimage, appimage_extra_dir)
+
+    // appimage 应用，squashfs-root 必须有一个 desktop 文件
+    let desktop = trust $cd {appimage_extra_dir}/squashfs-root && ls -1 *.desktop$
+    // 以desktop名当作默认包名
+    let package_name = replace(desktop, ".desktop", "")
+    if appid == "": appid = "{package_name}.linyaps"
+
+    let package_version = version != ""
+        then version
+        else "1.0.0.0"
+    let description = "convert appimage {filename}"
+
+    echo_info("
+Package: {package_name}
+Description: {description}
+Version: {package_version}
+")
+
+    if base == "": base = "org.deepin.base/23.1.0"
+
+    check_linglong_files(appid)
+
+    let linglong_app_file = "{appid}/files"
+    copy_appimage_data(appimage_extra_dir, linglong_app_file)
+
+    // 可能存在 shell 脚本，通过sh后缀判断，使用 file 来判断文件类型的话，还是依赖文件头，所以直接以 sh 后缀为判断标准
+    // 脚本中可执行文件路径可能是 /usr 这种 需要替换，另外由于商店打包要求添加 .linyaps 后缀导致一些应用也需要修改新路径来替换。
+    let shell_scripts = get_shell_scripts(appimage_extra_dir)
+    for i, script in shell_scripts {
+        $sed -i -E "s|/usr/|/opt/apps/{appid}/files/|g" {script}$ failed {
+            echo_error("sed {script} echo_error")
+        }
+    }
+
+    // 有些在AppRun路径下会写固定的/usr/bin /usr/lib 路径
+    let apprun_list = ["AppRun", "AppRun.wrapped"]
+    for i, apprun in apprun_list {
+        let apprun_path = "{linglong_app_file}/{apprun}"
+        if not file_exists(apprun_path): continue
+        let apprun_file_info = trust $file {apprun_path}$
+        if text_contains(apprun_file_info, "POSIX shell script") or text_contains(apprun_file_info, "ASCII text") {
+            $sed -i -E "s|\\\{HERE\}/usr/bin/|\\\{HERE\}/bin/|g; \
+                        s|\\\{HERE\}/usr/lib/|\\\{HERE\}/lib/|g; \
+                        s|HERE/usr/bin/|HERE/bin/|g; \
+                        s|HERE/usr/lib/|HERE/lib/|g;" {apprun_path}$ failed {
+                echo_error("sed {apprun_path} echo_error")
+            }
+        }
+    }
+
+
+    let desktop_path = $find {appimage_extra_dir} -name "*.desktop"$ failed {
+        echo_warning("not found desktop from {linglong_app_file}")
+    }
+
+    let icon = $gawk -F '=' '/^Icon/ \{print \$2; exit}' {desktop_path}$ failed {
+        echo_error("get Icon= from {desktop_path} error")
+    }
+    icon = trust $echo {icon} | sed -E 's#.*/([^.]*)\..*\$#\\1#'$ // 移除路径中的目录部分，还会移除文件名的扩展名
+    $sed -i "/Icon*/c\\Icon={icon}" {desktop_path}$ failed {
+        echo_warning("sed Icon error")
+    }
+
+    let package_command = "/opt/apps/{appid}/files/AppRun"
+    let exec = $gawk -F 'Exec=' '/^Exec/ \{print \$2; exit}' {desktop_path}$ failed {
+        echo_warning("not get Exec= from {desktop_path}")
+    }
+    if text_contains(exec, "AppRun") {
+        $sed -i -E "s|AppRun|{package_command}|" {desktop_path}$ failed {
+            echo_warning("sed Exec error")
+        }
+    }
+
+    copy_appimage_data(appimage_extra_dir, linglong_app_file)
+
+    echo_info("generator linglng.yaml")
+    let linglong_file_path = "{appid}/linglong.yaml"
+    generator_linglong_yaml(appid, package_name, package_version, description, base, "", package_command, linglong_file_path)
+
+    echo_info("ll-builder build")
+    ll_builder_build(linglong_file_path)
+
+    echo_info("ll-builder run")
+    ll_builder_run(linglong_file_path)
+
+    echo_info("ll-builder export")
+    ll_builder_export(linglong_file_path, output)
+
+    trust $rm -rf {appimage_extra_dir}$
+}
+
+pub fun convert_flatpak(file, appid, base, output, version) {
+    let flatpak_extra_dir = "{get_linglong_convert_tool_cache_path()}/flatpak"
+
+    trust $rm -rf {flatpak_extra_dir}$
+    dir_create(flatpak_extra_dir)
+
+    let flatpak_repo = "{flatpak_extra_dir}/repo"
+    let flatpak_data = "{flatpak_extra_dir}/data"
+    let flatpak_files = "{flatpak_data}/files"
+
+    let package_with_full_path=trust $readlink -f {file}$
+    if not file_exists(package_with_full_path) {
+        echo_error("{file} not found")
+    }
+
+    let filename = trust $basename {package_with_full_path}$
+    let arch = trust $uname -m$
+
+    echo_info("init flatpak repo")
+    $ostree init --repo={flatpak_repo} --mode bare-user-only$ failed {
+        echo_error("init flatpak echo_error")
+    }
+
+    echo_info("import flatpak application")
+    silent $flatpak build-import-bundle {flatpak_repo} {package_with_full_path}$ failed {
+        echo_error("import {package_with_full_path} to {flatpak_repo}")
+    }
+
+    let flatpak_name = trust $ls -1 {flatpak_repo}/refs/heads/app$
+    echo_info("export {filename} data")
+    $ostree --repo={flatpak_repo} checkout app/{flatpak_name}/{arch}/stable {flatpak_data}$ failed {
+        echo_error("export {flatpak_name} data error")
+    }
+
+    if appid == "": appid = "{flatpak_name}.linyaps"
+    let package_version = version != ""
+        then version
+        else "1.0.0.0"
+    let description = "convert flatpak {flatpak_name}"
+
+    if base == "" {
+        let flatpak_runtime = trust $cat {flatpak_files}/manifest.json | jq -r '.runtime'$
+        let flatpak_runtime_list = split(flatpak_runtime, ".")
+        let flatpak_runtime_version = trust $cat {flatpak_files}/manifest.json | jq -r '.["runtime-version"]'$
+        let flatpak_runtime_version_list = split(flatpak_runtime_version, ".|-|' '")
+        let runtime_version = [Text]
+
+        for i, part in flatpak_runtime_version_list {
+            if len(runtime_version) > 2: break
+            if {
+                len(part) == 1: runtime_version += [part]
+                len(part) > 1 {
+                    part = replace_regex(part, "^0\\+", "") // 移除0前导的数字部分
+                    runtime_version += [part]
+                }
+            }
+        }
+
+        loop {
+            if len(runtime_version) > 2: break
+            runtime_version += ["0"]
+        }
+
+        base= "org.deepin.base.flatpak.{flatpak_runtime_list[1]}/{join(runtime_version, ".")}"
+    }
+
+    check_linglong_files(appid)
+
+    let linglong_app_file = "{appid}/files"
+
+    let desktops = $find {flatpak_extra_dir} -name "*.desktop" | grep "application"$ failed {
+        echo_warning("not found desktop from {flatpak_extra_dir}")
+    }
+
+    let package_command = ""
+
+    for i, desktop in split(desktops, "\n") {
+        // 可能一个desktop 文件有多个Exec字段，获取第一个后退出
+        let exec = $gawk -F 'Exec=' '/^Exec/ \{print \$2; exit}' {desktop}$ failed {
+            echo_warning("not get Exec= from {desktop}")
+        }
+
+        if package_command == ""{
+            if {
+                text_contains(exec, "/app"): package_command = replace_regex(exec, "app", "opt/apps/{appid}/files")
+
+                else {
+                    package_command=exec
+                }
+            }
+        }
+
+        $sed -i -E "s|/app/|/opt/apps/{appid}/files/|" {desktop}$ failed {
+            echo_warning("sed Exec error")
+        }
+
+        let icon = $gawk -F '=' '/^Icon/ \{print \$2; exit}' {desktop}$ failed {
+            echo_warning("get Icon= from {desktop} error")
+        }
+
+        icon = trust $echo {icon} | sed -E 's#.*/([^.]*)\..*\$#\\1#'$ // 移除路径中的目录部分，还会移除文件名的扩展名
+        $sed -i "/Icon*/c\\Icon={icon}" {desktop}$ failed {
+            echo_warning("sed Icon error")
+        }
+    }
+
+    echo_info("copy {flatpak_files} to {linglong_app_file}")
+    $cp -a {flatpak_files}/* {linglong_app_file}$ failed {
+        echo_warning("copy {flatpak_files} error")
+    }
+
+    // 创建一个 profile 文件
+    let files_etc = "{linglong_app_file}/etc"
+    if not dir_exists(files_etc): dir_create(files_etc)
+    trust $\{
+echo "#!/bin/sh
+# bind /opt/apps/\$APPID/files to /app
+ln -s "/opt/apps/\\\$LINGLONG_APPID/files" /run/linglong/app
+"
+} > {files_etc}/profile$
+
+    echo_info("generator linglng.yaml")
+    let linglong_file_path = "{appid}/linglong.yaml"
+    generator_linglong_yaml(appid, flatpak_name, package_version, description, base, "", package_command, linglong_file_path)
+
+    echo_info("ll-builder build")
+    ll_builder_build(linglong_file_path)
+
+    echo_info("ll-builder run")
+    ll_builder_run(linglong_file_path)
+
+    echo_info("ll-builder export")
+    ll_builder_export(linglong_file_path, output)
+
+    trust $rm -rf {flatpak_extra_dir}$
+}
+
+pub fun convert_cmd(target, appid, base, runtime, source, output, version, is_help) {
+    if target == "" or is_help == true {
+        help()
+    }
+
+    if {
+        text_contains(lowercase(target), ".deb"): convert_deb(target, appid, base, runtime, source, output, version)
+        text_contains(lowercase(target), ".appimage"): convert_appimage(target, appid, base, output, version)
+        text_contains(lowercase(target), ".flatpak"): convert_flatpak(target, appid, base, output, version)
+
+        else {
+            echo_error("unknown target: {target}")
+        }
+    }
+}

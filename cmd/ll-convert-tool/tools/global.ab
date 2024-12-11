@@ -1,0 +1,29 @@
+import { echo_error } from "std/env"
+import { lowercase } from "std/text"
+
+pub fun get_linglong_convert_tool_name(): Text {
+    return "ll-convert-tool"
+}
+
+pub fun get_distro_version(): Text {
+    let distro_name = $gawk -F '=' '/^NAME=/ \{ gsub(/"/,"",\$2); print \$2 }' /etc/os-release$ failed {
+        echo_error("get distro id echo_error")
+    }
+    let distro_version = $gawk -F '=' '/^VERSION=/ \{ gsub(/"/,"",\$2); print \$2 }' /etc/os-release | xargs$ failed {
+        echo_error("get distro id error")
+    }
+
+    return "{lowercase("{distro_name}-{distro_version}")}"
+}
+
+pub fun is_deepin_23(): Bool {
+    return get_distro_version() == "deepin-23"
+        then true
+        else false
+}
+
+pub fun is_uos_20(): Bool {
+    return get_distro_version() == "uos-20"
+        then true
+        else false
+}

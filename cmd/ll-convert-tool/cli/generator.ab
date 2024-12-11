@@ -1,0 +1,96 @@
+import { echo_info, echo_error, env_const_get } from "std/env"
+import { dir_exists, dir_create, file_exists } from "std/fs"
+import { split } from "std/text"
+
+import { get_linglong_convert_tool_name } from "../tools/global.ab"
+import { ll_cli_install_by_layer, get_linglong_id, get_linglong_name, get_linglong_version, get_linglong_arch, get_linglong_command, get_linglong_base, get_linglong_runtime, get_linglong_description, get_linglong_package_path, generator_linglong_yaml } from "../core/linglong.ab"
+
+fun help() {
+    echo("Generate content related to Linglong
+
+Usage:
+  {get_linglong_convert_tool_name()} generator [target] [flags]
+
+Available Target:
+  ll-file         linglong.yaml
+
+Flags:
+  -l, --layer          linglong layer file
+  -h, --help           help info
+")
+}
+
+fun generator_linglong_file(layer) {
+    let layer_with_full_path=trust $readlink -f {layer}$
+
+    echo_info("install layer")
+    ll_cli_install_by_layer(layer_with_full_path)
+
+    let package_info = trust $ll-cli info {layer_with_full_path}$
+    let package_id = get_linglong_id(package_info)
+    let package_name = get_linglong_name(package_info)
+    let package_command = get_linglong_command(package_info)
+    let package_base = get_linglong_base(package_info)
+    let package_runtime = get_linglong_runtime(package_info)
+    let package_version = get_linglong_version(package_info)
+    let package_description = get_linglong_description(package_info)
+
+    if not dir_exists(package_id): dir_create(package_id)
+
+    let package_path = get_linglong_package_path(package_id)
+
+    echo_info("copy package data")
+    $sudo cp -a {package_path} {package_id}$ failed {
+        echo_error("copy package data echo_error")
+    }
+
+    echo_info("change {package_id} owner")
+    let user = trust env_const_get("USER")
+    $sudo chown -R {user}:{user} {package_id}$ failed {
+        echo_error("Error in changing the owner of {package_id} to {user}")
+    }
+
+    // 过滤出 application 下的desktop
+    let desktops = $find {package_id}/files -name "*.desktop" | grep "application"$ failed {
+        echo_error("not found desktop from {package_id}")
+    }
+
+ // 多个 desktop 循环
+    for i, desktop in split(desktops, "\n") {
+        $sed -i "s|/usr/bin/ll-cli run {package_id} -- ||g" {desktop}$ failed {
+            echo_info("sed {desktop} echo_error, skip")
+            continue
+        }
+    }
+
+    let linglong_file_path = "{package_id}/linglong.yaml"
+    if not file_exists(package_id) {
+        echo_info("generator linglng.yaml")
+        generator_linglong_yaml(package_id, package_name, package_version, package_description, package_base, package_runtime, package_command, linglong_file_path)
+    }
+}
+
+pub fun generator_cmd(target, layer, is_help) {
+    if target == "" or is_help == true {
+        help()
+    }
+
+    if {
+        target == "ll-file" {
+            if {
+                layer != "" {
+                    generator_linglong_file(layer)
+                }
+
+                else {
+                    echo_error("not set flags, please use {get_linglong_convert_tool_name()} generator --help")
+                }
+            }
+        }
+
+
+        else {
+            echo_error("unknown target: {target}")
+        }
+    }
+}
