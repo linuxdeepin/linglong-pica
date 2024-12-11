@@ -16,6 +16,11 @@ Depends:
  linglong-builder,
  grep,
  jq,
- ostree
+ ostree,
+ python3,
+ python3-yaml,
+ flatpak,
+ apt-file,
+ coreutils,
 Description: Linglong transform package tools.
  Linglong transform package command line tool from deb.

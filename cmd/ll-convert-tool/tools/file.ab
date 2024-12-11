@@ -1,0 +1,44 @@
+import { dir_exist, create_dir, file_exist } from "std/fs"
+import { ends_with, split } from "std/text"
+import { error, echo_info, echo_warning, shell_var_get } from "std/env"
+import { array_first_index } from "std/array"
+
+// let user_home_path = unsafe shell_var_get("HOME")
+
+pub fun get_cache_path(): Text {
+    return "/tmp"
+}
+
+pub fun get_linglong_convert_tool_cache_path(): Text {
+    return "{get_cache_path()}/linglong-convert-tool"
+}
+
+pub fun tar_extract_cmd(output, tar_file): Text {
+    let flags = ""
+    if {
+        ends_with(tar_file, "tar"): flags = ""
+        ends_with(tar_file, "tar.gz"): flags = "z"
+        ends_with(tar_file, "tar.xz"): flags = "J"
+        ends_with(tar_file, "tar.bz2"): flags = "j"
+        ends_with(tar_file, "tar.lzma"): flags = "J"
+        ends_with(tar_file, "tar.zst"): flags = "I unzstd"
+        else {
+            error("Error: Don't know how to extract {tar_file}")
+        }
+    }
+    return "tar -x{flags} -C {output}"
+}
+
+pub fun check_directory_empty(path): Bool {
+    let file = unsafe $ls -A {path}$
+    echo "{file}"
+    if file == "" {
+        echo_info("{path} is empty")
+        return true
+    }
+    return false
+}
+
+pub fun check_dotfiles() {
+    if not dir_exist(get_linglong_convert_tool_cache_path()): create_dir(get_linglong_convert_tool_cache_path())
+}
