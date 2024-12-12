@@ -34,6 +34,7 @@ install:
 	install -Dm0755 cmd/ll-pica-flatpak/ll-pica-flatpak ${DESTDIR}/${PREFIX}/${BINARY_DIR}/ll-pica-flatpak
 	install -Dm0755 cmd/ll-pica-flatpak/ll-pica-flatpak-convert ${DESTDIR}/${PREFIX}/${BINARY_DIR}/ll-pica-flatpak-convert
 	install -Dm0755 cmd/ll-pica-flatpak/ll-pica-flatpak-utils ${DESTDIR}/${PREFIX}/${BINARY_DIR}/ll-pica-flatpak-utils
+	install -Dm0755 cmd/ll-convert-tool/ll-convert-tool ${DESTDIR}/${PREFIX}/${BINARY_DIR}/ll-convert-tool
 
 	install -d ${DESTDIR}/${PREFIX}/share/linglong/builder/helper/
 	install -Dm0755 misc/libexec/linglong/builder/helper/install_dep ${DESTDIR}/${PREFIX}/libexec/linglong/builder/helper/install_dep
