@@ -36,9 +36,11 @@ type Options struct {
 }
 
 type Source struct {
-	Kind   string
-	Digest string
-	Url    string
+	Kind    string
+	Digest  string
+	Url     string
+	Commit  string
+	Version string
 }
 
 func ExecAndWait(timeout int, name string, arg ...string) (stdout, stderr string, err error) {
