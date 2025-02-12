@@ -299,7 +299,10 @@ func (d *Deb) ResolveDepends(source, distro string, withDep bool) {
 }
 
 func (d *Deb) GenerateBuildScript() {
-	d.Build = append(d.Build, "#>>> auto generate by ll-pica begin")
+	d.Build = append(d.Build, []string{
+		"#>>> auto generate by ll-pica begin",
+		"set -x",
+	}...)
 
 	// 设置 linglong/sources 目录
 	d.Build = append(d.Build, []string{

@@ -65,11 +65,17 @@ sources:
 {{- range .Sources}}
   - kind: {{.Kind}}
     url: {{.Url}}
+  {{- if .Version}}
+    version: {{.Version}}
+  {{- end}}
+  {{- if eq .Kind "git" }}
+    commit: {{.Commit}}
+  {{- else}}
     digest: {{.Digest}}
+  {{- end}}
 {{end}}
 {{- end}}
 build: |
-  set -x
   {{- range $line := .Build}}
   {{- printf "\n  %s" $line}}
   {{- end}}
