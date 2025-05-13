@@ -7,6 +7,7 @@ VERSION=$2
 BUILD=$3
 LAYER=$4
 WORKDIR=$APPID
+SMALLER_APPID=$(echo "$APPID" | tr '[:upper:]' '[:lower:]')
 
 SEARCH_REF=$(grep "$REF" "$LL_PICA_FLATPAK_REFS_FILE")
 
@@ -62,8 +63,8 @@ fi
 tee "$WORKDIR"/linglong.yaml <<EOF
 version: "1"
 package:
-  id: $APPID
-  name: $APPID
+  id: $SMALLER_APPID
+  name: $SMALLER_APPID
   version: $VERSION
   kind: app
   description: flatpak runtime environment on linglong
@@ -95,3 +96,4 @@ then
         ll-builder export
     fi
 fi
+
