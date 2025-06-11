@@ -75,6 +75,14 @@ func runConvert(options *convertOptions) error {
 		return fmt.Errorf("hash option is required when use url option")
 	}
 
+	if options.packageName == "" {
+		options.packageName = options.packageId
+	}
+
+	if options.packageDescription == "" {
+		options.packageDescription = "converted from appimage"
+	}
+
 	var suffix string
 	if options.appimageFile != "" {
 		suffix = path.Ext(options.appimageFile)
