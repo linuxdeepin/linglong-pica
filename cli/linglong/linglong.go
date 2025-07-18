@@ -27,6 +27,7 @@ type LinglongBuilder struct {
 	Sources    []comm.Source `yaml:"sources"`
 	Build      []string      `yaml:"-"`
 	BuildInput string        `yaml:"build"` // 用来接收build字段，从yaml文件读入的值
+	BuildExt   BuildExt      `yaml:"buildext"`
 }
 
 type LinglongCli struct {
@@ -41,6 +42,15 @@ type Package struct {
 	Version     string `yaml:"version"`
 	Kind        string `yaml:"kind"`
 	Description string `yaml:"description"`
+}
+
+type BuildExt struct {
+	Apt AptExt `yaml:"apt"`
+}
+
+type AptExt struct {
+	BuildDepends []string `yaml:"build_depends"`
+	Depends      []string `yaml:"depends"`
 }
 
 const LinglongBuilderTMPL = `version: "1"
@@ -79,6 +89,22 @@ build: |
   {{- range $line := .Build}}
   {{- printf "\n  %s" $line}}
   {{- end}}
+{{- if or (gt (len .BuildExt.Apt.BuildDepends) 0) (gt (len .BuildExt.Apt.Depends) 0) }}
+buildext:
+  apt:
+    {{- if .BuildExt.Apt.BuildDepends }}
+    build_depends:
+      {{- range .BuildExt.Apt.BuildDepends }}
+      - {{.}}
+      {{- end }}
+    {{- end }}
+    {{- if .BuildExt.Apt.Depends }}
+    depends:
+      {{- range .BuildExt.Apt.Depends }}
+      - {{.}}
+      {{- end }}
+    {{- end }}
+{{- end }}
 `
 
 func NewLinglongBuilder() *LinglongBuilder {
@@ -254,8 +280,29 @@ func (cli *LinglongCli) GetRuntimeInsPack() []string {
 }
 
 func (cli *LinglongCli) LinglongCliInstall(appid, version string) {
+	// 先检查是否已安装
+	if cli.IsPackageInstalled(appid, version) {
+		log.Logger.Infof("Package %s/%s already installed, skipping", appid, version)
+		return
+	}
+
+	// 如果未安装才执行安装
 	if ret, _, err := comm.ExecAndWait(1<<20, "sh", "-c",
 		fmt.Sprintf("ll-cli install %s/%s", appid, version)); err != nil {
 		log.Logger.Infof("out: %+v", ret)
 	}
+}
+
+// 检查包是否已安装
+func (cli *LinglongCli) IsPackageInstalled(appid, version string) bool {
+	// v25后base runtime分开，这里整合 base 和 runtime的输出，然后统一查找
+	if ret, _, err := comm.ExecAndWait(10, "sh", "-c",
+		fmt.Sprintf("ll-cli list --type=base && ll-cli list --type=runtime | grep %s", appid)); err == nil {
+		// 检查输出中是否包含指定的appid和version
+		if strings.Contains(ret, appid) && strings.Contains(ret, version) {
+			return true
+		}
+	}
+
+	return false
 }

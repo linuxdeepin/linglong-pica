@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 	"pkg.deepin.com/linglong/pica/cli/comm"
 	"pkg.deepin.com/linglong/pica/cli/config"
-	"pkg.deepin.com/linglong/pica/cli/deb"
 	"pkg.deepin.com/linglong/pica/cli/linglong"
 	"pkg.deepin.com/linglong/pica/tools/fs"
 	"pkg.deepin.com/linglong/pica/tools/log"
@@ -71,20 +70,8 @@ func runAdep(options *adepOptions) error {
 	builder.Package.Description = strings.TrimSuffix(builder.Package.Description, "\n")
 
 	depList := strings.Split(options.deps, ",")
-	for _, dep := range depList {
-		deb := deb.Deb{
-			Name:         dep,
-			Depends:      dep,
-			Architecture: packConfig.Runtime.Arch,
-			Path:         filepath.Join(comm.LLSourcePath(filepath.Dir(options.path)), "app"),
-		}
-		// 添加包本身
-		deb.GetPackageUrl(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion, packConfig.Runtime.Arch)
-		deb.ResolveDepends(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion, options.withDep)
-		builder.Sources = append(builder.Sources, deb.Sources...)
-	}
-	// 对 linglong.yaml 依赖去重
-	builder.Sources = comm.RemoveExcessDeps(builder.Sources)
+	allDepends := append(builder.BuildExt.Apt.Depends, depList...)
+	builder.BuildExt.Apt.Depends = comm.RemoveExcessDepends(allDepends)
 	if builder.CreateLinglongYaml(path) {
 		log.Logger.Infof("generate %s success.", comm.LinglongYaml)
 	} else {
