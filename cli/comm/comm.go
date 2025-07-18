@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"pkg.deepin.com/linglong/pica/tools/fs"
@@ -190,6 +191,23 @@ func RemoveExcessDeps(sources []Source) []Source {
 		if _, ok := uniqueMap[string(key)]; !ok {
 			uniqueMap[string(key)] = true
 			result = append(result, pkg)
+		}
+	}
+	return result
+}
+
+// 对buildext中depends/build_depends数组去重，去空白，去空项
+func RemoveExcessDepends(depends []string) []string {
+	m := make(map[string]struct{})
+	var result []string
+	for _, v := range depends {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		if _, exists := m[v]; !exists {
+			m[v] = struct{}{}
+			result = append(result, v)
 		}
 	}
 	return result
