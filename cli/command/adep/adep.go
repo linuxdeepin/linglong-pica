@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 	"pkg.deepin.com/linglong/pica/cli/comm"
 	"pkg.deepin.com/linglong/pica/cli/config"
-	"pkg.deepin.com/linglong/pica/cli/deb"
 	"pkg.deepin.com/linglong/pica/cli/linglong"
 	"pkg.deepin.com/linglong/pica/tools/fs"
 	"pkg.deepin.com/linglong/pica/tools/log"
@@ -40,71 +39,6 @@ func NewADepCommand() *cobra.Command {
 	flags.StringVarP(&options.path, "path", "p", "linglong.yaml", "path to linglong.yaml")
 	flags.BoolVar(&options.withDep, "withDep", false, "Add dependency tree")
 	return cmd
-}
-
-// generateDepProcessScript 生成依赖包处理脚本（不包含主包处理逻辑）
-func generateDepProcessScript() []string {
-	return []string{
-		"",
-		"# Process dependency packages added by ll-pica adep",
-		"SOURCES=\"/project/linglong/sources\"",
-		"",
-		"# Extract and process dependency deb packages",
-		"OUT_DIR=\"$(mktemp -d)\"",
-		"DEPS_LIST=\"$OUT_DIR/DEPS.list\"",
-		"find $SOURCES -type f -name \"*.deb\" > $DEPS_LIST",
-		"DATA_LIST_DIR=\"$OUT_DIR/data\"",
-		"mkdir -p /tmp/deb-source-file",
-		"",
-		"",
-		"while IFS= read -r file",
-		"do",
-		"    echo \"Processing dependency: $file\"",
-		"    CONTROL_FILE=$(ar -t $file | grep control.tar)",
-		"    ar -x \"$file\" $CONTROL_FILE",
-		"    PKG=$(tar -xf $CONTROL_FILE ./control -O | grep '^Package:' | awk '{print $2}')",
-		"    rm $CONTROL_FILE || true",
-		"    DATA_FILE=$(ar -t $file | grep data.tar)",
-		"    ar -x $file $DATA_FILE",
-		"    mkdir -p $DATA_LIST_DIR",
-		"    tar -xvf $DATA_FILE -C $DATA_LIST_DIR >> \"/tmp/deb-source-file/$(basename $file).list\"",
-		"    rm -rf $DATA_FILE 2>/dev/null || true",
-		"    rm -r ${DATA_LIST_DIR:?}/usr/share/applications* 2>/dev/null || true",
-		"    sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/lib/$TRIPLET/pkgconfig/*.pc 2>/dev/null || true",
-		"    sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/share/pkgconfig/*.pc 2>/dev/null || true",
-		"    find $DATA_LIST_DIR -type l | while IFS= read -r file; do",
-		"        Link_Target=$(readlink $file)",
-		"        if echo $Link_Target | grep -q ^/lib && ! [ -f $Link_Target ]; then",
-		"            ln -sf $PREFIX$Link_Target $file",
-		"            echo \"    FIX LINK $Link_Target => $PREFIX$Link_Target\"",
-		"        fi",
-		"    done",
-		"    find $DATA_LIST_DIR -type f -exec file {} \\; | grep 'shared object' | awk -F: '{print $1}' | while IFS= read -r file; do",
-		"        runpath=$(readelf -d $file | grep RUNPATH |  awk '{print $NF}')",
-		"        if echo $runpath | grep -q '^\\[/'; then",
-		"            runpath=${runpath#[}",
-		"            runpath=${runpath%]}",
-		"            newRunpath=${runpath//usr\\/lib/runtime\\/lib}",
-		"            newRunpath=${newRunpath//usr/runtime}",
-		"            patchelf --set-rpath $newRunpath $file",
-		"            echo \"    FIX RUNPATH $file $runpath => $newRunpath\"",
-		"        fi",
-		"    done",
-		"    # 只复制usr目录下的文件",
-		"    cp -rP $DATA_LIST_DIR/usr/* $PREFIX/ 2>/dev/null || true",
-		"done < \"$DEPS_LIST\"",
-		"rm -r $OUT_DIR || true",
-	}
-}
-
-// hasDepProcessing 检查build脚本中是否已经包含依赖处理逻辑
-func hasDepProcessing(buildLines []string) bool {
-	for _, line := range buildLines {
-		if strings.Contains(line, "Process dependency packages") {
-			return true
-		}
-	}
-	return false
 }
 
 func runAdep(options *adepOptions) error {
@@ -135,38 +69,9 @@ func runAdep(options *adepOptions) error {
 	// 读入的 Description 中包含换行符，需要替换掉
 	builder.Package.Description = strings.TrimSuffix(builder.Package.Description, "\n")
 
-	// 检查是否已经有依赖处理脚本
-	alreadyHasDepProcessing := hasDepProcessing(builder.Build)
-
 	depList := strings.Split(options.deps, ",")
-	var allNewSources []comm.Source
-
-	for _, dep := range depList {
-		deb := deb.Deb{
-			Name:         dep,
-			Depends:      dep,
-			Architecture: packConfig.Runtime.Arch,
-			Path:         filepath.Join(comm.LLSourcePath(filepath.Dir(options.path)), "app"),
-		}
-		// 添加包本身
-		deb.GetPackageUrl(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion, packConfig.Runtime.Arch)
-		deb.ResolveDepends(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion, options.withDep)
-		allNewSources = append(allNewSources, deb.Sources...)
-	}
-
-	// 如果有新的依赖包且还没有处理脚本，则添加依赖处理脚本
-	if len(allNewSources) > 0 && !alreadyHasDepProcessing {
-		// 生成依赖处理脚本
-		depProcessScript := generateDepProcessScript()
-		builder.Build = append(builder.Build, depProcessScript...)
-	}
-
-	// 添加所有新的sources
-	builder.Sources = append(builder.Sources, allNewSources...)
-
-	// 对 linglong.yaml 依赖去重
-	builder.Sources = comm.RemoveExcessDeps(builder.Sources)
-
+	allDepends := append(builder.BuildExt.Apt.Depends, depList...)
+	builder.BuildExt.Apt.Depends = comm.RemoveExcessDepends(allDepends)
 	if builder.CreateLinglongYaml(path) {
 		log.Logger.Infof("generate %s success.", comm.LinglongYaml)
 	} else {

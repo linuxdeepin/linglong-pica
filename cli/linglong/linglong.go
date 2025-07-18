@@ -27,6 +27,7 @@ type LinglongBuilder struct {
 	Sources    []comm.Source `yaml:"sources"`
 	Build      []string      `yaml:"-"`
 	BuildInput string        `yaml:"build"` // 用来接收build字段，从yaml文件读入的值
+	BuildExt   BuildExt      `yaml:"buildext"`
 }
 
 type LinglongCli struct {
@@ -41,6 +42,15 @@ type Package struct {
 	Version     string `yaml:"version"`
 	Kind        string `yaml:"kind"`
 	Description string `yaml:"description"`
+}
+
+type BuildExt struct {
+	Apt AptExt `yaml:"apt"`
+}
+
+type AptExt struct {
+	BuildDepends []string `yaml:"build_depends"`
+	Depends      []string `yaml:"depends"`
 }
 
 const LinglongBuilderTMPL = `version: "1"
@@ -79,6 +89,22 @@ build: |
   {{- range $line := .Build}}
   {{- printf "\n  %s" $line}}
   {{- end}}
+{{- if or (gt (len .BuildExt.Apt.BuildDepends) 0) (gt (len .BuildExt.Apt.Depends) 0) }}
+buildext:
+  apt:
+    {{- if .BuildExt.Apt.BuildDepends }}
+    build_depends:
+      {{- range .BuildExt.Apt.BuildDepends }}
+      - {{.}}
+      {{- end }}
+    {{- end }}
+    {{- if .BuildExt.Apt.Depends }}
+    depends:
+      {{- range .BuildExt.Apt.Depends }}
+      - {{.}}
+      {{- end }}
+    {{- end }}
+{{- end }}
 `
 
 func NewLinglongBuilder() *LinglongBuilder {
