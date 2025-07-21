@@ -106,11 +106,7 @@ func (d *Deb) CheckDebHash() bool {
 		d.Hash = hash
 		return false
 	}
-	if hash == d.Hash {
-		return true
-	}
-
-	return true
+	return hash == d.Hash
 }
 
 // FetchDebFile
