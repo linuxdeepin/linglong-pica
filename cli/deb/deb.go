@@ -33,10 +33,6 @@ import (
 	"pkg.deepin.com/linglong/pica/tools/log"
 )
 
-var (
-	delMap = make(map[string]bool) // 用来记录跳过的包的映射
-)
-
 type Deb struct {
 	Name         string
 	Id           string
@@ -56,6 +52,7 @@ type Deb struct {
 	Command      []string
 	Sources      []comm.Source
 	Build        []string
+	DelMap       map[string]bool // 用来记录跳过的包的映射，每个Deb实例独立
 }
 
 func (d *Deb) GetPackageUrl(source, distro, arch string) string {
@@ -238,12 +235,13 @@ func (d *Deb) ResolveDepends(source, distro string, withDep bool) {
 	// 过滤掉 runtime 中安装过的包
 	skipPackage = append(skipPackage, cli.GetRuntimeInsPack()...)
 	filterSlice := strings.Split(filter, ",")
+	d.DelMap = make(map[string]bool) // 初始化为每个Deb独立的map
 	for _, item := range skipPackage {
-		delMap[item] = true
+		d.DelMap[item] = true
 	}
 	var result []string
 	for _, item := range filterSlice {
-		if !delMap[item] {
+		if !d.DelMap[item] {
 			result = append(result, item)
 		}
 	}
@@ -597,7 +595,7 @@ func (d *Deb) GetPackageList(distro string) {
 					var e error
 
 					// 跳过黑名单
-					if delMap[strings.Split(task.File.Filename, "_")[0]] {
+					if d.DelMap[strings.Split(task.File.Filename, "_")[0]] {
 						continue
 					}
 
