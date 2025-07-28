@@ -246,14 +246,29 @@ func (cli *LinglongCli) GetBaseInsPack() []string {
 	config.ReadConfigJson()
 
 	cli.LinglongCliInstall(config.BaseId, config.BaseVersion)
-	// 获取 base 的 info
-	cli.LinglongCliInfo(config.BaseId)
+
+	// 先检查文件是否存在
+	commit := comm.GetBaseRuntimeCommit(config.BaseId, config.BaseVersion)
+	if commit == "" {
+		log.Logger.Warnf("failed to get base commit for %s/%s", config.BaseId, config.BaseVersion)
+		return packages
+	}
+
+	statusFile := fmt.Sprintf("/var/lib/linglong/layers/%s/files/var/lib/dpkg/status", commit)
+	if ret, _ := fs.CheckFileExits(statusFile); !ret {
+		log.Logger.Warnf("status file not found: %s", statusFile)
+		return packages
+	}
+
 	if ret, msg, err := comm.ExecAndWait(60, "sh", "-c",
-		fmt.Sprintf("cat /var/lib/linglong/layers/%s/%s/%s/%s/runtime/files/var/lib/dpkg/status | awk -F': ' '/^Package: /{a=a\",\"$2} END{sub(/^,/,\"\",a);printf a}'",
-			cli.Channel, config.BaseId, cli.Version, cli.Arch[0])); err != nil {
+		fmt.Sprintf("cat %s | awk -F': ' '/^Package: /{a=a\",\"$2} END{sub(/^,/,\"\",a);printf a}'", statusFile)); err != nil {
 		log.Logger.Warnf("cat dpkg/status error: %s", msg)
+		return packages
 	} else {
-		packages = append(packages, strings.Split(ret, ",")...)
+		// 只有当 ret 不为空时才处理
+		if strings.TrimSpace(ret) != "" {
+			packages = append(packages, strings.Split(ret, ",")...)
+		}
 	}
 	return packages
 }
@@ -267,14 +282,29 @@ func (cli *LinglongCli) GetRuntimeInsPack() []string {
 	config.ReadConfigJson()
 
 	cli.LinglongCliInstall(config.Id, config.Version)
-	// 获取 runtime 的 info
-	cli.LinglongCliInfo(config.Id)
+
+	// 先检查文件是否存在
+	commit := comm.GetBaseRuntimeCommit(config.Id, config.Version)
+	if commit == "" {
+		log.Logger.Warnf("failed to get runtime commit for %s/%s", config.Id, config.Version)
+		return packages
+	}
+
+	packagesFile := fmt.Sprintf("/var/lib/linglong/layers/%s/files/packages.list", commit)
+	if ret, _ := fs.CheckFileExits(packagesFile); !ret {
+		log.Logger.Warnf("packages.list file not found: %s", packagesFile)
+		return packages
+	}
+
 	if ret, msg, err := comm.ExecAndWait(60, "sh", "-c",
-		fmt.Sprintf("cat /var/lib/linglong/layers/%s/%s/%s/%s/runtime/files/packages.list | awk -F': ' '/^Package: /{a=a\",\"$2} END{sub(/^,/,\"\",a);printf a}'",
-			cli.Channel, config.Id, cli.Version, cli.Arch[0])); err != nil {
+		fmt.Sprintf("cat %s | awk -F': ' '/^Package: /{a=a\",\"$2} END{sub(/^,/,\"\",a);printf a}'", packagesFile)); err != nil {
 		log.Logger.Warnf("cat runtime/package.list error: %s", msg)
+		return packages
 	} else {
-		packages = append(packages, strings.Split(ret, ",")...)
+		// 只有当 ret 不为空时才处理
+		if strings.TrimSpace(ret) != "" {
+			packages = append(packages, strings.Split(ret, ",")...)
+		}
 	}
 	return packages
 }
