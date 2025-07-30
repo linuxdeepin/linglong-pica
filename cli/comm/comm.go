@@ -29,6 +29,7 @@ const (
 	PackageDir     = "package"
 	AptlyDir       = ".aptly"
 	LlSourceDir    = "linglong/sources"
+	StatesJson     = "/var/lib/linglong/states.json"
 )
 
 type Options struct {
