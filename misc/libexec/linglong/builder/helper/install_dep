@@ -35,12 +35,13 @@ cat /packages.list /runtime/packages.list "$PREFIX/packages.list" "$project_dir/
 # 遍历文件列表
 while IFS= read -r deb_file; do
     # 输出deb名，但不换行，便于在包名后面加skip
-    echo -n "$deb_file"
+    echo -n "Extracting $deb_file"
     # 提取control文件
     control_file=$(ar -t "$deb_file" | grep control.tar)
     ar -x "$deb_file" "$control_file"
     # 获取包名
     pkg=$(tar -xf "$control_file" ./control -O | grep '^Package:' | awk '{print $2}')
+    version=$(tar -xf "$control_file" ./control -O | grep '^Version:' | awk '{print $2}')
     rm "$control_file"
     # 如果在base和runtime中已安装，并且不包含在include（强制安装）列表则跳过安装，否则安装到$PREFIX目录
     if grep -q "^Package: $pkg$" "$exclude_list_file" && ! grep -q "^$pkg$" "$include_list_file"; then
@@ -49,7 +50,7 @@ while IFS= read -r deb_file; do
         continue
     fi
     # 记录到 packages.list
-    echo "Package: $pkg" >>"$PREFIX/packages.list"
+    echo "Package: $pkg $version" >>"$PREFIX/packages.list"
     # 换行
     echo ""
     # 缓存解压后的data.tar文件，便于在下次使用时，加快安装速度
@@ -123,26 +124,34 @@ while IFS= read -r deb_file; do
 done <"$deb_list_file"
 
 # 修复相对路径的软链接(dev包内的软连接尝试修复指向base)
-find "$target" -type l | while IFS= read -r file; do
+find "$target/lib" -type l | while IFS= read -r file; do
     # 获取链接的绝对路径
     linkTarget=$(readlink -m "$file")
-    # 如果链接指向的文件不存在
-    if [ ! -e "$linkTarget" ]; then
-        # 去掉前缀查看/lib下是否存在
-        linkTarget="${linkTarget#$target}"
-        if [ -e "$linkTarget" ]; then
-            ln -sf "$linkTarget" "$file"
-            echo "    FIX LINK" "$file" "=>" "$target$linkTarget"
-        fi
-        # 添加usr前缀查看/usr/lib下是否存在
-        linkTarget="/usr$target"
-        if [ -e "$linkTarget" ]; then
-            ln -sf "$target$linkTarget" "$file"
-            echo "    FIX LINK" "$file" "=>" "$target$linkTarget"
-        fi
+    # 只处理无效软链接
+    if [ -e "$linkTarget" ]; then
+        continue
     fi
+    # 查看/usr/lib下是否存在
+    baseLinkTarget="/usr${linkTarget#$target}"
+    if [ -e "$baseLinkTarget" ]; then
+        ln -sf "$baseLinkTarget" "$file"
+        echo "    FIX LINK" "$file" "=>" "$baseLinkTarget"
+        continue
+    fi
+    # 查看/lib下是否存在
+    baseLinkTarget="${linkTarget#$target}"
+    if [ -e "$baseLinkTarget" ]; then
+        ln -sf "$baseLinkTarget" "$file"
+        echo "    FIX LINK" "$file" "=>" "$baseLinkTarget"
+        continue
+    fi
+    echo "  $file -> $linkTarget" >> "$out_dir/invalid_link"
 done
 
+if [ -s "$out_dir/invalid_link" ]; then
+    echo "Warning: Invalid symbolic link"
+    cat "$out_dir/invalid_link"
+fi
 # 更新ld.so.cache
 if [ -n "$LINGLONG_LD_SO_CACHE" ]; then
     ldconfig -C "$LINGLONG_LD_SO_CACHE"
