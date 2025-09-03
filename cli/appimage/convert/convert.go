@@ -99,7 +99,7 @@ func runConvert(options *convertOptions) error {
 	var build []string
 
 	build = append(build, []string{
-		"cd linglong/sources",
+		"cd sources",
 		"APPIMAGE=$(find . -regex '.*\\.AppImage\\|.*appimage' -exec basename {} \\;)",
 		"chmod +x ${APPIMAGE}",
 		"./${APPIMAGE} --appimage-extract",
@@ -159,19 +159,19 @@ func runConvert(options *convertOptions) error {
 		log.Logger.Errorf("create workdir %s: failed: %s", workDir, err)
 	}
 
-	// 复制appimage文件到linglong/sources目录
+	// 复制appimage文件到工作目录下的sources目录
 	if options.appimageFile != "" {
 		data, err := os.ReadFile(options.appimageFile)
 		if err != nil {
 			return err
 		}
 
-		err = os.MkdirAll(comm.LLSourcePath(workDir), 0755)
+		err = os.MkdirAll(comm.LocalPackageSourceDir(workDir), 0755)
 		if err != nil {
 			return err
 		}
 
-		destinationFilePath := filepath.Join(comm.LLSourcePath(workDir), filepath.Base(options.appimageFile))
+		destinationFilePath := filepath.Join(comm.LocalPackageSourceDir(workDir), filepath.Base(options.appimageFile))
 		err = os.WriteFile(destinationFilePath, data, 0644)
 		if err != nil {
 			return err

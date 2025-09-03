@@ -300,9 +300,10 @@ func (d *Deb) GenerateBuildScript() {
 
 	// 设置 linglong/sources 目录
 	d.Build = append(d.Build, []string{
+		"# set the local sources directory",
+		fmt.Sprintf("LOCAL_SOURCES=\"%s\"", comm.LlLocalSourceDir),
 		"# set the linglong/sources directory",
 		fmt.Sprintf("SOURCES=\"%s\"", comm.LlSourceDir),
-		fmt.Sprintf("dpkg-deb -x $SOURCES/%s $SOURCES/%s", filepath.Base(d.Filename), d.Name),
 	}...)
 
 	d.PackageKind = "app"
@@ -357,10 +358,10 @@ func (d *Deb) GenerateBuildScript() {
 		execLine = pattern.ReplaceAllLiteralString(execLine, fmt.Sprintf("/opt/apps/%s/files/", d.Id))
 
 		iconValue = fs.TransIconToLl(desktopData["Desktop Entry"]["Icon"])
-		index := strings.Index(desktop, comm.LlSourceDir)
+		index := strings.Index(desktop, comm.LlLocalSourceDir)
 		if index != -1 {
 			// 如果找到了子串，则移除它及其之前的部分
-			modiDesktopPath := "$SOURCES" + desktop[index+len(comm.LlSourceDir):]
+			modiDesktopPath := "$LOCAL_SOURCES" + desktop[index+len(comm.LlLocalSourceDir):]
 			d.Build = append(d.Build, []string{
 				"# modify desktop, Exec and Icon should not contanin absolut paths",
 				fmt.Sprintf("sed -i '/Exec*/c\\Exec=%s' %s", execLine, modiDesktopPath),
@@ -377,10 +378,10 @@ func (d *Deb) GenerateBuildScript() {
 			if execFile == "" {
 				continue
 			}
-			index := strings.Index(execFile, comm.LlSourceDir)
+			index := strings.Index(execFile, comm.LlLocalSourceDir)
 			if index != -1 {
 				// 如果找到了子串，则移除它及其之前的部分
-				modiExecFilePath := "$SOURCES" + execFile[index+len(comm.LlSourceDir):]
+				modiExecFilePath := "$LOCAL_SOURCES" + execFile[index+len(comm.LlLocalSourceDir):]
 				d.Build = append(d.Build, []string{
 					fmt.Sprintf("sed -i 's/%s/%s/g' %s", d.Name, d.Id, modiExecFilePath),
 				}...)
@@ -445,8 +446,8 @@ func (d *Deb) GenerateBuildScript() {
 		d.Build = append(d.Build, []string{
 			"",
 			"# move files",
-			fmt.Sprintf("cp -r $SOURCES/%s/opt/apps/%s/entries/* $PREFIX/share", d.Name, realPackageName),
-			fmt.Sprintf("cp -rf $SOURCES/%s/opt/apps/%s/files/* $PREFIX", d.Name, realPackageName),
+			fmt.Sprintf("cp -r $LOCAL_SOURCES/%s/opt/apps/%s/entries/* $PREFIX/share", d.Name, realPackageName),
+			fmt.Sprintf("cp -rf $LOCAL_SOURCES/%s/opt/apps/%s/files/* $PREFIX", d.Name, realPackageName),
 		}...)
 	}
 
@@ -454,7 +455,7 @@ func (d *Deb) GenerateBuildScript() {
 		d.Build = append(d.Build, []string{
 			"",
 			"# move files",
-			fmt.Sprintf("cp -r $SOURCES/%s/usr/* $PREFIX", d.Name),
+			fmt.Sprintf("cp -r $LOCAL_SOURCES/%s/usr/* $PREFIX", d.Name),
 		}...)
 	}
 
@@ -598,16 +599,6 @@ func (d *Deb) GetPackageList(distro string) {
 					if d.DelMap[strings.Split(task.File.Filename, "_")[0]] {
 						continue
 					}
-
-					// 构造下载路径
-					task.TempDownPath = filepath.Join(filepath.Dir(d.Path), task.File.Filename)
-					// 下载文件
-					e = context.Downloader().DownloadWithChecksum(
-						context,
-						repo.PackageURL(task.File.DownloadURL()).String(),
-						task.TempDownPath,
-						&task.File.Checksums,
-						false)
 
 					source := comm.Source{
 						Kind:   "file",
