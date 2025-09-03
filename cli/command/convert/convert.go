@@ -129,11 +129,11 @@ func runConvert(options *convertOptions) error {
 			if packConfig.File.Deb[idx].Ref == "" {
 				log.Logger.Fatalf("get package url failed")
 			}
-			packConfig.File.Deb[idx].Path = filepath.Join(comm.LLSourcePath(appPath), filepath.Base(packConfig.File.Deb[idx].Ref))
+			packConfig.File.Deb[idx].Path = filepath.Join(comm.LocalPackageSourceDir(appPath), filepath.Base(packConfig.File.Deb[idx].Ref))
 		}
 		// fetch deb file
 		if len(packConfig.File.Deb[idx].Ref) > 0 {
-			packConfig.File.Deb[idx].Path = filepath.Join(comm.LLSourcePath(appPath), filepath.Base(packConfig.File.Deb[idx].Ref))
+			packConfig.File.Deb[idx].Path = filepath.Join(comm.LocalPackageSourceDir(appPath), filepath.Base(packConfig.File.Deb[idx].Ref))
 
 			if ret, _ := fs.CheckFileExits(packConfig.File.Deb[idx].Path); ret {
 				if hash := packConfig.File.Deb[idx].CheckDebHash(); hash {

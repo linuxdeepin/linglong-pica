@@ -21,15 +21,16 @@ import (
 )
 
 const (
-	PicaConfigDir  = ".pica"
-	PicaConfigJson = "config.json"
-	packageYaml    = "package.yaml"
-	LinglongYaml   = "linglong.yaml"
-	Workdir        = "linglong-pica"
-	PackageDir     = "package"
-	AptlyDir       = ".aptly"
-	LlSourceDir    = "linglong/sources"
-	StatesJson     = "/var/lib/linglong/states.json"
+	PicaConfigDir    = ".pica"
+	PicaConfigJson   = "config.json"
+	packageYaml      = "package.yaml"
+	LinglongYaml     = "linglong.yaml"
+	Workdir          = "linglong-pica"
+	PackageDir       = "package"
+	AptlyDir         = ".aptly"
+	LlSourceDir      = "linglong/sources"
+	LlLocalSourceDir = "sources"
+	StatesJson       = "/var/lib/linglong/states.json"
 )
 
 type Options struct {
@@ -162,7 +163,12 @@ func AptlyCachePath() string {
 	return filepath.Join(os.Getenv("HOME"), AptlyDir)
 }
 
-// 返回 linglong.yaml 中定义的 deb 包缓存路径
+// 返回转换过程中定义的离线包缓存路径
+func LocalPackageSourceDir(path string) string {
+	return filepath.Join(path, LlLocalSourceDir)
+}
+
+// 返回 linglong.yaml 中下载的源码(deb包）的路径
 func LLSourcePath(path string) string {
 	return filepath.Join(path, LlSourceDir)
 }
