@@ -301,7 +301,7 @@ func (d *Deb) GenerateBuildScript() {
 	// 设置 linglong/sources 目录
 	d.Build = append(d.Build, []string{
 		"# set the local sources directory",
-		fmt.Sprintf("LOCAL_SOURCES=\"%s\"", comm.LlLocalSourceDir),
+		fmt.Sprintf("EXTERNAL_DEB_SOURCES=\"%s\"", comm.LlLocalSourceDir),
 		"# set the linglong/sources directory",
 		fmt.Sprintf("SOURCES=\"%s\"", comm.LlSourceDir),
 	}...)
@@ -361,7 +361,7 @@ func (d *Deb) GenerateBuildScript() {
 		index := strings.Index(desktop, comm.LlLocalSourceDir)
 		if index != -1 {
 			// 如果找到了子串，则移除它及其之前的部分
-			modiDesktopPath := "$LOCAL_SOURCES" + desktop[index+len(comm.LlLocalSourceDir):]
+			modiDesktopPath := "$EXTERNAL_DEB_SOURCES" + desktop[index+len(comm.LlLocalSourceDir):]
 			d.Build = append(d.Build, []string{
 				"# modify desktop, Exec and Icon should not contanin absolut paths",
 				fmt.Sprintf("sed -i '/Exec*/c\\Exec=%s' %s", execLine, modiDesktopPath),
@@ -381,19 +381,25 @@ func (d *Deb) GenerateBuildScript() {
 			index := strings.Index(execFile, comm.LlLocalSourceDir)
 			if index != -1 {
 				// 如果找到了子串，则移除它及其之前的部分
-				modiExecFilePath := "$LOCAL_SOURCES" + execFile[index+len(comm.LlLocalSourceDir):]
+				modiExecFilePath := "$EXTERNAL_DEB_SOURCES" + execFile[index+len(comm.LlLocalSourceDir):]
 				d.Build = append(d.Build, []string{
 					fmt.Sprintf("sed -i 's/%s/%s/g' %s", d.Name, d.Id, modiExecFilePath),
 				}...)
 			}
 		}
 	}
+	
+	if len(d.Sources) > 0 {
+		d.Build = append(d.Build, []string{
+			"find $SOURCES -type f -name \"*.deb\" >> $DEPS_LIST || exit 1",
+		}...)
+	}
 
 	// 玲珑内部的 /opt/apps 路径拼接的是 linglong-id
 	d.Build = append(d.Build, []string{
 		"OUT_DIR=\"$(mktemp -d)\"", // 临时目录，处理完内容再移动到$PREFIX
 		"DEPS_LIST=\"$OUT_DIR/DEPS.list\"",
-		"find $SOURCES -type f -name \"*.deb\" > $DEPS_LIST",
+		"find $EXTERNAL_DEB_SOURCES -type f -name \"*.deb\" >> $DEPS_LIST || exit 1",
 		"DATA_LIST_DIR=\"$OUT_DIR/data\"", // 包数据存放的临时目录
 		"mkdir -p /tmp/deb-source-file",   // 用于记录安装的所有文件来自哪个包
 		"while IFS= read -r file",
@@ -446,8 +452,8 @@ func (d *Deb) GenerateBuildScript() {
 		d.Build = append(d.Build, []string{
 			"",
 			"# move files",
-			fmt.Sprintf("cp -r $LOCAL_SOURCES/%s/opt/apps/%s/entries/* $PREFIX/share", d.Name, realPackageName),
-			fmt.Sprintf("cp -rf $LOCAL_SOURCES/%s/opt/apps/%s/files/* $PREFIX", d.Name, realPackageName),
+			fmt.Sprintf("cp -r $EXTERNAL_DEB_SOURCES/%s/opt/apps/%s/entries/* $PREFIX/share", d.Name, realPackageName),
+			fmt.Sprintf("cp -rf $EXTERNAL_DEB_SOURCES/%s/opt/apps/%s/files/* $PREFIX", d.Name, realPackageName),
 		}...)
 	}
 
@@ -455,7 +461,7 @@ func (d *Deb) GenerateBuildScript() {
 		d.Build = append(d.Build, []string{
 			"",
 			"# move files",
-			fmt.Sprintf("cp -r $LOCAL_SOURCES/%s/usr/* $PREFIX", d.Name),
+			fmt.Sprintf("cp -r $EXTERNAL_DEB_SOURCES/%s/usr/* $PREFIX", d.Name),
 		}...)
 	}
 
