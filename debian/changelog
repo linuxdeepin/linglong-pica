@@ -1,3 +1,10 @@
+linglong-pica (1.2.5-1) unstable; urgency=medium
+
+  * refactor: refine source directory path.
+  * refactor: improve deb build script.
+
+ -- dengbo <dengbo@deepin.org>  Fri, 05 Sep 2025 10:17:56 +0800
+
 linglong-pica (1.2.4-1) unstable; urgency=medium
 
   * feat: use caching to speed up installation
