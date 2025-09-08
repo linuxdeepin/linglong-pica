@@ -5,6 +5,12 @@ Maintainer: Deepin Packages Builder <packages@deepin.com>
 Build-Depends:
  debhelper (>= 11),
  golang (>= 2:1.17),
+ golang-github-spf13-cobra-dev,
+ golang-go.uber-zap-dev,
+ golang-github-smira-flag-dev,
+ golang-pault-go-debian-dev,
+ golang-github-spf13-pflag-dev,
+ golang-gopkg-yaml.v3-dev
 Standards-Version: 4.1.3
 Homepage: http://www.deepin.org
 
@@ -23,5 +29,6 @@ Depends:
  apt-file,
  coreutils,
  zstd,
+ aptly,
 Description: Linglong transform package tools.
  Linglong transform package command line tool from deb.

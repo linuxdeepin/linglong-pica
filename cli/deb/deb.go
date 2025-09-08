@@ -15,17 +15,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 
-	"github.com/smira/flag"
 	"pault.ag/go/debian/control"
-
-	"github.com/aptly-dev/aptly/aptly"
-	"github.com/aptly-dev/aptly/cmd"
-	"github.com/aptly-dev/aptly/deb"
-	"github.com/aptly-dev/aptly/pgp"
-	"github.com/aptly-dev/aptly/query"
-	"github.com/aptly-dev/aptly/utils"
 
 	"pkg.deepin.com/linglong/pica/cli/comm"
 	"pkg.deepin.com/linglong/pica/cli/linglong"
@@ -56,8 +47,8 @@ type Deb struct {
 }
 
 func (d *Deb) GetPackageUrl(source, distro, arch string) string {
-	aptlyCache := comm.AptlyCachePath()
 	// 删除掉aptly缓存的内容
+	aptlyCache := comm.AptlyCachePath()
 	if ret, _ := fs.CheckFileExits(aptlyCache); ret {
 		log.Logger.Debugf("%s is existd!", aptlyCache)
 		if ret, err := fs.RemovePath(aptlyCache); err != nil {
@@ -65,26 +56,36 @@ func (d *Deb) GetPackageUrl(source, distro, arch string) string {
 		}
 	}
 
-	root := cmd.RootCommand()
-	root.UsageLine = "aptly"
+	aptlyWrapper := NewAptlyWrapper()
+	defer aptlyWrapper.Cleanup()
 
-	// 只过滤需要搜索的包
-	args := []string{
-		"mirror",
-		"create",
-		"-ignore-signatures",
-		"-architectures=" + arch,
-		"-filter=" + d.Name,
-		distro,
-		source,
-		distro,
+	// 创建镜像
+	err := aptlyWrapper.CreateMirror(d.Name, source, distro, arch, d.Name)
+	if err != nil {
+		log.Logger.Errorf("Failed to create aptly mirror: %v", err)
+		log.Logger.Warnf("%s not found url, fallback to apt download", d.Name)
+		return AptDownload(d.Name)
 	}
 
-	cmd.Run(root, args, cmd.GetContext() == nil)
+	// 更新镜像
+	err = aptlyWrapper.UpdateMirror(d.Name)
+	if err != nil {
+		log.Logger.Errorf("Failed to update aptly mirror: %v", err)
+		log.Logger.Warnf("%s not found url, fallback to apt download", d.Name)
+		return AptDownload(d.Name)
+	}
 
-	d.GetPackageList(distro)
-	if len(d.Sources) > 0 {
-		return d.Sources[0].Url
+	// 获取包源信息
+	sources, err := aptlyWrapper.GetPackageSources(d.Name, d.Name)
+	if err != nil {
+		log.Logger.Errorf("Failed to get package sources: %v", err)
+		log.Logger.Warnf("%s not found url, fallback to apt download", d.Name)
+		return AptDownload(d.Name)
+	}
+
+	if len(sources) > 0 {
+		d.Sources = sources
+		return sources[0].Url
 	} else {
 		log.Logger.Warnf("%s not found url, fallback to apt download", d.Name)
 		return AptDownload(d.Name)
@@ -113,11 +114,20 @@ func (d *Deb) FetchDebFile(dstPath string) bool {
 	if d.Type == "repo" {
 		fs.CreateDir(fs.GetFilePPath(dstPath))
 
-		if ret, msg, err := comm.ExecAndWait(1<<20, "wget", "-O", dstPath, d.Ref); err != nil {
-			log.Logger.Warnf("msg: %+v, out: %+v", msg, err, ret)
-			return false
+		// 首先尝试使用wget下载
+		if ret, msg, err := comm.ExecAndWait(1<<20, "wget", "--no-check-certificate", "-O", dstPath, d.Ref); err != nil {
+			log.Logger.Warnf("wget failed: %+v, out: %+v", msg, err, ret)
+
+			// 如果wget失败，尝试使用curl
+			log.Logger.Debugf("Trying curl as fallback for %s", d.Ref)
+			if ret, msg, err := comm.ExecAndWait(1<<20, "curl", "-L", "--insecure", "-o", dstPath, d.Ref); err != nil {
+				log.Logger.Warnf("curl also failed: %+v, out: %+v", msg, err, ret)
+				return false
+			} else {
+				log.Logger.Debugf("curl succeeded: %+v", ret)
+			}
 		} else {
-			log.Logger.Debugf("ret: %+v", ret)
+			log.Logger.Debugf("wget succeeded: %+v", ret)
 		}
 
 		if ret, err := fs.CheckFileExits(dstPath); ret {
@@ -266,30 +276,32 @@ func (d *Deb) ResolveDepends(source, distro string, withDep bool) {
 		return
 	}
 
-	root := cmd.RootCommand()
-	root.UsageLine = "aptly"
+	// 使用aptly命令行工具创建镜像
+	aptlyWrapper := NewAptlyWrapper()
+	defer aptlyWrapper.Cleanup()
 
-	args := []string{
-		"mirror",
-		"create",
-		"-ignore-signatures",
-		"-architectures=" + d.Architecture,
-		"-filter=" + filter,
+	// 创建镜像
+	err := aptlyWrapper.CreateMirror(distro, source, distro, d.Architecture, filter)
+	if err != nil {
+		log.Logger.Errorf("Failed to create aptly mirror: %v", err)
+		return
 	}
 
-	if withDep {
-		args = append(args, "-filter-with-deps")
+	// 更新镜像
+	err = aptlyWrapper.UpdateMirror(distro)
+	if err != nil {
+		log.Logger.Errorf("Failed to update aptly mirror: %v", err)
+		return
 	}
 
-	args = append(args, []string{
-		distro,
-		source,
-		distro,
-	}...)
+	// 获取包源信息
+	sources, err := aptlyWrapper.GetPackageSources(distro, filter)
+	if err != nil {
+		log.Logger.Errorf("Failed to get package sources: %v", err)
+		return
+	}
 
-	cmd.Run(root, args, cmd.GetContext() == nil)
-
-	d.GetPackageList(distro)
+	d.Sources = sources
 }
 
 func (d *Deb) GenerateBuildScript() {
@@ -388,7 +400,7 @@ func (d *Deb) GenerateBuildScript() {
 			}
 		}
 	}
-	
+
 	if len(d.Sources) > 0 {
 		d.Build = append(d.Build, []string{
 			"find $SOURCES -type f -name \"*.deb\" >> $DEPS_LIST || exit 1",
@@ -468,191 +480,6 @@ func (d *Deb) GenerateBuildScript() {
 	d.Build = append(d.Build, "#>>> auto generate by ll-pica end")
 
 	d.Command = strings.Split(execLine, " ")
-}
-
-// 获取 deb 包
-func (d *Deb) GetPackageList(distro string) {
-	context := cmd.GetContext()
-	defer context.Shutdown()
-	collectionFactory := context.NewCollectionFactory()
-	repo, err := collectionFactory.RemoteRepoCollection().ByName(distro)
-
-	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
-	}
-
-	err = collectionFactory.RemoteRepoCollection().LoadComplete(repo)
-	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
-	}
-
-	verifier, err := getVerifier(context.Flags())
-	if err != nil {
-		log.Logger.Errorf("unable to initialize GPG verifier: %s", err)
-	}
-
-	err = repo.Fetch(context.Downloader(), verifier)
-	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
-	}
-
-	context.Progress().Printf("Downloading & parsing package files...\n")
-	err = repo.DownloadPackageIndexes(context.Progress(), context.Downloader(), verifier, collectionFactory, false)
-	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
-	}
-
-	if repo.Filter != "" {
-		context.Progress().Printf("Applying filter...\n")
-		var filterQuery deb.PackageQuery
-
-		filterQuery, err = query.Parse(repo.Filter)
-		if err != nil {
-			log.Logger.Errorf("unable to update: %s", err)
-		}
-
-		var oldLen, newLen int
-		oldLen, newLen, err = repo.ApplyFilter(context.DependencyOptions(), filterQuery, context.Progress())
-		if err != nil {
-			log.Logger.Errorf("unable to update: %s", err)
-		}
-		context.Progress().Printf("Packages filtered: %d -> %d.\n", oldLen, newLen)
-	}
-
-	var (
-		downloadSize int64
-		queue        []deb.PackageDownloadTask
-	)
-
-	context.Progress().Printf("Building download queue...\n")
-	queue, downloadSize, err = repo.BuildDownloadQueue(context.PackagePool(), collectionFactory.PackageCollection(),
-		collectionFactory.ChecksumCollection(nil), false)
-
-	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
-	}
-
-	defer func() {
-		// on any interruption, unlock the mirror
-		err = context.ReOpenDatabase()
-		if err == nil {
-			repo.MarkAsIdle()
-			collectionFactory.RemoteRepoCollection().Update(repo)
-		}
-	}()
-
-	repo.MarkAsUpdating()
-	err = collectionFactory.RemoteRepoCollection().Update(repo)
-	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
-	}
-
-	err = context.CloseDatabase()
-	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
-	}
-
-	context.GoContextHandleSignals()
-
-	count := len(queue)
-	context.Progress().Printf("Download queue: %d items (%s)\n", count, utils.HumanBytes(downloadSize))
-
-	// Download from the queue
-	context.Progress().InitBar(downloadSize, true, aptly.BarMirrorUpdateDownloadPackages)
-
-	downloadQueue := make(chan int)
-
-	var (
-		errors  []string
-		errLock sync.Mutex
-	)
-
-	pushError := func(err error) {
-		errLock.Lock()
-		errors = append(errors, err.Error())
-		errLock.Unlock()
-	}
-
-	go func() {
-		for idx := range queue {
-			select {
-			case downloadQueue <- idx:
-			case <-context.Done():
-				return
-			}
-		}
-		close(downloadQueue)
-	}()
-
-	var wg sync.WaitGroup
-
-	for i := 0; i < context.Config().DownloadConcurrency; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for {
-				select {
-				case idx, ok := <-downloadQueue:
-					if !ok {
-						return
-					}
-
-					task := &queue[idx]
-
-					var e error
-
-					// 跳过黑名单
-					if d.DelMap[strings.Split(task.File.Filename, "_")[0]] {
-						continue
-					}
-
-					source := comm.Source{
-						Kind:   "file",
-						Url:    repo.PackageURL(task.File.DownloadURL()).String(),
-						Digest: task.File.Checksums.SHA256,
-					}
-					// 返回 sources 列表，记录 kind, url, hash
-					d.Sources = append(d.Sources, source)
-
-					if e != nil {
-						pushError(e)
-						continue
-					}
-
-					task.Done = true
-
-				case <-context.Done():
-					return
-				}
-			}
-		}()
-	}
-
-	// Wait for all download goroutines to finish
-	wg.Wait()
-
-	context.Progress().ShutdownBar()
-}
-
-func getVerifier(flags *flag.FlagSet) (pgp.Verifier, error) {
-	context := cmd.GetContext()
-	if cmd.LookupOption(context.Config().GpgDisableVerify, flags, "ignore-signatures") {
-		return nil, nil
-	}
-
-	keyRings := flags.Lookup("keyring").Value.Get().([]string)
-
-	verifier := context.GetVerifier()
-	for _, keyRing := range keyRings {
-		verifier.AddKeyring(keyRing)
-	}
-
-	err := verifier.InitKeyring()
-	if err != nil {
-		return nil, err
-	}
-
-	return verifier, nil
 }
 
 // 将从包里获取的版本号格式化成四位数

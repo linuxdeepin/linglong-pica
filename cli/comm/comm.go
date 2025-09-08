@@ -104,6 +104,11 @@ func InitPicaConfigDir() {
 	}
 }
 
+// aptly缓存路径
+func AptlyCachePath() string {
+	return filepath.Join(os.Getenv("HOME"), AptlyDir)
+}
+
 // ll-pica 工具的配置 json 文件
 func PicaConfigJsonPath() string {
 	return filepath.Join(os.Getenv("HOME"), PicaConfigDir, PicaConfigJson)
@@ -158,10 +163,6 @@ func ConfigFilePath(work string, config string) string {
 	return configFilePath
 }
 
-// aptly 缓存路径
-func AptlyCachePath() string {
-	return filepath.Join(os.Getenv("HOME"), AptlyDir)
-}
 
 // 返回转换过程中定义的离线包缓存路径
 func LocalPackageSourceDir(path string) string {
