@@ -1,0 +1,425 @@
+golang-golang-x-sys (0.20.0-1deepin1) unstable; urgency=medium
+
+  * feat: add sw64 support
+
+ -- Deepin Packages Builder <packages@deepin.org>  Thu, 15 May 2025 15:43:02 +0800
+
+golang-golang-x-sys (0.20.0-1) unstable; urgency=medium
+
+  * New upstream version 0.20.0
+  * Bump Standards-Version to 4.7.0 (no change)
+
+ -- Anthony Fok <foka@debian.org>  Mon, 20 May 2024 16:54:14 -0600
+
+golang-golang-x-sys (0.19.0-1) unstable; urgency=medium
+
+  * New upstream version 0.19.0
+
+ -- Anthony Fok <foka@debian.org>  Fri, 26 Apr 2024 02:51:51 -0600
+
+golang-golang-x-sys (0.18.0-1) unstable; urgency=medium
+
+  * New upstream version 0.18.0
+
+ -- Anthony Fok <foka@debian.org>  Sun, 24 Mar 2024 17:37:42 -0600
+
+golang-golang-x-sys (0.17.0-1) unstable; urgency=medium
+
+  * New upstream version 0.17.0
+
+ -- Anthony Fok <foka@debian.org>  Fri, 23 Feb 2024 19:24:59 -0700
+
+golang-golang-x-sys (0.16.0-1) unstable; urgency=medium
+
+  * New upstream version 0.16.0
+
+ -- Anthony Fok <foka@debian.org>  Mon, 29 Jan 2024 14:07:51 -0700
+
+golang-golang-x-sys (0.15.0-1) unstable; urgency=medium
+
+  * New upstream version 0.15.0
+  * Bump build-dependency golang-any (>= 2:1.18~) as per go.mod
+
+ -- Anthony Fok <foka@debian.org>  Thu, 07 Dec 2023 00:36:51 -0700
+
+golang-golang-x-sys (0.13.0-1) unstable; urgency=medium
+
+  * New upstream version 0.13.0
+
+ -- Anthony Fok <foka@debian.org>  Wed, 01 Nov 2023 01:52:04 -0600
+
+golang-golang-x-sys (0.12.0-1) unstable; urgency=medium
+
+  * New upstream version 0.12.0
+
+ -- Anthony Fok <foka@debian.org>  Thu, 12 Oct 2023 01:19:15 -0600
+
+golang-golang-x-sys (0.11.0-1) unstable; urgency=medium
+
+  * New upstream version 0.11.0
+
+ -- Anthony Fok <foka@debian.org>  Mon, 09 Oct 2023 17:27:34 -0600
+
+golang-golang-x-sys (0.9.0-1) unstable; urgency=medium
+
+  * New upstream version 0.9.0
+
+ -- Anthony Fok <foka@debian.org>  Thu, 21 Sep 2023 03:17:02 -0600
+
+golang-golang-x-sys (0.8.0-1) unstable; urgency=medium
+
+  * New upstream version 0.8.0
+  * Bump build-dependency golang-any (>= 2:1.17~) to support unsafe.Slice
+  * Drop -dev package’s unneeded dependency on ${shlibs:Depends}
+  * Invoke dh with --builddirectory=_build
+  * Track release gzip-compressed tarball in uscan
+
+ -- Anthony Fok <foka@debian.org>  Wed, 14 Jun 2023 18:24:44 -0600
+
+golang-golang-x-sys (0.3.0-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream version 0.3.0
+  * Update Standards-Version to 4.6.2 (no changes)
+
+ -- Shengjing Zhu <zhsj@debian.org>  Mon, 02 Jan 2023 23:39:28 +0800
+
+golang-golang-x-sys (0.1.0-1) unstable; urgency=medium
+
+  * Team upload
+  * Switch to upstream tag version in uscan
+  * New upstream version 0.1.0
+
+ -- Shengjing Zhu <zhsj@debian.org>  Wed, 26 Oct 2022 15:38:45 +0800
+
+golang-golang-x-sys (0.0~git20220825.c680a09-1) unstable; urgency=medium
+
+  * New upstream version 0.0~git20220825.c680a09
+
+ -- Anthony Fok <foka@debian.org>  Mon, 29 Aug 2022 13:01:30 -0600
+
+golang-golang-x-sys (0.0~git20220731.a90be44-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream version 0.0~git20220731.a90be44
+
+ -- Shengjing Zhu <zhsj@debian.org>  Wed, 03 Aug 2022 02:14:14 +0800
+
+golang-golang-x-sys (0.0~git20220520.bc2c85a-1) unstable; urgency=medium
+
+  * New upstream version 0.0~git20220520.bc2c85a
+  * Bump Standards-Version to 4.6.1 (no change)
+
+ -- Anthony Fok <foka@debian.org>  Sun, 05 Jun 2022 05:44:55 -0600
+
+golang-golang-x-sys (0.0~git20220422.9388b58-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream version 0.0~git20220422.9388b58
+
+ -- Mathias Gibbens <mathias@calenhad.com>  Mon, 25 Apr 2022 18:56:53 +0530
+
+golang-golang-x-sys (0.0~git20211216.1d35b9e-1) unstable; urgency=medium
+
+  * New upstream version 0.0~git20211216.1d35b9e
+  * Reorder fields in debian/control and debian/copyright
+    as would be generated in the next dh-make-golang release after 0.6.0-1
+  * Use dh-sequence-golang instead of dh-golang and --with=golang
+
+ -- Anthony Fok <foka@debian.org>  Thu, 16 Dec 2021 00:18:46 -0700
+
+golang-golang-x-sys (0.0~git20211117.dee7805-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream snapshot
+  * Update Standards-Version to 4.6.0 (no changes)
+
+ -- Shengjing Zhu <zhsj@debian.org>  Thu, 18 Nov 2021 02:40:04 +0800
+
+golang-golang-x-sys (0.0~git20210806.e5e7981-1) unstable; urgency=medium
+
+  * New upstream version 0.0~git20210806.e5e7981
+  * Remove 04-add-linux-ppc-support-for-use-with-gccgo.patch
+    which was previously cherry-picked from upstream
+
+ -- Anthony Fok <foka@debian.org>  Sun, 08 Aug 2021 04:51:37 -0600
+
+golang-golang-x-sys (0.0~git20210124.22da62e-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream snapshot
+  * Update Section to golang
+  * Update Standards-Version to 4.5.1 (no changes)
+  * Drop all mips hacks.
+    The GOARCH issue on gccgo and mips has been fixed since gcc-8
+    https://github.com/gcc-mirror/gcc/commit/1701a9d8f0ca4153bbf3cf75487c6a14606e5121
+
+ -- Shengjing Zhu <zhsj@debian.org>  Wed, 27 Jan 2021 02:29:03 +0800
+
+golang-golang-x-sys (0.0~git20201223.0d417f6-1) unstable; urgency=medium
+
+  * New upstream version 0.0~git20201223.0d417f6
+  * Refresh debian/patches/01-Fix-mips-build-issues.patch
+
+ -- Anthony Fok <foka@debian.org>  Thu, 31 Dec 2020 03:58:17 -0700
+
+golang-golang-x-sys (0.0~git20201101.da20708-2) unstable; urgency=medium
+
+  * Add 04-add-linux-ppc-support-for-use-with-gccgo.patch
+    from https://go-review.googlesource.com/c/sys/+/262517
+    for powerpc architecture support
+
+ -- Anthony Fok <foka@debian.org>  Fri, 13 Nov 2020 05:22:29 -0700
+
+golang-golang-x-sys (0.0~git20201101.da20708-1) unstable; urgency=medium
+
+  [ Helmut Grohne ]
+  * Mark golang-golang-x-sys-dev Multi-Arch: foreign. (Closes: #960255)
+
+  [ Anthony Fok ]
+  * New upstream version 0.0~git20201101.da20708
+  * Bump debhelper dependency to "Build-Depends: debhelper-compat (= 13)"
+
+ -- Anthony Fok <foka@debian.org>  Thu, 05 Nov 2020 01:25:40 -0700
+
+golang-golang-x-sys (0.0~git20200523.0598657-1) unstable; urgency=medium
+
+  * New upstream version 0.0~git20200523.0598657
+
+ -- Anthony Fok <foka@debian.org>  Mon, 25 May 2020 20:11:26 -0600
+
+golang-golang-x-sys (0.0~git20200219.cb0a6d8-1) unstable; urgency=medium
+
+  * New upstream version 0.0~git20200219.cb0a6d8
+  * Update debhelper to "Build-Depends: debhelper-compat (= 12)"
+  * debian/gbp.conf: Set debian-branch to debian/sid for DEP-14 conformance
+  * Bump Standards-Version to 4.5.0 (no change)
+  * Add "Rules-Requires-Root: no" to debian/control
+  * Allow minor number of /dev/random to mismatch in TestDevices
+    as some autobuilders have /dev/random linked to /dev/urandom.
+    Thanks to Santiago Vila <sanvila@debian.org> for providing an
+    initial patch. (Closes: #907191)
+  * Skip TestOpenByHandleAt if openMountByID fails to prevent FTBFS under
+    pbuilder.  Thanks to Gianfranco Costamagna <locutusofborg@debian.org>
+    for providing an initial patch. (Closes: #935935)
+
+ -- Anthony Fok <foka@debian.org>  Fri, 21 Feb 2020 12:08:47 -0700
+
+golang-golang-x-sys (0.0~git20190726.fc99dfb-1) unstable; urgency=medium
+
+  * New upstream version 0.0~git20190726.fc99dfb
+  * Update debian/watch to version=4
+  * Change Build-Depends: debhelper (>= 11) to (>= 11~)
+  * Refresh 01-Fix-mips-build-issues.patch
+
+ -- Anthony Fok <foka@debian.org>  Sat, 27 Jul 2019 22:49:03 -0600
+
+golang-golang-x-sys (0.0~git20190412.9773273+really0.0~git20190412.9773273-1) unstable; urgency=medium
+
+  * Revert to upstream version 0.0~git20190412.9773273 now that Debian 10
+    "buster" is released.  See https://bugs.debian.org/928227 for background
+    information.
+  * Bump Standards-Version to 4.4.0 (no change)
+
+ -- Anthony Fok <foka@debian.org>  Thu, 11 Jul 2019 18:49:18 -0600
+
+golang-golang-x-sys (0.0~git20190412.9773273+really0.0~git20181228.9a3f9b0-1) unstable; urgency=medium
+
+  * Team upload.
+  * Revert all changes between 0.0~git20181228.9a3f9b0-1
+    and 0.0~git20190412.9773273-1, resulting in an absurd version number.
+    See https://bugs.debian.org/928227 for a rationale.
+
+ -- Dr. Tobias Quathamer <toddy@debian.org>  Sun, 02 Jun 2019 22:39:17 +0200
+
+golang-golang-x-sys (0.0~git20190412.9773273-1) unstable; urgency=medium
+
+  * New upstream version 0.0~git20190412.9773273
+
+ -- Anthony Fok <foka@debian.org>  Sun, 14 Apr 2019 03:43:01 -0600
+
+golang-golang-x-sys (0.0~git20181228.9a3f9b0-1) unstable; urgency=medium
+
+  * New upstream version 0.0~git20181228.9a3f9b0
+  * Bump Standards-Version to 4.3.0 (no change)
+
+ -- Anthony Fok <foka@debian.org>  Mon, 31 Dec 2018 02:40:44 -0700
+
+golang-golang-x-sys (0.0~git20181220.97b4c2a-1) unstable; urgency=medium
+
+  * New upstream version 0.0~git20181220.97b4c2a
+  * Update Maintainer email to team+pkg-go@tracker.debian.org
+
+ -- Anthony Fok <foka@debian.org>  Thu, 20 Dec 2018 10:29:44 -0700
+
+golang-golang-x-sys (0.0~git20181026.95b1ffb-1) unstable; urgency=medium
+
+  * Team upload.
+
+  [ Felix Lechner ]
+  * Set Standards-Version: 4.2.1
+  * Expand long package description.
+  * Add watch file.
+
+ -- David Steele <steele@debian.org>  Sat, 03 Nov 2018 16:53:57 -0400
+
+golang-golang-x-sys (0.0~git20180510.7dfd129-1) unstable; urgency=medium
+
+  [ Alexandre Viau ]
+  * Point Vcs-* urls to salsa.debian.org.
+
+  [ Anthony Fok ]
+  * New upstream version 0.0~git20180510.7dfd129
+  * Apply "cme fix dpkg" fixes to debian/control.
+    Bumping Standards-Version to 4.1.4
+
+ -- Anthony Fok <foka@debian.org>  Fri, 11 May 2018 06:20:17 -0600
+
+golang-golang-x-sys (0.0~git20180308.349b81f-1) unstable; urgency=medium
+
+  * New upstream bugfix version:
+    - unix: skip SchedAffinity test on single CPU system
+      (by Michael Hudson-Doyle, fixes e.g. Ubuntu Autopkgtest on ARM64)
+    - unix: fix nil pointer dereference in Select on linux/{arm64,mips64x}
+      (by Tobias Klauser)
+
+ -- Anthony Fok <foka@debian.org>  Wed, 07 Mar 2018 20:24:42 -0700
+
+golang-golang-x-sys (0.0~git20180224.f6cff07-1) unstable; urgency=medium
+
+  * New upstream version, which has gccgo redeclared *SyscallNoError
+    functions moved to a separate file and avoids build error with gccgo-8.
+    Many thanks to Shengjing Zhu for the detailed report. (Closes: #891894)
+
+ -- Anthony Fok <foka@debian.org>  Thu, 01 Mar 2018 23:43:02 -0700
+
+golang-golang-x-sys (0.0~git20180126.0.ff2a66f-1) unstable; urgency=medium
+
+  [ Felix Lechner ]
+  * New upstream version
+  * Set Build-Depends: debhelper (>= 11)
+  * Set compat to 11
+  * Set Standards-Version: 4.1.3
+
+ -- Felix Lechner <felix.lechner@lease-up.com>  Sun, 28 Jan 2018 07:56:17 -0800
+
+golang-golang-x-sys (0.0~git20170727.0.35ef448-2) unstable; urgency=high
+
+  * Put a sane end to the mips* build issues. Closes: 872402, 878771.
+    Note that for older versions of gccgo and mips/mipsel, you still need to
+    manually add build tags (mips & mipsle, respectively).
+  * Various automatic cme fixes.
+
+ -- Martín Ferrari <tincho@debian.org>  Wed, 25 Oct 2017 01:28:17 +0000
+
+golang-golang-x-sys (0.0~git20170727.0.35ef448-1) unstable; urgency=medium
+
+  * New upstream snapshot.
+  * Remove 0001-Support_mips64el.patch
+    because the Dup2 syscall has been added upstream in May 2017.
+    See "unix: add missing dup2 syscall on mips64*"
+    at https://go-review.googlesource.com/43430 and
+    at https://github.com/golang/sys/commit/6b70689.
+  * Fix the build on mips, mipsel and mips64el
+    as a continuation of the effort that Martín Ferrari started,
+    see https://github.com/golang/go/issues/18031.
+    Due to the current minimal code change to golang.org/x/sys/unix,
+    and to ensure the bool isBigEndian is set correctly, please run
+    gccgo with "-tags mips", "-tags mipsle" or "-tags mips64le"
+    as appropriate.
+  * Use debhelper (>= 10).
+  * Add "Testsuite: autopkgtest-pkg-go" to debian/control.
+
+ -- Anthony Fok <foka@debian.org>  Thu, 27 Jul 2017 21:14:10 -0600
+
+golang-golang-x-sys (0.0~git20170630.0.4ed4d40-1) unstable; urgency=medium
+
+  [ Martín Ferrari ]
+  * Add versioned dependency on golang 1.4, as 1.3 is missing textflag.h.
+
+  [ Anthony Fok ]
+  * New upstream snapshot.
+  * Bump Standards-Version to 4.0.0:
+    Use https form of the copyright-format URL in debian/copyright.
+
+ -- Anthony Fok <foka@debian.org>  Fri, 30 Jun 2017 11:27:35 -0600
+
+golang-golang-x-sys (0.0~git20161122.0.30237cf-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Fix the build on mips64el. Support for mips/mipsel/alpha is still missing.
+    https://github.com/golang/go/issues/18031
+  * debian/changelog: Make Source point to the github repository.
+
+ -- Martín Ferrari <tincho@debian.org>  Thu, 24 Nov 2016 09:26:11 +0000
+
+golang-golang-x-sys (0.0~git20161017.0.002cbb5-1) unstable; urgency=medium
+
+  * New upstream release. Closes: #840423.
+  * Do not include plan9 and windows packages that are not relevant to Debian.
+    In particular, the plan9 package makes builds fail when using gccgo.
+
+ -- Martín Ferrari <tincho@debian.org>  Thu, 20 Oct 2016 21:20:24 +0200
+
+golang-golang-x-sys (0.0~git20161012.0.9bb9f09-1) unstable; urgency=medium
+
+  * New upstream version.
+
+ -- Anthony Fok <foka@debian.org>  Sun, 16 Oct 2016 05:17:34 -0600
+
+golang-golang-x-sys (0.0~git20160704.0.a408501-1) unstable; urgency=medium
+
+  * New upstream release. Closes: #828089.
+  * debian/control:
+    - Depend on recent dh-golang.
+    - Remove unneeded Built-Using field.
+  * debian/rules: use new dh-golang features to simplify rules.
+
+ -- Martín Ferrari <tincho@debian.org>  Mon, 04 Jul 2016 17:28:03 +0000
+
+golang-golang-x-sys (0.0~git20160611.0.7f918dd-1) unstable; urgency=medium
+
+  * New upstream import
+  * Change golang-go to golang-any in Build-Depends and Depends
+    so gccgo may be used where golang-go is unavailable.
+
+ -- Anthony Fok <foka@debian.org>  Sun, 12 Jun 2016 08:36:33 -0600
+
+golang-golang-x-sys (0.0~git20160517.0.d4feaf1-1) unstable; urgency=medium
+
+  [ Martín Ferrari ]
+  * Depend and build-depend on golang 1.4, as it fails to build with older
+    versions.
+  * Require dh-golang 1.10, for XS-Go-Import-Path.
+  * Don't fail if a file to clean is not present.
+
+  [ Michael Hudson-Doyle ]
+  * New upstream import.
+
+ -- Martín Ferrari <tincho@debian.org>  Thu, 19 May 2016 02:23:19 +0000
+
+golang-golang-x-sys (0.0~git20160421.0.b776ec3-1) unstable; urgency=medium
+
+  * New upstream import, which fixes issues with inotify in ppc64*.
+  * Add myself to Uploaders.
+  * Clean more unneeded files from package.
+
+ -- Martín Ferrari <tincho@debian.org>  Sat, 30 Apr 2016 21:04:40 +0000
+
+golang-golang-x-sys (0.0~git20160415.0.f64b50f-1) unstable; urgency=medium
+
+  * Update debian/control
+    - Bump Standards-Version to 3.9.8
+    - Use https URLs for Vcs-Browser and Vcs-Git
+    - Add XS-Go-Import-Path field
+    - Remove dependency on golang-go
+    - Add myself to Uploaders
+  * Imported Upstream version 0.0~git20160415.0.f64b50f
+
+ -- Anthony Fok <foka@debian.org>  Wed, 20 Apr 2016 01:17:58 +0800
+
+golang-golang-x-sys (0.0~git20150612-1) unstable; urgency=medium
+
+  * Initial release (Closes: #788909)
+
+ -- Michael Stapelberg <stapelberg@debian.org>  Tue, 16 Jun 2015 09:11:33 +0200

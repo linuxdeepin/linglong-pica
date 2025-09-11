@@ -46,12 +46,27 @@ case "$#" in
 	exit 2
 esac
 
-if [[ "$GOOS" = "linux" ]]; then
+if [[ "$GOOS" = "linux" ]] && [[ "$GOARCH" != "sw64" ]]; then
 	# Use the Docker-based build system
 	# Files generated through docker (use $cmd so you can Ctl-C the build or run)
 	$cmd docker build --tag generate:$GOOS $GOOS
-	$cmd docker run --interactive --tty --volume $(cd -- "$(dirname -- "$0")/.." && /bin/pwd):/build generate:$GOOS
+	$cmd docker run --interactive --tty --volume $(cd -- "$(dirname -- "$0")/.." && pwd):/build generate:$GOOS
 	exit
+fi
+
+if [[ "$GOARCH" == "sw64" ]];then
+        if [ -z "$LINUX_SRC" ] || [ -z "$GLIBC_SRC" ];then
+                echo "set env vars LINUX_SRC and GLIBC_SRC"
+                exit 1
+        fi
+        if ! command -v go &> /dev/null;then
+                echo "command 'go' not found!"
+                exit 1
+        fi
+        GOROOT=$(go env GOROOT)
+        echo "sw64 mkall"
+        go run linux/mkall.go "$LINUX_SRC" "$GLIBC_SRC"
+        exit 0
 fi
 
 GOOSARCH_in=syscall_$GOOSARCH.go

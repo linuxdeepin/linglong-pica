@@ -51,7 +51,7 @@ func hostByteOrder() byteOrder {
 		"nios2",
 		"ppc64le",
 		"riscv", "riscv64",
-		"sh":
+		"sh", "sw64":
 		return littleEndian{}
 	case "armbe", "arm64be",
 		"m68k",

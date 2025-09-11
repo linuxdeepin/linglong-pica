@@ -1,0 +1,23 @@
+Description: Skip TestOpenByHandleAt if openMountByID fails
+ Prevent TestOpenByHandleAt from failing under pbuilder chroots.
+ Thanks to Gianfranco Costamagna <locutusofborg@debian.org>
+ for providing an initial patch.
+Author: Anthony Fok <foka@debian.org>
+Origin: vendor
+Bug-Debian: https://bugs.debian.org/935935
+Forwarded: not-needed
+Last-Update: 2020-02-21
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/unix/syscall_linux_test.go
++++ b/unix/syscall_linux_test.go
+@@ -556,7 +556,8 @@
+ 		h.Size(), h.Type(), h.Bytes())
+ 	mount, err := openMountByID(mountID)
+ 	if err != nil {
+-		t.Fatalf("openMountByID: %v", err)
++		// t.Fatalf changed to t.Skipf to prevent FAIL under pbuilder
++		t.Skipf("openMountByID: %v", err)
+ 	}
+ 	defer mount.Close()
+ 
