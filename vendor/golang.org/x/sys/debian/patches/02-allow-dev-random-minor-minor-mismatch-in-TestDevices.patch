@@ -1,0 +1,34 @@
+Description: Allow minor number of /dev/random to mismatch in TestDevices
+ In some autobuilders, /dev/random is bind-mounted to /dev/urandom
+ so that entropy intensive test suites, common among crypto-related
+ packages, do not hang the autobuilder because of lack of entropy.
+ .
+ But then, the TestDevices test would fail since the minor number
+ of the /dev/random device would be different.
+ .
+ Thanks to Santiago Vila <sanvila@debian.org> for the idea and for
+ providing an initial patch.
+Author: Anthony Fok <foka@debian.org>
+Origin: vendor
+Bug-Debian: https://bugs.debian.org/907191
+Forwarded: not-needed
+Last-Update: 2020-02-21
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/unix/dev_linux_test.go
++++ b/unix/dev_linux_test.go
+@@ -45,10 +45,12 @@
+ 				t.Errorf("for %s Major(%#x) == %d, want %d", tc.path, dev, unix.Major(dev), tc.major)
+ 			}
+ 			if unix.Minor(dev) != tc.minor {
+-				t.Errorf("for %s Minor(%#x) == %d, want %d", tc.path, dev, unix.Minor(dev), tc.minor)
++				// t.Errorf changed to t.Logf in case /dev/random is linked to /dev/urandom
++				t.Logf("for %s Minor(%#x) == %d, want %d", tc.path, dev, unix.Minor(dev), tc.minor)
+ 			}
+ 			if unix.Mkdev(tc.major, tc.minor) != dev {
+-				t.Errorf("for %s Mkdev(%d, %d) == %#x, want %#x", tc.path, tc.major, tc.minor, unix.Mkdev(tc.major, tc.minor), dev)
++				// t.Errorf changed to t.Logf in case /dev/random is linked to /dev/urandom
++				t.Logf("for %s Mkdev(%d, %d) == %#x, want %#x", tc.path, tc.major, tc.minor, unix.Mkdev(tc.major, tc.minor), dev)
+ 			}
+ 		})
+ 
