@@ -37,29 +37,6 @@ then
     LINGLONG_BASE_VERSION=$BASE_VERSION
 fi
 
-# 替换 desktop 文件里面 Exec 的 /app 开头路径
-for desktop in `ls -1 $WORKDIR/flatpak/files/share/applications/*desktop`
-do
-    # DESKTOP_PATH=$WORKDIR/flatpak/files/share/applications/$desktop
-    EXEC_OLD=$(grep -e '^Exec=.*' "$desktop" | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
-    if echo "$EXEC_OLD" | grep -q "/app";
-    then
-        # replace flatpak /app to linglong /opt/apps/$APPID/files
-        EXEC=$(echo $EXEC_OLD | sed "s|/app|/opt/apps/$APPID/files|g")
-        sed -i "/Exec*/c\\Exec=$EXEC" "$desktop"
-    else
-        EXEC=$EXEC_OLD
-    fi
-done
-
-BIN_FILE=${EXEC_OLD%% *}
-if [[ $BIN_FILE == /* ]];
-then
-    BIN_FILE_PATH=$(echo "$BIN_FILE" | sed "s|/app|$APPID/flatpak/files|g")
-else
-    BIN_FILE_PATH=$APPID/flatpak/files/bin/$BIN_FILE
-fi
-
 tee "$WORKDIR"/linglong.yaml <<EOF
 version: "1"
 package:
@@ -73,15 +50,7 @@ command: [$FLATPAK_COMMAND]
 base: $LINGLONG_BASE_NAME/$LINGLONG_BASE_VERSION
 
 build: |
-  mkdir \$PREFIX/etc
-  cp profile \$PREFIX/etc
   cp -rf flatpak/files/* \$PREFIX
-EOF
-
-tee $WORKDIR/profile<<EOF
-#!/bin/sh
-# bind /opt/apps/$APPID/files to /app
-ln -s "/opt/apps/\$LINGLONG_APPID/files" /run/linglong/app
 EOF
 
 if $BUILD;
