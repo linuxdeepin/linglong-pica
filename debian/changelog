@@ -1,3 +1,9 @@
+linglong-pica (1.2.6-1) unstable; urgency=medium
+
+  * release 1.2.6-1.
+
+ -- dengbo <dengbo@deepin.org>  Fri, 12 Sep 2025 10:28:06 +0800
+
 linglong-pica (1.2.5-1) unstable; urgency=medium
 
   * refactor: refine source directory path.
