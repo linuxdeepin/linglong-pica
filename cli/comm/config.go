@@ -66,8 +66,8 @@ func NewConfig() *Config {
 	return &Config{
 		Id:            "org.deepin.runtime.dtk",
 		BaseId:        "org.deepin.base",
-		Version:       "25.2.0",
-		BaseVersion:   "25.2.0",
+		Version:       "25.2.1",
+		BaseVersion:   "25.2.1",
 		Source:        "https://community-packages.deepin.com/beige/",
 		DistroVersion: "beige",
 		Arch:          runtime.GOARCH,
