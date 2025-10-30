@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-
+set -e
 export FLATHUB_CACHE="$HOME/.cache/linglong-pica-flathub"
 export LL_PICA_FLATPAK_PATH="$(realpath --no-symlinks "$(dirname "${BASH_SOURCE[0]}")")"
 export LL_PICA_FLATPAK_CONFIG_FILE="$HOME/.pica/ll-pica-flatpak-config.json"
-export LL_PICA_FLATPAK_REFS_FILE="$HOME/.pica/ll-pica-flatpak-refs.txt" # 存放 flathub 仓库 refs 的文件
 
 mkdir -p "$HOME"/.pica
 
@@ -17,11 +16,6 @@ then
 }
 
 EOF
-fi
-
-if [[ ! -e $LL_PICA_FLATPAK_REFS_FILE ]];
-then
-    "${LL_PICA_FLATPAK_PATH}/ll-pica-flatpak-utils" generate_ref_cache
 fi
 
 function main() {
@@ -72,16 +66,18 @@ function main() {
         LAYER=false
     fi
 
-    export REF="flathub:app/$APPID/$ARCH/stable"
-
-    echo "init flathub cache"
+    echo "Initializing"
     ostree init --repo="$FLATHUB_CACHE" --mode bare-user-only
 
     FLATHUB_URL=$(jq -r ".flathub.url" "$LL_PICA_FLATPAK_CONFIG_FILE")
-    ostree --repo="$FLATHUB_CACHE" remote add --if-not-exists --no-sign-verify flathub "$FLATHUB_URL"
-
+    ostree --repo="$FLATHUB_CACHE" remote delete --if-exists flathub
+    ostree --repo="$FLATHUB_CACHE" remote add  --no-sign-verify flathub "$FLATHUB_URL"
+    flatpak --user remote-delete ll-pica 2>/dev/null || true
+    flatpak --user remote-add --no-gpg-verify ll-pica "$FLATHUB_URL"
     case "${COMMAND}" in
         convert)
+	     echo "Fetching commit ID for app from flathub"
+             export COMMIT_ID=`flatpak --user remote-info ll-pica $APPID --show-commit`
             "${LL_PICA_FLATPAK_PATH}/ll-pica-flatpak-convert" "$APPID" "$VERSION" "$BUILD" "$LAYER"
             ;;
         help | --help | -h)
@@ -94,3 +90,4 @@ function main() {
 }
 
 main "$@"
+flatpak --user remote-delete ll-pica
