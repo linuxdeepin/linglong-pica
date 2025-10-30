@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -xe
+set -e
 
 APPID=$1
 VERSION=$2
@@ -9,16 +9,11 @@ LAYER=$4
 WORKDIR=$APPID
 SMALLER_APPID=$(echo "$APPID" | tr '[:upper:]' '[:lower:]')
 
-SEARCH_REF=$(grep "$REF" "$LL_PICA_FLATPAK_REFS_FILE")
-
-if [[ -z $SEARCH_REF ]];
-then
-    "${LL_PICA_FLATPAK_PATH}/ll-pica-flatpak-utils" generate_ref_cache
-fi
-
-ostree --repo="$FLATHUB_CACHE" pull "$REF"
+echo "Downloading app data from flathub"
+ostree --repo="$FLATHUB_CACHE" pull flathub "$COMMIT_ID"
 rm -rf "$WORKDIR" && mkdir -p "$WORKDIR"
-ostree --repo="$FLATHUB_CACHE" checkout "$REF" "$WORKDIR/flatpak"
+echo "Extracting app data to $WORKDIR/flatpak"
+ostree --repo="$FLATHUB_CACHE" checkout "$COMMIT_ID" "$WORKDIR/flatpak"
 
 FLATPAK_COMMAND=$(grep '^command=' $WORKDIR/flatpak/metadata | awk -F'=' '{print $2}')
 FLATPAK_RUNTIME=$(grep '^runtime=' "$WORKDIR"/flatpak/metadata | awk -F'=' '{print $2}' | awk -F'/' '{print $1}')
@@ -60,7 +55,7 @@ else
     BIN_FILE_PATH=$APPID/flatpak/files/bin/$BIN_FILE
 fi
 
-tee "$WORKDIR"/linglong.yaml <<EOF
+cat > "$WORKDIR"/linglong.yaml <<EOF
 version: "1"
 package:
   id: $SMALLER_APPID
@@ -78,7 +73,7 @@ build: |
   cp -rf flatpak/files/* \$PREFIX
 EOF
 
-tee $WORKDIR/profile<<EOF
+cat > $WORKDIR/profile<<EOF
 #!/bin/sh
 # bind /opt/apps/$APPID/files to /app
 ln -s "/opt/apps/\$LINGLONG_APPID/files" /run/linglong/app
