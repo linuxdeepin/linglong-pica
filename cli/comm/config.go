@@ -68,8 +68,8 @@ func NewConfig() *Config {
 		BaseId:        "org.deepin.base",
 		Version:       "25.2.1",
 		BaseVersion:   "25.2.1",
-		Source:        "https://community-packages.deepin.com/beige/",
-		DistroVersion: "beige",
+		Source:        "https://ci.deepin.com/repo/deepin/deepin-community/stable",
+		DistroVersion: "crimson/release",
 		Arch:          runtime.GOARCH,
 	}
 }
