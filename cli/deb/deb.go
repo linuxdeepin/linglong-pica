@@ -304,6 +304,8 @@ func (d *Deb) GenerateBuildScript() {
 		fmt.Sprintf("EXTERNAL_DEB_SOURCES=\"%s\"", comm.LlLocalSourceDir),
 		"# set the linglong/sources directory",
 		fmt.Sprintf("SOURCES=\"%s\"", comm.LlSourceDir),
+		"OUT_DIR=\"$(mktemp -d)\"", // 临时目录，处理完内容再移动到$PREFIX
+		"DEPS_LIST=\"$OUT_DIR/DEPS.list\"",
 	}...)
 
 	d.PackageKind = "app"
@@ -388,7 +390,7 @@ func (d *Deb) GenerateBuildScript() {
 			}
 		}
 	}
-	
+
 	if len(d.Sources) > 0 {
 		d.Build = append(d.Build, []string{
 			"find $SOURCES -type f -name \"*.deb\" >> $DEPS_LIST || exit 1",
@@ -397,8 +399,6 @@ func (d *Deb) GenerateBuildScript() {
 
 	// 玲珑内部的 /opt/apps 路径拼接的是 linglong-id
 	d.Build = append(d.Build, []string{
-		"OUT_DIR=\"$(mktemp -d)\"", // 临时目录，处理完内容再移动到$PREFIX
-		"DEPS_LIST=\"$OUT_DIR/DEPS.list\"",
 		"find $EXTERNAL_DEB_SOURCES -type f -name \"*.deb\" >> $DEPS_LIST || exit 1",
 		"DATA_LIST_DIR=\"$OUT_DIR/data\"", // 包数据存放的临时目录
 		"mkdir -p /tmp/deb-source-file",   // 用于记录安装的所有文件来自哪个包
