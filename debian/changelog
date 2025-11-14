@@ -1,3 +1,9 @@
+linglong-pica (1.2.8-1) unstable; urgency=medium
+
+  * release 1.2.8-1.
+
+ -- dengbo <dengbo@deepin.org>  Fri, 14 Nov 2025 15:25:48 +0800
+
 linglong-pica (1.2.7-1) unstable; urgency=medium
 
   * feat: now supports ARM64 flatpak app conversion.
