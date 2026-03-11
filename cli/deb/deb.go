@@ -11,21 +11,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"pault.ag/go/debian/control"
 	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
-
-	"github.com/smira/flag"
-	"pault.ag/go/debian/control"
-
-	"github.com/aptly-dev/aptly/aptly"
-	"github.com/aptly-dev/aptly/cmd"
-	"github.com/aptly-dev/aptly/deb"
-	"github.com/aptly-dev/aptly/pgp"
-	"github.com/aptly-dev/aptly/query"
-	"github.com/aptly-dev/aptly/utils"
 
 	"pkg.deepin.com/linglong/pica/cli/comm"
 	"pkg.deepin.com/linglong/pica/cli/linglong"
@@ -33,65 +23,55 @@ import (
 	"pkg.deepin.com/linglong/pica/tools/log"
 )
 
+var (
+	versionConstraintPattern = regexp.MustCompile(`\([^)]*\)`)
+	archQualifierPattern     = regexp.MustCompile(`\[[^]]*\]`)
+	profileQualifierPattern  = regexp.MustCompile(`<[^>]*>`)
+)
+
 type Deb struct {
-	Name         string
-	Id           string
-	Type         string
-	Ref          string
-	Hash         string
-	Path         string
-	Package      string `control:"Package"`
-	Version      string `control:"Version"`
-	SHA256       string `control:"SHA256"`
-	Desc         string `control:"Description"`
-	Depends      string `control:"Depends"`
-	Architecture string `control:"Architecture"`
-	Filename     string `control:"Filename"`
-	FromAppStore bool
-	PackageKind  string
-	Command      []string
-	Sources      []comm.Source
-	Build        []string
-	DelMap       map[string]bool // 用来记录跳过的包的映射，每个Deb实例独立
+	Name           string
+	Id             string
+	Type           string
+	Ref            string
+	Hash           string
+	Path           string
+	Package        string `control:"Package"`
+	Version        string `control:"Version"`
+	SHA256         string `control:"SHA256"`
+	Desc           string `control:"Description"`
+	PreDepends     string `control:"Pre-Depends"`
+	Depends        string `control:"Depends"`
+	Architecture   string `control:"Architecture"`
+	Filename       string `control:"Filename"`
+	SourcePackage  string
+	FromAppStore   bool
+	PackageKind    string
+	Command        []string
+	RuntimeDepends []string
+	BuildDepends   []string
+	Build          []string
+	DelMap         map[string]bool // 用来记录跳过的包的映射，每个Deb实例独立
 }
 
 func (d *Deb) GetPackageUrl(source, distro, arch string) string {
-	aptlyCache := comm.AptlyCachePath()
-	// 删除掉aptly缓存的内容
-	if ret, _ := fs.CheckFileExits(aptlyCache); ret {
-		log.Logger.Debugf("%s is existd!", aptlyCache)
-		if ret, err := fs.RemovePath(aptlyCache); err != nil {
-			log.Logger.Warnf("err:%+v, out: %+v", err, ret)
-		}
-	}
-
-	root := cmd.RootCommand()
-	root.UsageLine = "aptly"
-
-	// 只过滤需要搜索的包
-	args := []string{
-		"mirror",
-		"create",
-		"-ignore-signatures",
-		"-architectures=" + arch,
-		"-filter=" + d.Name,
-		distro,
-		source,
-		distro,
-	}
-
-	cmd.Run(root, args, cmd.GetContext() == nil)
-
-	d.GetPackageList(distro)
-	if len(d.Sources) > 0 {
-		return d.Sources[0].Url
-	} else {
-		log.Logger.Warnf("%s not found url, fallback to apt download", d.Name)
-		return AptDownload(d.Name)
-	}
+	_ = source
+	_ = distro
+	_ = arch
+	return AptDownload(d.Name)
 }
 
 func (d *Deb) CheckDebHash() bool {
+	info, err := os.Stat(d.Path)
+	if err != nil {
+		log.Logger.Warn(err)
+		return false
+	}
+	if info.Size() == 0 {
+		log.Logger.Warnf("%s is empty", d.Path)
+		return false
+	}
+
 	hash, err := fs.GetFileSha256(d.Path)
 	if d.Hash == "" {
 		log.Logger.Debugf("%s not verify hash", d.Name)
@@ -112,8 +92,14 @@ func (d *Deb) FetchDebFile(dstPath string) bool {
 
 	if d.Type == "repo" {
 		fs.CreateDir(fs.GetFilePPath(dstPath))
-
-		if ret, msg, err := comm.ExecAndWait(1<<20, "wget", "-O", dstPath, d.Ref); err != nil {
+		downloadDir := fs.GetFilePPath(dstPath)
+		debFileName := filepath.Base(dstPath)
+		existingDebPath := filepath.Join(downloadDir, debFileName)
+		if err := os.Remove(existingDebPath); err != nil && !os.IsNotExist(err) {
+			log.Logger.Warnf("remove cached deb failed: %v", err)
+			return false
+		}
+		if ret, msg, err := comm.ExecAndWaitInDir(1<<20, downloadDir, "apt", "download", d.Name, "-y"); err != nil {
 			log.Logger.Warnf("msg: %+v, out: %+v", msg, err, ret)
 			return false
 		} else {
@@ -168,7 +154,12 @@ func (d *Deb) ExtractDeb() error {
 		d.SHA256 = info.Source.Paragraph.Values["SHA256"]
 		// 在描述信息里添加原包的版本号信息
 		d.Desc = fmt.Sprintf("convert from %s    %s", info.Source.Paragraph.Values["Version"], strings.ReplaceAll(info.Source.Paragraph.Values["Description"], "\n", ""))
+		d.PreDepends = info.Source.Paragraph.Values["Pre-Depends"]
 		d.Depends = info.Source.Paragraph.Values["Depends"]
+		d.SourcePackage = cleanSourcePackage(info.Source.Paragraph.Values["Source"])
+		if d.SourcePackage == "" {
+			d.SourcePackage = d.Package
+		}
 		if info.Source.Paragraph.Values["Architecture"] == "all" {
 			d.Architecture = runtime.GOARCH
 		} else {
@@ -194,10 +185,6 @@ func (d *Deb) ExtractDeb() error {
 		}
 	}
 
-	if d.Type != "local" {
-		d.Sources = append(d.Sources, comm.Source{Kind: "file", Digest: d.Hash, Url: d.Ref})
-	}
-
 	// 应用需要指定，四位版本号
 	parts := strings.Split(d.Version, ".")
 	numParts := len(parts)
@@ -212,104 +199,24 @@ func (d *Deb) ExtractDeb() error {
 }
 
 // 解析依赖
-func (d *Deb) ResolveDepends(source, distro string, withDep bool) {
-	// 可能存在依赖为空的情况
-	if d.Depends == "" {
-		return
-	}
-
-	// mirror_update_args []string
-	// 玲珑作为单应用程序，不需要在意里面的版本冲突，直接选择最新版本
-	// 定义一个正则表达式，删除匹配括号及其中的内容
-	reParentheses := regexp.MustCompile(`\([^)]*\)`)
-	filter := strings.Replace(reParentheses.ReplaceAllString(d.Depends, ""), ",", "|", -1)
-	// 移除所有空格
-	reSpace := regexp.MustCompile(`\s+`)
-	filter = reSpace.ReplaceAllString(filter, "")
-
-	// 设置黑名单过滤包，不获取依赖
-	skipPackage := []string{"deepin-elf-verify", "systemd", "systemd-dev", "usrmerge", "xdg-utils", "dbus", "dbus-broker"}
-	cli := linglong.NewLinglongCli()
-	// 过滤掉 base 中安装过的包
-	skipPackage = append(skipPackage, cli.GetBaseInsPack()...)
-	// 过滤掉 runtime 中安装过的包
-	skipPackage = append(skipPackage, cli.GetRuntimeInsPack()...)
-	filterSlice := strings.Split(filter, ",")
-	d.DelMap = make(map[string]bool) // 初始化为每个Deb独立的map
-	for _, item := range skipPackage {
-		d.DelMap[item] = true
-	}
-	var result []string
-	for _, item := range filterSlice {
-		if !d.DelMap[item] {
-			result = append(result, item)
-		}
-	}
-	filter = strings.Join(result, ",")
-
-	// 删除掉aptly缓存的内容
-	aptlyCache := comm.AptlyCachePath()
-	if ret, _ := fs.CheckFileExits(aptlyCache); ret {
-		log.Logger.Debugf("%s is existd!", aptlyCache)
-		if ret, err := fs.RemovePath(aptlyCache); err != nil {
-			log.Logger.Warnf("err:%+v, out: %+v", err, ret)
-		}
-	}
-
-	if d.Architecture == "" || d.Name == "" {
-		log.Logger.Errorf("arch or package name is empty")
-		return
-	}
-
-	// 依赖为空，不需要处理
-	if filter == "" {
-		return
-	}
-
-	root := cmd.RootCommand()
-	root.UsageLine = "aptly"
-
-	args := []string{
-		"mirror",
-		"create",
-		"-ignore-signatures",
-		"-architectures=" + d.Architecture,
-		"-filter=" + filter,
-	}
-
-	if withDep {
-		args = append(args, "-filter-with-deps")
-	}
-
-	args = append(args, []string{
-		distro,
-		source,
-		distro,
-	}...)
-
-	cmd.Run(root, args, cmd.GetContext() == nil)
-
-	d.GetPackageList(distro)
+func (d *Deb) ResolveDepends() {
+	d.RuntimeDepends = parseDependencyNames([]string{d.PreDepends, d.Depends}, buildRuntimeExcludeSet())
+	d.BuildDepends = d.resolveBuildDepends()
 }
 
 func (d *Deb) GenerateBuildScript() {
+	d.Build = nil
 	d.Build = append(d.Build, []string{
 		"#>>> auto generate by ll-pica begin",
 		"set -x",
 	}...)
 
-	// 设置 linglong/sources 目录
 	d.Build = append(d.Build, []string{
 		"# set the local sources directory",
 		fmt.Sprintf("EXTERNAL_DEB_SOURCES=\"%s\"", comm.LlLocalSourceDir),
-		"# set the linglong/sources directory",
-		fmt.Sprintf("SOURCES=\"%s\"", comm.LlSourceDir),
-		"OUT_DIR=\"$(mktemp -d)\"", // 临时目录，处理完内容再移动到$PREFIX
-		"DEPS_LIST=\"$OUT_DIR/DEPS.list\"",
 	}...)
 
 	d.PackageKind = "app"
-	// linglong/sources 下解压 app 后的目录
 	debDirPath := filepath.Join(filepath.Dir(d.Path), d.Name)
 
 	// 如果是应用商店的软件包
@@ -358,6 +265,7 @@ func (d *Deb) GenerateBuildScript() {
 
 		// 使用正则表达式找到匹配的部分并替换
 		execLine = pattern.ReplaceAllLiteralString(execLine, fmt.Sprintf("/opt/apps/%s/files/", d.Id))
+		execLine = normalizeExecLine(execLine, debDirPath, d.Id)
 
 		iconValue = fs.TransIconToLl(desktopData["Desktop Entry"]["Icon"])
 		index := strings.Index(desktop, comm.LlLocalSourceDir)
@@ -391,56 +299,6 @@ func (d *Deb) GenerateBuildScript() {
 		}
 	}
 
-	if len(d.Sources) > 0 {
-		d.Build = append(d.Build, []string{
-			"find $SOURCES -type f -name \"*.deb\" >> $DEPS_LIST || exit 1",
-		}...)
-	}
-
-	// 玲珑内部的 /opt/apps 路径拼接的是 linglong-id
-	d.Build = append(d.Build, []string{
-		"find $EXTERNAL_DEB_SOURCES -type f -name \"*.deb\" >> $DEPS_LIST || exit 1",
-		"DATA_LIST_DIR=\"$OUT_DIR/data\"", // 包数据存放的临时目录
-		"mkdir -p /tmp/deb-source-file",   // 用于记录安装的所有文件来自哪个包
-		"while IFS= read -r file",
-		"do",
-		"    CONTROL_FILE=$(ar -t $file | grep control.tar)", // 提取control文件
-		"    ar -x \"$file\" $CONTROL_FILE",
-		"    PKG=$(tar -xf $CONTROL_FILE ./control -O | grep '^Package:' | awk '{print $2}')", // 获取包名
-		"    rm $CONTROL_FILE || true",
-		"    DATA_FILE=$(ar -t $file | grep data.tar)", // 提取data.tar文件
-		"    ar -x $file $DATA_FILE",
-		"    mkdir -p $DATA_LIST_DIR",
-		"    tar -xvf $DATA_FILE -C $DATA_LIST_DIR >> \"/tmp/deb-source-file/$(basename $file).list\"", // 解压data.tar文件到输出目录
-		"    rm -rf $DATA_FILE 2>/dev/null || true",
-		"    rm -r ${DATA_LIST_DIR:?}/usr/share/applications* 2>/dev/null || true",                           // 清理不需要复制的目录
-		"    sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/lib/$TRIPLET/pkgconfig/*.pc 2>/dev/null || true", // # 修改pc文件的prefix
-		"    sed -i \"s#/usr#$PREFIX#g\" $DATA_LIST_DIR/usr/share/pkgconfig/*.pc 2>/dev/null || true",
-		"    find $DATA_LIST_DIR -type l | while IFS= read -r file; do", // 修改指向/lib的绝对路径的软链接
-		"        Link_Target=$(readlink $file)",
-		"        if echo $Link_Target | grep -q ^/lib && ! [ -f $Link_Target ]; then", // 如果指向的路径以/lib开头，并且文件不存在，则添加 /runtime 前缀, 部分 dev 包会创建 so 文件的绝对链接指向 /lib 目录下
-		"            ln -sf $PREFIX$Link_Target $file",
-		"            echo \"    FIX LINK $Link_Target => $PREFIX$Link_Target\"",
-		"        fi",
-		"    done",
-		"    find $DATA_LIST_DIR -type f -exec file {} \\; | grep 'shared object' | awk -F: '{print $1}' | while IFS= read -r file; do", // 修复动态库的RUNPATH
-		"        runpath=$(readelf -d $file | grep RUNPATH |  awk '{print $NF}')",
-		"        if echo $runpath | grep -q '^\\[/'; then", // 如果RUNPATH使用绝对路径，则添加/runtime前缀
-		"            runpath=${runpath#[}",
-		"            runpath=${runpath%]}",
-		"            newRunpath=${runpath//usr\\/lib/runtime\\/lib}",
-		"            newRunpath=${newRunpath//usr/runtime}",
-		"            patchelf --set-rpath $newRunpath $file",
-		"            echo \"    FIX RUNPATH $file $runpath => $newRunpath\"",
-		"        fi",
-		"    done",
-		"    cp -rP $DATA_LIST_DIR/lib $PREFIX 2>/dev/null || true",
-		"    cp -rP $DATA_LIST_DIR/bin $PREFIX 2>/dev/null || true",
-		"    cp -rP $DATA_LIST_DIR/usr/* $PREFIX 2>/dev/null || true",
-		"done < \"$DEPS_LIST\"",
-		"rm -r $OUT_DIR || true", // # 清理临时目录
-	}...)
-
 	d.Build = append(d.Build, []string{
 		"",
 		"install -d $PREFIX/share",
@@ -470,189 +328,128 @@ func (d *Deb) GenerateBuildScript() {
 	d.Command = strings.Split(execLine, " ")
 }
 
-// 获取 deb 包
-func (d *Deb) GetPackageList(distro string) {
-	context := cmd.GetContext()
-	defer context.Shutdown()
-	collectionFactory := context.NewCollectionFactory()
-	repo, err := collectionFactory.RemoteRepoCollection().ByName(distro)
+func (d *Deb) resolveBuildDepends() []string {
+	if d.SourcePackage == "" {
+		return nil
+	}
 
+	ret, err := AptShowSource(d.SourcePackage)
 	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
+		log.Logger.Warnf("apt-cache showsrc %s failed: %v", d.SourcePackage, err)
+		return nil
 	}
 
-	err = collectionFactory.RemoteRepoCollection().LoadComplete(repo)
+	info, err := control.ParseControl(bufio.NewReader(strings.NewReader(ret)), "")
 	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
+		log.Logger.Warnf("parse source control error for %s: %v", d.SourcePackage, err)
+		return nil
 	}
 
-	verifier, err := getVerifier(context.Flags())
-	if err != nil {
-		log.Logger.Errorf("unable to initialize GPG verifier: %s", err)
-	}
-
-	err = repo.Fetch(context.Downloader(), verifier)
-	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
-	}
-
-	context.Progress().Printf("Downloading & parsing package files...\n")
-	err = repo.DownloadPackageIndexes(context.Progress(), context.Downloader(), verifier, collectionFactory, false)
-	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
-	}
-
-	if repo.Filter != "" {
-		context.Progress().Printf("Applying filter...\n")
-		var filterQuery deb.PackageQuery
-
-		filterQuery, err = query.Parse(repo.Filter)
-		if err != nil {
-			log.Logger.Errorf("unable to update: %s", err)
-		}
-
-		var oldLen, newLen int
-		oldLen, newLen, err = repo.ApplyFilter(context.DependencyOptions(), filterQuery, context.Progress())
-		if err != nil {
-			log.Logger.Errorf("unable to update: %s", err)
-		}
-		context.Progress().Printf("Packages filtered: %d -> %d.\n", oldLen, newLen)
-	}
-
-	var (
-		downloadSize int64
-		queue        []deb.PackageDownloadTask
-	)
-
-	context.Progress().Printf("Building download queue...\n")
-	queue, downloadSize, err = repo.BuildDownloadQueue(context.PackagePool(), collectionFactory.PackageCollection(),
-		collectionFactory.ChecksumCollection(nil), false)
-
-	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
-	}
-
-	defer func() {
-		// on any interruption, unlock the mirror
-		err = context.ReOpenDatabase()
-		if err == nil {
-			repo.MarkAsIdle()
-			collectionFactory.RemoteRepoCollection().Update(repo)
-		}
-	}()
-
-	repo.MarkAsUpdating()
-	err = collectionFactory.RemoteRepoCollection().Update(repo)
-	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
-	}
-
-	err = context.CloseDatabase()
-	if err != nil {
-		log.Logger.Errorf("unable to update: %s", err)
-	}
-
-	context.GoContextHandleSignals()
-
-	count := len(queue)
-	context.Progress().Printf("Download queue: %d items (%s)\n", count, utils.HumanBytes(downloadSize))
-
-	// Download from the queue
-	context.Progress().InitBar(downloadSize, true, aptly.BarMirrorUpdateDownloadPackages)
-
-	downloadQueue := make(chan int)
-
-	var (
-		errors  []string
-		errLock sync.Mutex
-	)
-
-	pushError := func(err error) {
-		errLock.Lock()
-		errors = append(errors, err.Error())
-		errLock.Unlock()
-	}
-
-	go func() {
-		for idx := range queue {
-			select {
-			case downloadQueue <- idx:
-			case <-context.Done():
-				return
-			}
-		}
-		close(downloadQueue)
-	}()
-
-	var wg sync.WaitGroup
-
-	for i := 0; i < context.Config().DownloadConcurrency; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for {
-				select {
-				case idx, ok := <-downloadQueue:
-					if !ok {
-						return
-					}
-
-					task := &queue[idx]
-
-					var e error
-
-					// 跳过黑名单
-					if d.DelMap[strings.Split(task.File.Filename, "_")[0]] {
-						continue
-					}
-
-					source := comm.Source{
-						Kind:   "file",
-						Url:    repo.PackageURL(task.File.DownloadURL()).String(),
-						Digest: task.File.Checksums.SHA256,
-					}
-					// 返回 sources 列表，记录 kind, url, hash
-					d.Sources = append(d.Sources, source)
-
-					if e != nil {
-						pushError(e)
-						continue
-					}
-
-					task.Done = true
-
-				case <-context.Done():
-					return
-				}
-			}
-		}()
-	}
-
-	// Wait for all download goroutines to finish
-	wg.Wait()
-
-	context.Progress().ShutdownBar()
+	return parseDependencyNames([]string{
+		info.Source.Paragraph.Values["Build-Depends"],
+		info.Source.Paragraph.Values["Build-Depends-Indep"],
+	}, nil)
 }
 
-func getVerifier(flags *flag.FlagSet) (pgp.Verifier, error) {
-	context := cmd.GetContext()
-	if cmd.LookupOption(context.Config().GpgDisableVerify, flags, "ignore-signatures") {
-		return nil, nil
+func buildRuntimeExcludeSet() map[string]struct{} {
+	exclude := make(map[string]struct{})
+	for _, pkg := range []string{"deepin-elf-verify", "systemd", "systemd-dev", "usrmerge", "xdg-utils", "dbus", "dbus-broker"} {
+		exclude[pkg] = struct{}{}
 	}
 
-	keyRings := flags.Lookup("keyring").Value.Get().([]string)
+	cli := linglong.NewLinglongCli()
+	for _, pkg := range cli.GetBaseInsPack() {
+		exclude[pkg] = struct{}{}
+	}
+	for _, pkg := range cli.GetRuntimeInsPack() {
+		exclude[pkg] = struct{}{}
+	}
+	return exclude
+}
 
-	verifier := context.GetVerifier()
-	for _, keyRing := range keyRings {
-		verifier.AddKeyring(keyRing)
+func parseDependencyNames(fields []string, exclude map[string]struct{}) []string {
+	var result []string
+	seen := make(map[string]struct{})
+	for _, field := range fields {
+		for _, item := range strings.Split(field, ",") {
+			for _, candidate := range strings.Split(item, "|") {
+				name := normalizeDependencyName(candidate)
+				if name == "" || isDebhelperPackage(name) {
+					continue
+				}
+				if _, skipped := exclude[name]; skipped {
+					continue
+				}
+				if _, ok := seen[name]; ok {
+					continue
+				}
+				seen[name] = struct{}{}
+				result = append(result, name)
+			}
+		}
+	}
+	return result
+}
+
+func normalizeDependencyName(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
 	}
 
-	err := verifier.InitKeyring()
-	if err != nil {
-		return nil, err
+	value = versionConstraintPattern.ReplaceAllString(value, "")
+	value = archQualifierPattern.ReplaceAllString(value, "")
+	value = profileQualifierPattern.ReplaceAllString(value, "")
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
 	}
 
-	return verifier, nil
+	fields := strings.Fields(value)
+	if len(fields) == 0 {
+		return ""
+	}
+	name := fields[0]
+	if idx := strings.Index(name, ":"); idx != -1 {
+		name = name[:idx]
+	}
+	if strings.HasPrefix(name, "${") {
+		return ""
+	}
+	return strings.TrimSpace(name)
+}
+
+func cleanSourcePackage(value string) string {
+	name := normalizeDependencyName(value)
+	if name != "" {
+		return name
+	}
+	value = strings.TrimSpace(value)
+	if idx := strings.Index(value, "("); idx != -1 {
+		value = value[:idx]
+	}
+	return strings.TrimSpace(value)
+}
+
+func isDebhelperPackage(name string) bool {
+	return name == "debhelper" || strings.HasPrefix(name, "debhelper-")
+}
+
+func normalizeExecLine(execLine, debDirPath, packageID string) string {
+	fields := strings.Fields(execLine)
+	if len(fields) == 0 {
+		return execLine
+	}
+	if strings.Contains(fields[0], "/") {
+		return execLine
+	}
+
+	subpath := filepath.Join("usr", "bin", fields[0])
+	if ret, _ := fs.CheckFileExits(filepath.Join(debDirPath, subpath)); ret {
+		fields[0] = filepath.ToSlash(filepath.Join("/opt/apps", packageID, "files", "bin", fields[0]))
+		return strings.Join(fields, " ")
+	}
+	return execLine
 }
 
 // 将从包里获取的版本号格式化成四位数

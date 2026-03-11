@@ -8,7 +8,6 @@ package comm
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -27,7 +26,6 @@ const (
 	LinglongYaml     = "linglong.yaml"
 	Workdir          = "linglong-pica"
 	PackageDir       = "package"
-	AptlyDir         = ".aptly"
 	LlSourceDir      = "linglong/sources"
 	LlLocalSourceDir = "sources"
 	StatesJson       = "/var/lib/linglong/states.json"
@@ -49,6 +47,17 @@ type Source struct {
 func ExecAndWait(timeout int, name string, arg ...string) (stdout, stderr string, err error) {
 	log.Logger.Debugf("cmd: %s %+v\n", name, arg)
 	cmd := exec.Command(name, arg...)
+	return execAndWait(timeout, cmd)
+}
+
+func ExecAndWaitInDir(timeout int, dir, name string, arg ...string) (stdout, stderr string, err error) {
+	log.Logger.Debugf("cmd: (cd %s) %s %+v\n", dir, name, arg)
+	cmd := exec.Command(name, arg...)
+	cmd.Dir = dir
+	return execAndWait(timeout, cmd)
+}
+
+func execAndWait(timeout int, cmd *exec.Cmd) (stdout, stderr string, err error) {
 	var bufStdout, bufStderr bytes.Buffer
 	cmd.Stdout = &bufStdout
 	cmd.Stderr = &bufStderr
@@ -158,11 +167,6 @@ func ConfigFilePath(work string, config string) string {
 	return configFilePath
 }
 
-// aptly 缓存路径
-func AptlyCachePath() string {
-	return filepath.Join(os.Getenv("HOME"), AptlyDir)
-}
-
 // 返回转换过程中定义的离线包缓存路径
 func LocalPackageSourceDir(path string) string {
 	return filepath.Join(path, LlLocalSourceDir)
@@ -186,21 +190,6 @@ func ArchConvert(arch string) string {
 	default:
 		return arch
 	}
-}
-
-// 对生成的 Source 数组进行去重
-func RemoveExcessDeps(sources []Source) []Source {
-	var result []Source
-	uniqueMap := make(map[string]bool)
-	for _, pkg := range sources {
-		key, _ := json.Marshal(pkg)
-		// 如果 key 不存在于 map 中，则添加
-		if _, ok := uniqueMap[string(key)]; !ok {
-			uniqueMap[string(key)] = true
-			result = append(result, pkg)
-		}
-	}
-	return result
 }
 
 // 对buildext中depends/build_depends数组去重，去空白，去空项

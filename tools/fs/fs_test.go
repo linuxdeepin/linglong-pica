@@ -747,7 +747,8 @@ var testDataTransIconToLl = []struct {
 }{
 	{"/usr/share/icons/hicolor/96x96/apps/deepin-toggle-desktop.png", "deepin-toggle-desktop"},
 	{"/usr/share/icons/hicolor/96x96/apps/deepin-toggle-desktop.svg", "deepin-toggle-desktop"},
-	{"/opt/apps/org.deepin.calculator/files/icons/deepin-calculator.png", "/opt/apps/org.deepin.calculator/files/icons/deepin-calculator.png"},
+	{"/opt/apps/org.deepin.calculator/files/icons/deepin-calculator.png", "deepin-calculator"},
+	{"/opt/apps/org.deepin.calculator/files/icons/deepin-calculator.svg", "deepin-calculator"},
 }
 
 func TestTransIconToLl(t *testing.T) {

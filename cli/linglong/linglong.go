@@ -64,6 +64,7 @@ package:
     {{.Package.Description}}
 
 base: {{.Base}}
+# runtime is only needed for Qt/Dtk-based projects; leave it empty by default.
 runtime: {{.Runtime}}
 
 command:
@@ -80,7 +81,7 @@ sources:
   {{- end}}
   {{- if eq .Kind "git" }}
     commit: {{.Commit}}
-  {{- else}}
+  {{- else if .Digest}}
     digest: {{.Digest}}
   {{- end}}
 {{end}}
@@ -280,13 +281,16 @@ func (cli *LinglongCli) GetRuntimeInsPack() []string {
 	// 读取 pica 的配置
 	config := comm.NewConfig()
 	config.ReadConfigJson()
+	if strings.TrimSpace(config.Id) == "" || strings.TrimSpace(config.RuntimeVersion) == "" {
+		return packages
+	}
 
-	cli.LinglongCliInstall(config.Id, config.Version)
+	cli.LinglongCliInstall(config.Id, config.RuntimeVersion)
 
 	// 先检查文件是否存在
-	commit := comm.GetBaseRuntimeCommit(config.Id, config.Version)
+	commit := comm.GetBaseRuntimeCommit(config.Id, config.RuntimeVersion)
 	if commit == "" {
-		log.Logger.Warnf("failed to get runtime commit for %s/%s", config.Id, config.Version)
+		log.Logger.Warnf("failed to get runtime commit for %s/%s", config.Id, config.RuntimeVersion)
 		return packages
 	}
 
@@ -310,6 +314,9 @@ func (cli *LinglongCli) GetRuntimeInsPack() []string {
 }
 
 func (cli *LinglongCli) LinglongCliInstall(appid, version string) {
+	if strings.TrimSpace(appid) == "" || strings.TrimSpace(version) == "" {
+		return
+	}
 	// 先检查是否已安装
 	if cli.IsPackageInstalled(appid, version) {
 		log.Logger.Infof("Package %s/%s already installed, skipping", appid, version)

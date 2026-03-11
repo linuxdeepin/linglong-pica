@@ -19,9 +19,8 @@ import (
 )
 
 type adepOptions struct {
-	path    string
-	deps    string
-	withDep bool // 带上依赖树
+	path string
+	deps string
 }
 
 func NewADepCommand() *cobra.Command {
@@ -37,7 +36,6 @@ func NewADepCommand() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVarP(&options.deps, "deps", "d", "", "dependencies to be added, separator is ','")
 	flags.StringVarP(&options.path, "path", "p", "linglong.yaml", "path to linglong.yaml")
-	flags.BoolVar(&options.withDep, "withDep", false, "Add dependency tree")
 	return cmd
 }
 

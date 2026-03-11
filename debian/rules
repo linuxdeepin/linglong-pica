@@ -1,8 +1,15 @@
 #!/usr/bin/make -f
 export GOPATH := /usr/share/gocode
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 %:
 	dh $@
+
+override_dh_auto_build:
+	$(MAKE) build
+
+override_dh_auto_install:
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp PREFIX=usr BINARY_DIR=bin
 
 override_dh_shlibdeps:
 	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info

@@ -35,3 +35,12 @@ func AptDownload(name string) string {
 	url = strings.Replace(url, "'", "", 2)
 	return url
 }
+
+func AptShowSource(name string) (string, error) {
+	ret, msg, err := comm.ExecAndWait(10, "apt-cache", "showsrc", name)
+	if err != nil {
+		log.Logger.Warnf("apt-cache showsrc error: msg: %s err: %s", msg, err)
+		return ret, err
+	}
+	return ret, nil
+}

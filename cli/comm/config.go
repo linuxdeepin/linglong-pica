@@ -12,18 +12,94 @@ import (
 	"runtime"
 	"strings"
 
+	"gopkg.in/yaml.v3"
 	"pkg.deepin.com/linglong/pica/tools/log"
 )
 
 type Config struct {
-	Id            string `yaml:"-" json:"-"`
-	BaseId        string `yaml:"-" json:"-"`
-	Version       string `yaml:"version" json:"version"`
-	BaseVersion   string `yaml:"base_version" json:"base_version"`
-	Source        string `yaml:"source" json:"source"`
-	DistroVersion string `yaml:"distro_version" json:"distro_version"`
-	Arch          string `yaml:"arch" json:"arch"`
+	Id             string `yaml:"-" json:"-"`
+	BaseId         string `yaml:"-" json:"-"`
+	RuntimeVersion string `yaml:"runtime_version" json:"runtime_version"`
+	BaseVersion    string `yaml:"base_version" json:"base_version"`
+	Source         string `yaml:"source" json:"source"`
+	DistroVersion  string `yaml:"distro_version" json:"distro_version"`
+	Arch           string `yaml:"arch" json:"arch"`
 }
+
+func (c *Config) UnmarshalYAML(value *yaml.Node) error {
+	type configAlias struct {
+		RuntimeVersion string `yaml:"runtime_version"`
+		Version        string `yaml:"version"`
+		BaseVersion    string `yaml:"base_version"`
+		Source         string `yaml:"source"`
+		DistroVersion  string `yaml:"distro_version"`
+		Arch           string `yaml:"arch"`
+	}
+
+	var aux configAlias
+	if err := value.Decode(&aux); err != nil {
+		return err
+	}
+
+	c.RuntimeVersion = strings.TrimSpace(aux.RuntimeVersion)
+	if c.RuntimeVersion == "" {
+		c.RuntimeVersion = strings.TrimSpace(aux.Version)
+	}
+	c.BaseVersion = aux.BaseVersion
+	c.Source = aux.Source
+	c.DistroVersion = aux.DistroVersion
+	c.Arch = aux.Arch
+	return nil
+}
+
+func (c *Config) UnmarshalJSON(data []byte) error {
+	type configAlias struct {
+		RuntimeVersion string `json:"runtime_version"`
+		Version        string `json:"version"`
+		BaseVersion    string `json:"base_version"`
+		Source         string `json:"source"`
+		DistroVersion  string `json:"distro_version"`
+		Arch           string `json:"arch"`
+	}
+
+	var aux configAlias
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	c.RuntimeVersion = strings.TrimSpace(aux.RuntimeVersion)
+	if c.RuntimeVersion == "" {
+		c.RuntimeVersion = strings.TrimSpace(aux.Version)
+	}
+	c.BaseVersion = aux.BaseVersion
+	c.Source = aux.Source
+	c.DistroVersion = aux.DistroVersion
+	c.Arch = aux.Arch
+	return nil
+}
+
+func (c Config) MarshalJSON() ([]byte, error) {
+	type configAlias struct {
+		RuntimeVersion string `json:"runtime_version"`
+		BaseVersion    string `json:"base_version"`
+		Source         string `json:"source"`
+		DistroVersion  string `json:"distro_version"`
+		Arch           string `json:"arch"`
+	}
+
+	return json.Marshal(configAlias{
+		RuntimeVersion: c.RuntimeVersion,
+		BaseVersion:    c.BaseVersion,
+		Source:         c.Source,
+		DistroVersion:  c.DistroVersion,
+		Arch:           c.Arch,
+	})
+}
+
+const (
+	DefaultSystemRepoSource = "https://ci.deepin.com/repo/deepin/deepin-community/stable"
+	DefaultSystemRepoDistro = "crimson/release"
+)
 
 // 定义 states.json 的结构体
 type States struct {
@@ -64,13 +140,13 @@ type States struct {
 // base runtime 默认优先级由
 func NewConfig() *Config {
 	return &Config{
-		Id:            "org.deepin.runtime.dtk",
-		BaseId:        "org.deepin.base",
-		Version:       "25.2.1",
-		BaseVersion:   "25.2.1",
-		Source:        "https://ci.deepin.com/repo/deepin/deepin-community/stable",
-		DistroVersion: "crimson/release",
-		Arch:          runtime.GOARCH,
+		Id:             "org.deepin.runtime.dtk",
+		BaseId:         "org.deepin.base",
+		RuntimeVersion: "",
+		BaseVersion:    "25.2.1",
+		Source:         DefaultSystemRepoSource,
+		DistroVersion:  DefaultSystemRepoDistro,
+		Arch:           runtime.GOARCH,
 	}
 }
 
@@ -81,7 +157,7 @@ func (c *Config) ReadConfigJson() bool {
 	if err != nil {
 		log.Logger.Errorf("load  %s error: %v", PicaConfigJsonPath(), err)
 	} else {
-		err = json.Unmarshal([]byte(picaConfigFd), &c)
+		err = json.Unmarshal(picaConfigFd, c)
 		if err != nil {
 			log.Logger.Errorf("unmarshal error: %s", err)
 		}

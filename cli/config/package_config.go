@@ -12,10 +12,8 @@ import (
 )
 
 const PackageConfigTMPL = `runtime:
-  version: {{.Runtime.Version}}
+  runtime_version: {{printf "%q" .Runtime.RuntimeVersion}}
   base_version: {{.Runtime.BaseVersion}}
-  source: {{.Runtime.Source}}
-  distro_version: {{.Runtime.DistroVersion}}
   arch: {{.Runtime.Arch}}
 file:
   deb:

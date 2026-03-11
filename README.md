@@ -1,6 +1,6 @@
 # linglong-pica
 
-deb package to Linglong package tool.
+deb, appimage and flatpak package to Linglong package tool.
 
 Pica, from the Latin magpie, means to strengthen the exquisite ecology and adaptability.
 
@@ -28,6 +28,18 @@ Pica, from the Latin magpie, means to strengthen the exquisite ecology and adapt
     ```bash
     sudo make install
     ```
+
+## Usage
+
+```bash
+ll-pica deb init -w work
+ll-pica deb convert -w work
+ll-pica appimage convert -f demo.AppImage -i io.github.demo -v 1.0.0.0
+ll-pica flatpak convert org.kde.kate --build
+ll-pica completion bash > ll-pica
+```
+
+Deb conversion details, generated `package.yaml`, and the updated `linglong.yaml` layout are documented in [usage.md](/home/dengbo/WorkDir/project/linglong-pica/usage.md).
 
 ## Getting help
 

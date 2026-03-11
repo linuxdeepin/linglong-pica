@@ -12,12 +12,9 @@ import (
 	"github.com/spf13/cobra"
 	"pkg.deepin.com/linglong/pica/cli"
 	"pkg.deepin.com/linglong/pica/cli/command/commands"
+	"pkg.deepin.com/linglong/pica/cli/version"
 	"pkg.deepin.com/linglong/pica/tools/log"
 )
-
-// var (
-// 	disableDevelop string
-// )
 
 func main() {
 	log.Logger = log.InitLog()
@@ -32,14 +29,16 @@ func main() {
 func newPicaCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ll-pica",
-		Short: "debian package convert linglong package",
-		Long: `Convert the deb to uab. For example:
+		Short: "Convert deb, appimage and flatpak package to linglong package",
+		Long: `Convert packages to uab. For example:
 Simple:
-	ll-pica init -c package -w work-dir
-	ll-pica convert -c package.yaml -w work-dir
+	ll-pica deb init -c package -w work-dir
+	ll-pica deb convert -c package.yaml -w work-dir
+	ll-pica appimage convert -f xxx.appimage -i io.github.demo -v 1.0.0.0
+	ll-pica flatpak convert org.kde.kate --build
 	ll-pica help
 		`,
-		Version: "1.2.8-1",
+		Version: version.Version,
 	}
 
 	cmd.CompletionOptions.DisableDefaultCmd = true

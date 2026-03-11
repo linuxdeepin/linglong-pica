@@ -1,3 +1,10 @@
+linglong-pica (1.2.9-1) unstable; urgency=medium
+
+  * packaging: switch to explicit install manifest and include shell completions.
+  * packaging: remove legacy binary install entries.
+
+ -- dengbo <dengbo@deepin.org>  Thu, 05 Mar 2026 19:35:00 +0800
+
 linglong-pica (1.2.8-1) unstable; urgency=medium
 
   * release 1.2.8-1.

@@ -27,7 +27,6 @@ type convertOptions struct {
 	gtype       string
 	packageId   string
 	packageName string
-	withDep     bool // 带上依赖树
 	buildFlag   bool
 	exportFile  string
 }
@@ -35,8 +34,18 @@ type convertOptions struct {
 func NewConvertCommand() *cobra.Command {
 	var options convertOptions
 	cmd := &cobra.Command{
-		Use:          "convert",
-		Short:        "Convert deb to uab",
+		Use:   "convert",
+		Short: "Convert deb packages into Linglong build inputs",
+		Long: `Generate linglong.yaml and unpacked sources for a deb package.
+
+You can convert from package.yaml, from a repo package name, or from a local
+.deb file path passed with -c. Dependencies are written into buildext.apt
+instead of sources. Architecture mismatch is checked only before ll-builder
+build, so convert-only workflows remain available for cross-build scenarios.`,
+		Example: `  ll-pica deb convert -w work
+  ll-pica deb convert -w work -b
+  ll-pica deb convert -c ./com.example.app_1.0.0_amd64.deb -w work
+  ll-pica deb convert -w work --pi com.example.app --pn com.example.app`,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runConvert(&options)
@@ -44,14 +53,13 @@ func NewConvertCommand() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&options.Config, "config", "c", "", "config file")
-	flags.StringVarP(&options.Workdir, "workdir", "w", "", "work directory")
-	flags.StringVarP(&options.gtype, "type", "t", "local", "get app type")
-	flags.StringVar(&options.packageId, "pi", "", "package id")
-	flags.StringVar(&options.packageName, "pn", "", "package name")
-	flags.BoolVar(&options.withDep, "withDep", false, "Add dependency tree")
-	flags.BoolVarP(&options.buildFlag, "build", "b", false, "build linglong")
-	flags.StringVar(&options.exportFile, "exportFile", "uab", "export uab or layer")
+	flags.StringVarP(&options.Config, "config", "c", "", "package.yaml path, or a local .deb file path")
+	flags.StringVarP(&options.Workdir, "workdir", "w", "", "working directory used for downloads, unpacked files, and linglong.yaml")
+	flags.StringVarP(&options.gtype, "type", "t", "local", "deb source type when creating config on the fly: local or repo")
+	flags.StringVar(&options.packageId, "pi", "", "Linglong package id used for inline repo conversion")
+	flags.StringVar(&options.packageName, "pn", "", "deb package name used for inline repo conversion")
+	flags.BoolVarP(&options.buildFlag, "build", "b", false, "run ll-builder build and export after generating linglong.yaml")
+	flags.StringVar(&options.exportFile, "exportFile", "uab", "export format after --build: uab or layer")
 	return cmd
 }
 
@@ -74,6 +82,7 @@ func runConvert(options *convertOptions) error {
 
 	// 如果传入的是 deb 包， 先构造一下 package.yaml 文件
 	if strings.HasSuffix(options.Config, ".deb") {
+		packConfig.Runtime.Config.RuntimeVersion = ""
 		ret, err := deb.AptShow(configFilePath)
 		if err == nil {
 			info, err := control.ParseControl(bufio.NewReader(strings.NewReader(ret)), "")
@@ -97,6 +106,10 @@ func runConvert(options *convertOptions) error {
 	}
 
 	if options.packageId != "" && options.packageName != "" {
+		packConfig.Runtime.Config.RuntimeVersion = ""
+		if err := comm.ValidatePackageID(options.packageId); err != nil {
+			return err
+		}
 		packConfig.File.Deb = []deb.Deb{
 			{
 				Type: "repo",
@@ -112,22 +125,25 @@ func runConvert(options *convertOptions) error {
 	}
 
 	for idx := range packConfig.File.Deb {
+		if err := comm.ValidatePackageID(packConfig.File.Deb[idx].Id); err != nil {
+			return err
+		}
+		log.Logger.Infof("starting conversion for package %s", packConfig.File.Deb[idx].Id)
 		appPath := filepath.Join(comm.BuildPackPath(options.Workdir), packConfig.File.Deb[idx].Id)
 		linglongYamlPath := filepath.Join(appPath, comm.LinglongYaml)
 
 		// 如果已经存在 linglong.yaml 文件直接跳过。
 		if ret, err := fs.CheckFileExits(linglongYamlPath); ret && err == nil {
-			log.Logger.Infof("%s file already exists", linglongYamlPath)
+			log.Logger.Infof("%s: linglong.yaml already exists, skip generation", packConfig.File.Deb[idx].Id)
 			continue
 		}
 
 		fs.CreateDir(appPath)
-		// 如果 Ref 为空，type 为 repo, 那么先使用 aptly 获取 url 链接， 如果没有就使用 apt download 获取 url 链接，
-		// 另外的如果 type 为 local 直接将 deb 包下载到工作目录
+		// repo 类型通过 apt download 查询主包 URL，本地 deb 直接复制到工作目录。
 		if packConfig.File.Deb[idx].Ref == "" {
 			packConfig.File.Deb[idx].Ref = packConfig.File.Deb[idx].GetPackageUrl(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion, packConfig.Runtime.Arch)
 			if packConfig.File.Deb[idx].Ref == "" {
-				log.Logger.Fatalf("get package url failed")
+				return fmt.Errorf("%s: get package url failed", packConfig.File.Deb[idx].Name)
 			}
 			packConfig.File.Deb[idx].Path = filepath.Join(comm.LocalPackageSourceDir(appPath), filepath.Base(packConfig.File.Deb[idx].Ref))
 		}
@@ -142,22 +158,24 @@ func runConvert(options *convertOptions) error {
 					log.Logger.Warnf("check deb hash failed! : ", packConfig.File.Deb[idx].Name)
 					fs.RemovePath(packConfig.File.Deb[idx].Path)
 
-					packConfig.File.Deb[idx].FetchDebFile(packConfig.File.Deb[idx].Path)
+					if ok := packConfig.File.Deb[idx].FetchDebFile(packConfig.File.Deb[idx].Path); !ok {
+						return fmt.Errorf("%s: fetch deb file failed", packConfig.File.Deb[idx].Name)
+					}
 					log.Logger.Debugf("fetch deb path:[%d] %s", idx, packConfig.File.Deb[idx].Path)
 
 					if ret := packConfig.File.Deb[idx].CheckDebHash(); !ret {
-						log.Logger.Warnf("check deb hash failed! : ", packConfig.File.Deb[idx].Name)
-						continue
+						return fmt.Errorf("%s: check deb hash failed", packConfig.File.Deb[idx].Name)
 					}
 					log.Logger.Infof("download %s success.", packConfig.File.Deb[idx].Name)
 				}
 			} else {
-				packConfig.File.Deb[idx].FetchDebFile(packConfig.File.Deb[idx].Path)
+				if ok := packConfig.File.Deb[idx].FetchDebFile(packConfig.File.Deb[idx].Path); !ok {
+					return fmt.Errorf("%s: fetch deb file failed", packConfig.File.Deb[idx].Name)
+				}
 				log.Logger.Infof("fetch deb path:[%d] %s", idx, packConfig.File.Deb[idx].Path)
 
 				if ret := packConfig.File.Deb[idx].CheckDebHash(); !ret {
-					log.Logger.Warnf("check deb hash failed! : ", packConfig.File.Deb[idx].Name)
-					continue
+					return fmt.Errorf("%s: check deb hash failed", packConfig.File.Deb[idx].Name)
 				}
 				log.Logger.Infof("download %s success.", packConfig.File.Deb[idx].Name)
 			}
@@ -168,11 +186,12 @@ func runConvert(options *convertOptions) error {
 			}
 
 			// 依赖处理
-			packConfig.File.Deb[idx].ResolveDepends(packConfig.Runtime.Source, packConfig.Runtime.DistroVersion, options.withDep)
+			packConfig.File.Deb[idx].ResolveDepends()
 			// 生成构建脚本
 			packConfig.File.Deb[idx].GenerateBuildScript()
 			// 对 linglong.yaml 依赖去重
-			packConfig.File.Deb[idx].Sources = comm.RemoveExcessDeps(packConfig.File.Deb[idx].Sources)
+			packConfig.File.Deb[idx].RuntimeDepends = comm.RemoveExcessDepends(packConfig.File.Deb[idx].RuntimeDepends)
+			packConfig.File.Deb[idx].BuildDepends = comm.RemoveExcessDepends(packConfig.File.Deb[idx].BuildDepends)
 
 			builder := linglong.LinglongBuilder{
 				Package: linglong.Package{
@@ -182,27 +201,60 @@ func runConvert(options *convertOptions) error {
 					Kind:        packConfig.File.Deb[idx].PackageKind,
 					Description: packConfig.File.Deb[idx].Desc,
 				},
-				Runtime: fmt.Sprintf("%s/%s", packConfig.Runtime.Id, packConfig.Runtime.Version),
+				Runtime: formatRuntimeRef(packConfig.Runtime.Id, packConfig.Runtime.RuntimeVersion),
 				Base:    fmt.Sprintf("%s/%s", packConfig.Runtime.BaseId, packConfig.Runtime.BaseVersion),
 				Command: packConfig.File.Deb[idx].Command,
-				Sources: packConfig.File.Deb[idx].Sources,
 				Build:   packConfig.File.Deb[idx].Build,
+				BuildExt: linglong.BuildExt{
+					Apt: linglong.AptExt{
+						BuildDepends: packConfig.File.Deb[idx].BuildDepends,
+						Depends:      packConfig.File.Deb[idx].RuntimeDepends,
+					},
+				},
 			}
 
+			log.Logger.Infof("%s: generating linglong.yaml", packConfig.File.Deb[idx].Id)
 			// 生成 linglong.yaml 文件
 			if builder.CreateLinglongYaml(linglongYamlPath) {
-				log.Logger.Infof("generate %s success.", comm.LinglongYaml)
+				log.Logger.Infof("%s: generated linglong.yaml", packConfig.File.Deb[idx].Id)
 			} else {
 				log.Logger.Errorf("generate %s failed", comm.LinglongYaml)
 			}
 
 			// 构建玲珑包
 			if options.buildFlag {
+				if err := validateDebArchitecture(packConfig.File.Deb[idx].Architecture, packConfig.Runtime.Arch); err != nil {
+					return fmt.Errorf("%s: %w", packConfig.File.Deb[idx].Name, err)
+				}
 				buildLinglongPath := filepath.Dir(linglongYamlPath)
+				log.Logger.Infof("%s: building package", packConfig.File.Deb[idx].Id)
 				builder.LinglongBuild(buildLinglongPath, "ll-builder build")
+				log.Logger.Infof("%s: exporting package (%s)", packConfig.File.Deb[idx].Id, options.exportFile)
 				builder.LinglongExport(buildLinglongPath, options.exportFile)
+				log.Logger.Infof("%s: export completed", packConfig.File.Deb[idx].Id)
+			} else {
+				log.Logger.Infof("%s: skip build/export (set --build to enable)", packConfig.File.Deb[idx].Id)
 			}
 		}
 	}
 	return nil
+}
+
+func formatRuntimeRef(id, version string) string {
+	if strings.TrimSpace(id) == "" || strings.TrimSpace(version) == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s/%s", id, version)
+}
+
+func validateDebArchitecture(debArch, targetArch string) error {
+	debArch = strings.TrimSpace(debArch)
+	targetArch = strings.TrimSpace(targetArch)
+	if debArch == "" || targetArch == "" {
+		return nil
+	}
+	if debArch == targetArch {
+		return nil
+	}
+	return fmt.Errorf("deb architecture %q does not match target architecture %q", debArch, targetArch)
 }

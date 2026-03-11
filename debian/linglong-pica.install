@@ -1,0 +1,5 @@
+usr/bin/ll-pica
+usr/share/bash-completion/completions/ll-pica
+usr/share/zsh/vendor-completions/_ll-pica
+usr/share/fish/vendor_completions.d/ll-pica.fish
+usr/libexec/linglong/builder/helper/install_dep

@@ -8,6 +8,7 @@ package convert
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -59,8 +60,8 @@ when you set --url option and --hash option`)
 }
 
 func runConvert(options *convertOptions) error {
-	if options.packageId == "" {
-		return fmt.Errorf("package id is required")
+	if err := comm.ValidatePackageID(options.packageId); err != nil {
+		return err
 	}
 
 	if options.packageVersion == "" {
@@ -161,10 +162,11 @@ func runConvert(options *convertOptions) error {
 
 	// 复制appimage文件到工作目录下的sources目录
 	if options.appimageFile != "" {
-		data, err := os.ReadFile(options.appimageFile)
+		srcFile, err := os.Open(options.appimageFile)
 		if err != nil {
 			return err
 		}
+		defer srcFile.Close()
 
 		err = os.MkdirAll(comm.LocalPackageSourceDir(workDir), 0755)
 		if err != nil {
@@ -172,33 +174,42 @@ func runConvert(options *convertOptions) error {
 		}
 
 		destinationFilePath := filepath.Join(comm.LocalPackageSourceDir(workDir), filepath.Base(options.appimageFile))
-		err = os.WriteFile(destinationFilePath, data, 0644)
+		dstFile, err := os.Create(destinationFilePath)
 		if err != nil {
+			return err
+		}
+		defer dstFile.Close()
+
+		if _, err := io.Copy(dstFile, srcFile); err != nil {
 			return err
 		}
 	}
 
 	linglongYamlPath := filepath.Join(workDir, comm.LinglongYaml)
 
+	log.Logger.Infof("%s: generating linglong.yaml", options.packageId)
 	// 生成 linglong.yaml 文件
 	if builder.CreateLinglongYaml(linglongYamlPath) {
-		log.Logger.Infof("generate %s success.", comm.LinglongYaml)
+		log.Logger.Infof("%s: generated linglong.yaml", options.packageId)
 	} else {
 		log.Logger.Errorf("generate %s failed", comm.LinglongYaml)
 	}
 
-	log.Logger.Info("building linglong package")
-
 	// 构建玲珑包
 	if options.buildFlag {
 		buildLinglongPath := filepath.Dir(linglongYamlPath)
+		log.Logger.Infof("%s: building package", options.packageId)
 		builder.LinglongBuild(buildLinglongPath, "ll-builder build --skip-output-check")
 
 		layerOpt := "uab"
 		if options.exportLayerFlag {
 			layerOpt = "layer"
 		}
+		log.Logger.Infof("%s: exporting package (%s)", options.packageId, layerOpt)
 		builder.LinglongExport(buildLinglongPath, layerOpt)
+		log.Logger.Infof("%s: export completed", options.packageId)
+	} else {
+		log.Logger.Infof("%s: skip build/export (set --build to enable)", options.packageId)
 	}
 
 	return nil

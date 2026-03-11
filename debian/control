@@ -24,4 +24,4 @@ Depends:
  coreutils,
  zstd,
 Description: Linglong transform package tools.
- Linglong transform package command line tool from deb.
+ Linglong transform package command line tool from deb, appimage and flatpak.
