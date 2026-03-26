@@ -245,10 +245,14 @@ func (cli *LinglongCli) GetBaseInsPack() []string {
 	config := comm.NewConfig()
 	config.ReadConfigJson()
 
-	cli.LinglongCliInstall(config.BaseId, config.BaseVersion)
-
-	// 先检查文件是否存在
 	commit := comm.GetBaseRuntimeCommit(config.BaseId, config.BaseVersion)
+	if commit == "" {
+		// base 未安装，才执行安装
+		cli.LinglongCliInstall(config.BaseId, config.BaseVersion)
+		commit = comm.GetBaseRuntimeCommit(config.BaseId, config.BaseVersion)
+	}
+
+	// 检查文件是否存在
 	if commit == "" {
 		log.Logger.Warnf("failed to get base commit for %s/%s", config.BaseId, config.BaseVersion)
 		return packages
@@ -281,10 +285,15 @@ func (cli *LinglongCli) GetRuntimeInsPack() []string {
 	config := comm.NewConfig()
 	config.ReadConfigJson()
 
-	cli.LinglongCliInstall(config.Id, config.Version)
-
-	// 先检查文件是否存在
+	// 先检查 runtime 是否已安装，避免不必要的 polkit 鉴权
 	commit := comm.GetBaseRuntimeCommit(config.Id, config.Version)
+	if commit == "" {
+		// runtime 未安装，才执行安装
+		cli.LinglongCliInstall(config.Id, config.Version)
+		commit = comm.GetBaseRuntimeCommit(config.Id, config.Version)
+	}
+
+	// 检查文件是否存在
 	if commit == "" {
 		log.Logger.Warnf("failed to get runtime commit for %s/%s", config.Id, config.Version)
 		return packages
