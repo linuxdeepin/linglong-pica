@@ -10,7 +10,7 @@ WORKDIR=$APPID
 SMALLER_APPID=$(echo "$APPID" | tr '[:upper:]' '[:lower:]')
 
 echo "Downloading app data from flathub"
-ostree --repo="$FLATHUB_CACHE" pull flathub "$COMMIT_ID"
+ostree --repo="$FLATHUB_CACHE" pull --http-header=User-Agent=linyaps-pica/1 flathub "$COMMIT_ID"
 rm -rf "$WORKDIR" && mkdir -p "$WORKDIR"
 echo "Extracting app data to $WORKDIR/flatpak"
 ostree --repo="$FLATHUB_CACHE" checkout "$COMMIT_ID" "$WORKDIR/flatpak"
